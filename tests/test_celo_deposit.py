@@ -57,9 +57,10 @@ def test_registry_default_celo_entry():
     assert pub["evm"]["chain_id_hex"] == "0xa4ec" and pub["evm"]["rpc"] == "https://forno.celo.org"
     assert pub["evm"]["explorer_tx"] == "https://celoscan.io/tx/"
     # stablecoin-only: no native CELO offered, every token at par
-    assert [t["symbol"] for t in pub["tokens"]] == ["USDC", "USDT", "USDM"]
+    assert [t["symbol"] for t in pub["tokens"]] == ["USDC", "USDT", "USDM", "USAT"]
     assert all(t["kind"] == "erc20" and t["price_usd"] == 1.0 for t in pub["tokens"])
-    assert [t["display"] for t in pub["tokens"]] == ["USDC", "USD₮", "USDm (cUSD)"]
+    assert [t["display"] for t in pub["tokens"]] == ["USDC", "USD₮", "USDm (cUSD)", "USA₮"]
+    assert ce["erc20"]["USAT"] == {"address": celo_chain.USAT, "decimals": 6, "display": "USA₮"}
     # Celo sits right after the promoted 0G lane in the UI order
     assert list(chains.all_chains().keys())[:2] == ["0G", "CELO"]
 
