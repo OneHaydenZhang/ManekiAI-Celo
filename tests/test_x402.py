@@ -345,3 +345,12 @@ def test_insight_without_decision_is_not_charged(client, monkeypatch):
                    headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req))})
     assert r.status_code == 503 and calls["settle"] == 0
     assert points_model.balance(OWNER) == 0.0
+
+
+def test_owner_share_keys_on_nonce_when_tx_missing():
+    agent = {"agent_id": "ag_1", "address": OWNER, "label": "A", "symbol": "xyz:NVDA"}
+    assert x402.credit_owner(agent, 0.05, "", "insight", PAYER, nonce="0xn1") == 35.0
+    assert x402.credit_owner(agent, 0.05, "", "insight", PAYER, nonce="0xn2") == 35.0   # second sale still pays
+    assert x402.credit_owner(agent, 0.05, "", "insight", PAYER, nonce="0xn2") == 0.0    # same sale → no double
+    assert x402.credit_owner(agent, 0.05, "", "insight", PAYER) == 0.0                  # no key at all → refuse
+    assert points_model.balance(OWNER) == 70.0

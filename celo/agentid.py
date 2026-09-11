@@ -57,6 +57,13 @@ RECEIPT_POLL_S = 2.0
 
 _inflight_lock = threading.Lock()
 _inflight: set = set()
+# Review fix (2026-09-11): an unfunded registrar must not spawn a failing tx
+# attempt on EVERY agent edit. Balance is checked (60s cache) before signing,
+# and a failed agent waits RETRY_BACKOFF_S before the create/edit hook retries.
+MIN_REGISTRAR_CELO = 0.05
+RETRY_BACKOFF_S = 600
+_bal_cache: Dict[str, Any] = {"at": 0.0, "wei": None}
+_last_fail: Dict[str, float] = {}
 
 
 # ------------------------------------------------------------- config -----
@@ -115,6 +122,28 @@ def _rpc(method: str, params: list) -> Any:
     raise RuntimeError(f"celo rpc failed on all gateways: {last!r}")
 
 
+def registrar_balance_celo() -> Optional[float]:
+    """Registrar's CELO balance (60s cache). None when the RPC read fails —
+    callers treat 'unknown' as 'try anyway' so a flaky read never blocks."""
+    addr = registrar_address()
+    if not addr:
+        return None
+    now = time.time()
+    if _bal_cache["wei"] is not None and now - _bal_cache["at"] < 60:
+        return _bal_cache["wei"] / 1e18
+    try:
+        wei = int(_rpc("eth_getBalance", [addr, "latest"]), 16)
+    except Exception:
+        return None
+    _bal_cache["wei"], _bal_cache["at"] = wei, now
+    return wei / 1e18
+
+
+def _funded() -> bool:
+    bal = registrar_balance_celo()
+    return True if bal is None else bal >= MIN_REGISTRAR_CELO
+
+
 def _send_register(uri: str) -> Dict[str, Any]:
     """Sign + broadcast register(uri) from the registrar, wait for the receipt,
     return {agentId, txhash}. Raises on revert / receipt timeout."""
@@ -164,6 +193,8 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
         return {"ok": False, "skipped": "agent deleted"}
     if int(agent.get("celo_agent_id") or 0) > 0:
         return {"ok": True, "already": True, "agentId": int(agent["celo_agent_id"])}
+    if not _funded():
+        return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
     with _inflight_lock:
         if agent_id in _inflight:
             return {"ok": False, "skipped": "in flight"}
@@ -179,8 +210,11 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
         oplog.op("agent.celo_register", agent.get("address") or "",
                  params={"agent_id": agent_id, "celo_agent_id": r["agentId"],
                          "txhash": r["txhash"][:18], "uri": uri})
+        _last_fail.pop(agent_id, None)
+        _bal_cache["at"] = 0.0          # balance moved — re-read next time
         return {"ok": True, "agentId": r["agentId"], "txhash": r["txhash"], "uri": uri}
     except Exception as e:
+        _last_fail[agent_id] = time.time()
         oplog.error("agent.celo_register", repr(e)[:400], address=agent.get("address") or "",
                     params={"agent_id": agent_id})
         return {"ok": False, "error": str(e)[:200]}
@@ -199,6 +233,8 @@ def maybe_register_async(agent_id: str) -> None:
             return
         if int(agent.get("celo_agent_id") or 0) > 0:
             return
+        if time.time() - _last_fail.get(agent_id, 0.0) < RETRY_BACKOFF_S:
+            return                       # recent failure — the admin backfill can force it
         threading.Thread(target=register_agent, args=(agent_id,), daemon=True).start()
     except Exception:
         pass
@@ -220,6 +256,34 @@ def register_all_missing(limit: int = 50) -> Dict[str, Any]:
             "done": done, "failures": failed}
 
 
+def register_all_missing_async(limit: int = 50) -> Dict[str, Any]:
+    """Admin entry point: the batch runs in a background thread (each
+    registration waits for its receipt, so 20+ agents take minutes — far past
+    any proxy timeout). Returns immediately with the queue size; the admin
+    panel polls /celo/status for progress."""
+    if not enabled():
+        return {"ok": False, "skipped": "disabled"}
+    if not _funded():
+        return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
+    row = db.query_one("SELECT COUNT(*) c FROM agents WHERE deleted_at=0 AND celo_agent_id=0") or {}
+    pending = int(row.get("c") or 0)
+    with _inflight_lock:
+        if "__batch__" in _inflight:
+            return {"ok": True, "started": 0, "pending": pending, "already_running": True}
+        _inflight.add("__batch__")
+
+    def _run():
+        try:
+            r = register_all_missing(limit)
+            oplog.op("celo.register_all", params={"registered": r.get("registered"),
+                                                   "failed": r.get("failed")})
+        finally:
+            with _inflight_lock:
+                _inflight.discard("__batch__")
+    threading.Thread(target=_run, daemon=True).start()
+    return {"ok": True, "started": min(pending, int(limit)), "pending": pending}
+
+
 def register_platform() -> Dict[str, Any]:
     """Mint the platform Analyst's Celo Agent ID once (idempotent)."""
     if not enabled():
@@ -227,6 +291,8 @@ def register_platform() -> Dict[str, Any]:
     cur = platform_agent()
     if cur:
         return {"ok": True, "already": True, **cur}
+    if not _funded():
+        return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
     with _inflight_lock:
         if PLATFORM_CODE in _inflight:
             return {"ok": False, "skipped": "in flight"}
@@ -270,6 +336,7 @@ def public_status() -> Dict[str, Any]:
         "identity_registry": REGISTRY,
         "reputation_registry": REPUTATION_REGISTRY,
         "registrar": registrar_address(),
+        "registrar_celo": registrar_balance_celo(),
         "explorer_tx": EXPLORER_TX,
         "platform_agent": platform_agent(),
         "registered_agents": registered_count(),

@@ -177,3 +177,44 @@ def test_platform_card(monkeypatch):
     chat = [s for s in card["services"] if s["name"] == "x402-chat"][0]
     assert chat["endpoint"].endswith("/api/x402/chat") and chat["price"]["usd"] == 0.02
     assert card["x402Support"] is True and x402.enabled()
+
+
+# ------------------------------------------------- review fixes (09-11) ----
+
+def test_unfunded_registrar_skips_without_sending(monkeypatch):
+    monkeypatch.setenv("ZEROG_REGISTRAR_KEY", DEV_KEY)
+    _agent()
+    sent = []
+
+    def rpc(method, params):
+        if method == "eth_getBalance":
+            return hex(10 ** 15)                       # 0.001 CELO — below the floor
+        sent.append(method)
+        raise AssertionError("must not sign/send when unfunded")
+    monkeypatch.setattr(ca, "_rpc", rpc)
+    ca._bal_cache["at"] = 0.0
+    r = ca.register_agent("ag_ce")
+    assert not r["ok"] and "unfunded" in r["skipped"] and sent == []
+    assert ca.register_platform()["skipped"].startswith("registrar unfunded")
+    assert ca.register_all_missing_async()["skipped"].startswith("registrar unfunded")
+    # a read failure is NOT a block: unknown balance → try anyway
+    monkeypatch.setattr(ca, "_rpc", _fake_rpc(agent_id_out=8))
+    ca._bal_cache["at"] = 0.0
+    assert ca.register_agent("ag_ce")["agentId"] == 8
+
+
+def test_edit_hook_backs_off_after_failure(monkeypatch):
+    monkeypatch.setenv("ZEROG_REGISTRAR_KEY", DEV_KEY)
+    _agent("ag_bk")
+    monkeypatch.setattr(ca, "_rpc", _fake_rpc(status="0x0"))
+    ca._bal_cache["at"] = 0.0
+    assert not ca.register_agent("ag_bk")["ok"]
+    assert time.time() - ca._last_fail["ag_bk"] < 5
+    started = []
+    monkeypatch.setattr(ca.threading, "Thread",
+                        lambda *a, **k: started.append(k.get("args")) or type("T", (), {"start": lambda self: None})())
+    ca.maybe_register_async("ag_bk")
+    assert started == []                                # inside the backoff window
+    ca._last_fail["ag_bk"] = 0.0
+    ca.maybe_register_async("ag_bk")
+    assert started == [("ag_bk",)]                       # window elapsed → retried

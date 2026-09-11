@@ -354,15 +354,20 @@ def summary() -> Dict[str, Any]:
 # ---------------------------------------------------------- revenue share --
 
 def credit_owner(agent: Dict[str, Any], amount_usd: float, tx: str, product: str,
-                 payer: str = "") -> float:
+                 payer: str = "", nonce: str = "") -> float:
     """Credit the agent owner's Gas with their share of an x402 sale. Idempotent
-    per settlement tx (bonus_grants PK). Returns the credits granted."""
+    per settlement (bonus_grants PK on the tx hash; the payer nonce is the key
+    when a facilitator reply carries no hash, so two sales can never collapse
+    into one grant). Returns the credits granted."""
     owner = (agent.get("address") or "").lower()
     share = owner_share()
     credits = float(math.floor(round(float(amount_usd) * share * pricing.CREDITS_PER_USDC, 6)))
     if not owner or credits < 1:
         return 0.0
-    tag = f"x402:{(tx or '').lower()[:66]}"
+    key = (tx or "").lower() or ("nonce:" + (nonce or "").lower())
+    if key in ("", "nonce:"):
+        return 0.0
+    tag = f"x402:{key[:72]}"
     with db._LOCK:
         if db.query_one("SELECT 1 FROM bonus_grants WHERE address=? AND tag=?", (owner, tag)):
             return 0.0

@@ -144,7 +144,8 @@ async def _deliver(info: Dict[str, Any], content: Dict[str, Any],
     if agent is not None:
         try:
             credits = await asyncio.to_thread(x402.credit_owner, agent, info["amount_usd"], tx,
-                                              info["product"], info["payer"])
+                                              info["product"], info["payer"],
+                                              x402.payload_fields(info["payload"])["nonce"])
         except Exception as e:
             oplog.error("x402.owner_share", repr(e)[:300], params={"tx": tx[:18]})
     x402.finish(info["pid"], "settled", tx=tx, owner_credits=credits)
