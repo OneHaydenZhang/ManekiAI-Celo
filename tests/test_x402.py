@@ -40,6 +40,9 @@ def _clean(monkeypatch):
     celo_routes._RL.clear()
     celo_routes._brief_cache.clear()
     celo_routes._payer_fails.clear()
+    celo_routes._payer_attempts.clear()
+    celo_routes._content_cache.clear()
+    celo_routes._verifying.clear()
     celo_routes._activity_cache["val"] = None
     monkeypatch.delenv("X402_SETTLER", raising=False)
     monkeypatch.delenv("X402_OPERATOR_WALLETS", raising=False)
@@ -77,7 +80,7 @@ def _mock_facilitator(monkeypatch, verify_ok=True, settle_ok=True, tx="0xsettled
     def settle(payload, req):
         calls["settle"] += 1
         return ({"success": True, "payer": PAYER, "transaction": tx, "network": x402.NETWORK} if settle_ok
-                else {"success": False, "errorReason": "nonce_used", "transaction": "", "network": x402.NETWORK})
+                else {"success": False, "errorReason": "nonce_already_used", "transaction": "", "network": x402.NETWORK})
     monkeypatch.setattr(x402, "facilitator_verify", verify)
     monkeypatch.setattr(x402, "facilitator_settle", settle)
     return calls
@@ -228,7 +231,7 @@ def test_invalid_payment_and_mismatch_are_402(client, monkeypatch):
     r = client.post("/api/x402/chat", json={"message": "hi"},
                     headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req))})
     assert r.status_code == 402 and "insufficient_funds" in r.json()["error"]
-    assert x402.recent()[0]["status"] == "invalid" and calls["settle"] == 0
+    assert x402.recent() == [] and calls["settle"] == 0          # unverified → no permanent row
     # cheaper `accepted` than our offer → rejected before the facilitator
     cheap = _payload(req, nonce="0x" + "cd" * 32, value="1")
     cheap["accepted"]["amount"] = "1"
@@ -430,7 +433,8 @@ def test_settlement_reconciles_lost_reply_from_chain(client, monkeypatch):
                         lambda p, r: {"success": False, "errorReason": x402.ERR_FACILITATOR_DOWN,
                                       "transaction": "", "network": x402.NETWORK, "transport": True})
     monkeypatch.setattr(wallet, "authorization_state", lambda asset, payer, nonce, rpc_fn=None: True)
-    monkeypatch.setattr(wallet, "find_transfer_tx", lambda asset, payer, to, rpc_fn=None, blocks=300: "0xfoundOnChain")
+    monkeypatch.setattr(wallet, "find_settlement_tx",
+                        lambda asset, payer, to, nonce, min_value, rpc_fn=None, blocks=900: "0xfoundOnChain")
     _mock_llm(monkeypatch)
     req = x402.requirements("chat", "u")
     r = client.post("/api/x402/chat", json={"message": "hi"},
@@ -512,3 +516,152 @@ def test_self_settler_mode_is_explicit_only(monkeypatch):
     monkeypatch.delenv("X402_SETTLER")
     monkeypatch.setenv("X402_API_KEY", "k")
     assert x402.settler_mode() == "facilitator"                      # never auto-selects self
+
+
+# ------------------------------------------ settlement lifecycle (review) ----
+
+def test_lost_reply_parks_row_and_same_signature_retry_is_free(client, monkeypatch):
+    """Facilitator reply lost and the chain is undecided → 202 settle_pending;
+    once the chain shows the settlement, the SAME signed request gets the
+    content with no second charge, and the owner share is paid exactly once."""
+    from auto_service.celo import wallet
+    agent = _sell_agent("ag_pend")
+    code = agent_model.agent_code("ag_pend")
+    monkeypatch.setattr(x402, "facilitator_verify", lambda p, r: {"isValid": True, "payer": PAYER})
+    settles = {"n": 0}
+
+    def settle(p, r):
+        settles["n"] += 1
+        return {"success": False, "errorReason": x402.ERR_FACILITATOR_DOWN, "transaction": "",
+                "network": x402.NETWORK, "transport": True}
+    monkeypatch.setattr(x402, "facilitator_settle", settle)
+    chain = {"used": False}
+    monkeypatch.setattr(wallet, "authorization_state", lambda a, p, n, rpc_fn=None: chain["used"])
+    monkeypatch.setattr(wallet, "find_settlement_tx",
+                        lambda a, p, to, n, mv, rpc_fn=None, blocks=900: "0xlate" if chain["used"] else "")
+    req = x402.requirements("insight", "u")
+    hdr = {"PAYMENT-SIGNATURE": x402.b64e(_payload(req))}
+    r = client.get(f"/api/x402/agents/{code}/insight", headers=hdr)
+    assert r.status_code == 202 and r.json()["status"] == "settle_pending"
+    row = x402.recent()[0]
+    assert row["status"] == "settle_pending" and points_model.balance(OWNER) == 0.0
+    assert not any(celo_routes._payer_fails.values())           # not the buyer's fault
+    # retry while still undecided → 202 again, no second settle attempt
+    assert client.get(f"/api/x402/agents/{code}/insight", headers=hdr).status_code == 202
+    assert settles["n"] == 1
+    # the chain now shows the settlement → the autopilot finaliser flips it
+    chain["used"] = True
+    out = x402.finalize_pending()
+    assert out == {"checked": 1, "settled": 1, "shares": 0}
+    row = x402.recent()[0]
+    assert row["status"] == "settled" and row["tx"] == "0xlate" and row["owner_credits"] == 35.0
+    assert points_model.balance(OWNER) == 35.0
+    # same signature again → content delivered, nothing charged, share unchanged
+    r3 = client.get(f"/api/x402/agents/{code}/insight", headers=hdr)
+    assert r3.status_code == 200 and r3.json()["decision"]["action"] == "open_long"
+    assert r3.json()["payment"]["tx"] == "0xlate" and settles["n"] == 1
+    assert points_model.balance(OWNER) == 35.0
+    assert x402.get_payment(PAYER, "0x" + "ab" * 32)["meta"]["delivered"] is True
+    # a delivered payment cannot be replayed
+    assert client.get(f"/api/x402/agents/{code}/insight", headers=hdr).status_code == 402
+
+
+def test_reconcile_needs_the_exact_settlement_not_just_a_used_nonce(monkeypatch):
+    from auto_service.celo import wallet
+    req = x402.requirements("chat", "u")
+    f = {"payer": PAYER, "nonce": "0xn1"}
+    monkeypatch.setattr(wallet, "authorization_state", lambda a, p, n, rpc_fn=None: True)
+    monkeypatch.setattr(wallet, "find_settlement_tx", lambda *a, **k: "")
+    s = x402.reconcile(f, req, {"success": False, "transaction": ""})
+    assert not s["success"] and s["pending"] is True
+    # a tx already on the ledger (previous sale) is never re-used
+    pid = x402.begin(PAYER, "0xold", "chat", req, "u"); x402.finish(pid, "settled", tx="0xprev")
+    monkeypatch.setattr(wallet, "find_settlement_tx", lambda *a, **k: "0xprev")
+    s = x402.reconcile(f, req, {"success": False, "transaction": ""})
+    assert not s["success"] and s["pending"] is True
+    monkeypatch.setattr(wallet, "find_settlement_tx", lambda *a, **k: "0xexact")
+    s = x402.reconcile(f, req, {"success": False, "transaction": ""})
+    assert s["success"] and s["transaction"] == "0xexact" and s["reconciled"]
+    monkeypatch.setattr(wallet, "authorization_state", lambda a, p, n, rpc_fn=None: None)
+    assert x402.reconcile(f, req, {"success": False})["pending"] is True
+
+
+def test_content_failures_never_strike_and_attempts_are_capped(client, monkeypatch):
+    calls = _mock_facilitator(monkeypatch, verify_ok=False)
+    req = x402.requirements("chat", "u")
+    # 10 unverified attempts allowed per 10 min, the 11th is 429; none strikes the payer
+    for i in range(10):
+        r = client.post("/api/x402/chat", json={"message": "hi"},
+                        headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + f"{i + 20:02d}" * 32))})
+        assert r.status_code == 402
+    r = client.post("/api/x402/chat", json={"message": "hi"},
+                    headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + "99" * 32))})
+    assert r.status_code == 429 and "attempts" in r.json()["detail"]
+    assert calls["verify"] == 10 and x402.recent() == []
+    # verify-time failures cost no model time → no strikes (the cap did the work)
+    assert not any(celo_routes._payer_fails.values())
+    celo_routes._payer_fails.clear(); celo_routes._payer_attempts.clear()
+    _mock_facilitator(monkeypatch)
+    _mock_llm(monkeypatch, billable=False)
+    for i in range(3):
+        r = client.post("/api/x402/chat", json={"message": "hi"},
+                        headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + f"{i + 40:02d}" * 32))})
+        assert r.status_code == 503, r.text                       # model busy: never 429
+    assert not any(celo_routes._payer_fails.values())
+
+
+def test_hash_persists_before_owner_share_and_scanner_matches_by_amount(client, monkeypatch):
+    from auto_service.services import deposits
+    _mock_facilitator(monkeypatch, tx="0xSALEtx")
+    agent = _sell_agent("ag_scan")
+    code = agent_model.agent_code("ag_scan")
+    req = x402.requirements("insight", "u")
+    r = client.get(f"/api/x402/agents/{code}/insight", headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req))})
+    assert r.status_code == 200
+    # by hash, by (payer, asset, amount) while the hash is unknown, and never for a different amount
+    assert deposits._is_x402_settlement("0xsaletx")
+    assert deposits._is_x402_settlement("0xunknown", PAYER, "USDC", 0.05)
+    assert not deposits._is_x402_settlement("0xunknown", PAYER, "USDC", 5.0)
+    assert not deposits._is_x402_settlement("0xunknown", OWNER, "USDC", 0.05)
+    assert not deposits._is_x402_settlement("0xunknown", PAYER, "USDT", 0.05)   # not an x402 asset
+
+
+def test_owner_share_failure_is_retried_by_finalizer(client, monkeypatch):
+    _mock_facilitator(monkeypatch, tx="0xshare")
+    _sell_agent("ag_share")
+    code = agent_model.agent_code("ag_share")
+    req = x402.requirements("insight", "u")
+    orig = points_model.credit
+    calls = {"n": 0}
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("database is locked")
+        return orig(*a, **k)
+    monkeypatch.setattr(points_model, "credit", flaky)
+    r = client.get(f"/api/x402/agents/{code}/insight", headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req))})
+    assert r.status_code == 200 and points_model.balance(OWNER) == 0.0
+    row = x402.recent()[0]
+    assert row["status"] == "settled" and row["tx"] == "0xshare" and row["owner_credits"] == 0
+    assert x402.get_payment(PAYER, "0x" + "ab" * 32)["meta"]["owner_share_failed"] is True
+    out = x402.finalize_pending()
+    assert out["shares"] == 1 and points_model.balance(OWNER) == 35.0
+    assert x402.recent()[0]["owner_credits"] == 35.0
+
+
+def test_client_ip_trusts_cloudflare_header_only_when_fronted(monkeypatch):
+    from auto_service import admin_auth
+    from starlette.requests import Request
+
+    def req(headers):
+        scope = {"type": "http", "headers": [(k.encode(), v.encode()) for k, v in headers.items()],
+                 "client": ("10.0.0.9", 1234), "method": "GET", "path": "/", "query_string": b"",
+                 "scheme": "http", "server": ("h", 80), "http_version": "1.1"}
+        return Request(scope)
+    monkeypatch.delenv("MANEKI_BEHIND_CLOUDFLARE", raising=False)
+    assert admin_auth.client_ip(req({"cf-connecting-ip": "1.2.3.4", "x-real-ip": "5.6.7.8", "x-forwarded-for": "9.9.9.9, 5.6.7.8"})) == "5.6.7.8"
+    assert admin_auth.client_ip(req({"x-forwarded-for": "9.9.9.9"})) == "10.0.0.9"
+    monkeypatch.setenv("MANEKI_BEHIND_CLOUDFLARE", "1")
+    assert admin_auth.client_ip(req({"cf-connecting-ip": "1.2.3.4", "x-real-ip": "5.6.7.8"})) == "1.2.3.4"
+    assert admin_auth.client_ip(req({"x-real-ip": "5.6.7.8"})) == "5.6.7.8"

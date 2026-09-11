@@ -130,19 +130,54 @@ def _send_register(uri: str) -> Dict[str, Any]:
     return {"agentId": aid, "txhash": r["txhash"]}
 
 
+class RevertedPending(RuntimeError):
+    """The persisted tx mined but reverted / carried no agentId — dead; the
+    hash must be cleared so a later pass can re-send."""
+
+
 def _finalize_pending(txhash: str) -> Optional[Dict[str, Any]]:
     """A broadcast we persisted without a receipt: mined → {agentId, txhash};
-    still pending → None; unknown to the node → LookupError (caller may
-    re-send); reverted → RuntimeError."""
+    still pending → None; unknown to the node → LookupError; mined but
+    reverted / no agentId → RevertedPending."""
     rec = wallet.receipt_of(txhash, rpc_fn=_rpc)
     if rec is None:
         return None
     if (rec.get("status") or "").lower() != "0x1":
-        raise RuntimeError(f"register tx reverted: {txhash}")
+        raise RevertedPending(f"register tx reverted: {txhash}")
     aid = zg._parse_agent_id(rec)
     if aid is None:
-        raise RuntimeError(f"agentId not found in receipt logs: {txhash}")
+        raise RevertedPending(f"agentId not found in receipt logs: {txhash}")
     return {"agentId": aid, "txhash": txhash}
+
+
+def _resolve_pending(txhash: str, since: float) -> Dict[str, Any]:
+    """Shared pending-tx policy for agents and the platform agent:
+      mined ok      → {"done": {agentId, txhash}}
+      reverted      → {"clear": True, "reason": …}           (re-send after backoff)
+      unknown+fresh → {"wait": True}                          (gateway lag: keep waiting)
+      unknown+old   → {"clear": True, "reason": "dropped"}    (re-send)
+      stuck+old     → {"wait": True, "bumped": newhash}       (replace-by-fee, SAME nonce)
+      pending       → {"wait": True}
+    A fresh nonce is never used while the node still knows the old tx — it
+    would only queue behind it and mint a second id when both land."""
+    age = time.time() - float(since or 0)
+    try:
+        r = _finalize_pending(txhash)
+    except LookupError:
+        return {"wait": True} if age < PENDING_MAX_AGE_S else {"clear": True, "reason": "dropped by the node"}
+    except RevertedPending as e:
+        return {"clear": True, "reason": str(e)[:160]}
+    if r is not None:
+        return {"done": r}
+    if age >= PENDING_MAX_AGE_S:
+        try:
+            new = wallet.bump_pending(txhash, rpc_fn=_rpc)
+            return {"wait": True, "bumped": new}
+        except LookupError:
+            return {"clear": True, "reason": "dropped by the node"}
+        except Exception as e:
+            oplog.error("celo.bump_pending", repr(e)[:300], params={"tx": txhash[:18]})
+    return {"wait": True}
 
 
 # ------------------------------------------------------------ registration --
@@ -170,15 +205,24 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
         r: Optional[Dict[str, Any]] = None
         if pending:
             # A previous broadcast without a receipt — never mint twice.
-            try:
-                r = _finalize_pending(pending)
-                if r is None:
-                    if time.time() - float(agent.get("celo_registered_at") or 0) < PENDING_MAX_AGE_S:
-                        return {"ok": False, "skipped": "pending receipt", "txhash": pending}
-                    raise LookupError("stale pending tx")           # fall through to a fresh send
-            except LookupError:
-                r = None
+            st = _resolve_pending(pending, float(agent.get("celo_registered_at") or 0))
+            if st.get("done"):
+                r = st["done"]
+            elif st.get("wait"):
+                if st.get("bumped"):
+                    db.execute("UPDATE agents SET celo_agent_tx=?, celo_registered_at=? WHERE agent_id=?",
+                               (st["bumped"], time.time(), agent_id))
+                    oplog.op("agent.celo_bump", agent.get("address") or "",
+                             params={"agent_id": agent_id, "old": pending[:18], "new": st["bumped"][:18]})
+                return {"ok": False, "skipped": "pending receipt", "txhash": st.get("bumped") or pending}
+            else:
                 db.execute("UPDATE agents SET celo_agent_tx='' WHERE agent_id=?", (agent_id,))
+                oplog.error("agent.celo_register", f"pending tx cleared: {st.get('reason')} ({pending})",
+                            address=agent.get("address") or "", params={"agent_id": agent_id})
+                if not str(st.get("reason") or "").startswith("dropped"):
+                    _last_fail[agent_id] = time.time()          # reverted: retry after the backoff
+                    return {"ok": False, "error": f"pending tx cleared: {st.get('reason')}"}
+                # dropped by the node: nothing is in flight — send again now
         if r is None:
             if not _funded():
                 return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
@@ -228,19 +272,26 @@ def maybe_register_async(agent_id: str) -> None:
         pass
 
 
-def register_all_missing(limit: int = 50) -> Dict[str, Any]:
+def register_all_missing(limit: int = 50, respect_backoff: bool = False) -> Dict[str, Any]:
     """Register every live agent that has no Celo id yet. Sequential on
-    purpose (one registrar nonce chain)."""
+    purpose (one registrar nonce chain). The autopilot passes
+    respect_backoff=True so a recently failed agent is not retried every
+    tick; the admin batch forces everything."""
     if not enabled():
         return {"ok": False, "skipped": "disabled"}
     rows = db.query_all(
         "SELECT agent_id FROM agents WHERE deleted_at=0 AND celo_agent_id=0 "
         "ORDER BY created_at ASC LIMIT ?", (int(limit),))
-    done, failed = [], []
+    done, failed, skipped = [], [], []
     for r in rows:
+        if respect_backoff and time.time() - _last_fail.get(r["agent_id"], 0.0) < RETRY_BACKOFF_S:
+            skipped.append(r["agent_id"])
+            continue
         res = register_agent(r["agent_id"])
         (done if res.get("ok") else failed).append({"agent_id": r["agent_id"], **res})
-    return {"ok": True, "registered": len(done), "failed": len(failed),
+        if not res.get("ok") and "unfunded" in str(res.get("skipped") or ""):
+            break                                   # no point trying the rest this pass
+    return {"ok": True, "registered": len(done), "failed": len(failed), "backoff": len(skipped),
             "done": done, "failures": failed}
 
 
@@ -287,15 +338,18 @@ def register_platform() -> Dict[str, Any]:
         r: Optional[Dict[str, Any]] = None
         pend = admin_store.get(_PLATFORM_PENDING_KEY, None)
         if isinstance(pend, dict) and pend.get("txhash"):
-            try:
-                r = _finalize_pending(pend["txhash"])
-                if r is None:
-                    if time.time() - float(pend.get("at") or 0) < PENDING_MAX_AGE_S:
-                        return {"ok": False, "skipped": "pending receipt", "txhash": pend["txhash"]}
-                    raise LookupError("stale pending tx")
-            except LookupError:
-                r = None
+            st = _resolve_pending(pend["txhash"], float(pend.get("at") or 0))
+            if st.get("done"):
+                r = st["done"]
+            elif st.get("wait"):
+                if st.get("bumped"):
+                    admin_store.set(_PLATFORM_PENDING_KEY, {"txhash": st["bumped"], "at": time.time()})
+                return {"ok": False, "skipped": "pending receipt", "txhash": st.get("bumped") or pend["txhash"]}
+            else:
                 admin_store.set(_PLATFORM_PENDING_KEY, {})
+                oplog.error("celo.platform_register", f"pending tx cleared: {st.get('reason')} ({pend['txhash']})")
+                if not str(st.get("reason") or "").startswith("dropped"):
+                    return {"ok": False, "error": f"pending tx cleared: {st.get('reason')}"}
         if r is None:
             if not _funded():
                 return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
@@ -364,7 +418,7 @@ def autopilot_tick(limit: int = 50) -> Dict[str, Any]:
         if platform_agent() is None:
             out["platform"] = register_platform()
         if pending_count() > 0:
-            r = register_all_missing(limit)
+            r = register_all_missing(limit, respect_backoff=True)
             out["registered"] = r.get("registered", 0)
             out["failed"] = r.get("failed", 0)
         out["pending"] = pending_count()
@@ -408,6 +462,30 @@ def set_agent_uri(agent_id_onchain: int, uri: str) -> Dict[str, Any]:
         return {"ok": True, "txhash": r["txhash"]}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
+
+
+def repoint_uris_async() -> Dict[str, Any]:
+    """Admin entry point: the writes run in a background thread (each waits
+    for its receipt); one run at a time; the panel polls /celo/status."""
+    if not enabled():
+        return {"ok": False, "skipped": "disabled"}
+    if not _funded():
+        return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
+    with _inflight_lock:
+        if "__repoint__" in _inflight:
+            return {"ok": True, "started": False, "already_running": True}
+        _inflight.add("__repoint__")
+
+    def _run():
+        try:
+            repoint_uris(dry_run=False)
+        finally:
+            with _inflight_lock:
+                _inflight.discard("__repoint__")
+    threading.Thread(target=_run, daemon=True).start()
+    plan = repoint_uris(dry_run=True)
+    return {"ok": True, "started": True, "to_change": len(plan.get("changed") or []),
+            "unchanged": plan.get("unchanged", 0)}
 
 
 def repoint_uris(dry_run: bool = False) -> Dict[str, Any]:

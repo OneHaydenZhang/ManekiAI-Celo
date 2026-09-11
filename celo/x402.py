@@ -24,10 +24,15 @@ Settlement paths (X402_SETTLER):
                          as facilitator settlements — documented fallback only,
                          never chosen automatically.
 
-Ledger: every payment attempt is a row in `x402_payments` (payer+nonce
-unique — a replayed payload is refused before any work is done). Rows are
-PERMANENT revenue records (docs/CORE_PRINCIPLES.md §5): status moves
-pending → settled | invalid | content_failed | settle_failed, never deleted.
+Ledger: every VERIFIED payment is a row in `x402_payments` (payer+nonce
+unique — a replayed payload is refused before any work is done; unverified
+attempts never touch the permanent table). Rows are PERMANENT revenue
+records (docs/CORE_PRINCIPLES.md §5): status moves
+pending → settled | content_failed | settle_failed | settle_pending, never
+deleted. `settle_pending` = the authorization may have landed after the
+reply was lost; `finalize_pending()` (autopilot loop) checks the chain and
+flips it to settled — the buyer's retry with the SAME signature then gets
+the content without paying twice (`delivered` flag in meta_json).
 
 Revenue share: an "insight" sale credits the agent's OWNER with a share of the
 sale as Gas (default 70%), idempotent per settlement via bonus_grants.
@@ -343,32 +348,50 @@ def verify(payload: Dict[str, Any], req: Dict[str, Any]) -> Dict[str, Any]:
     return facilitator_verify(payload, req)
 
 
+# Failures the BUYER caused (count toward their cooldown); everything else is
+# ours (model busy, facilitator down, our wallet unfunded, expiry after a queue).
+PAYER_FAULT_REASONS = ("insufficient_funds", "invalid_signature", "nonce_already_used")
+
+
 def settle(payload: Dict[str, Any], req: Dict[str, Any]) -> Dict[str, Any]:
     """Settle, then reconcile a lost reply: if the facilitator/RPC failed at the
-    transport level, the authorization may still have landed — the on-chain
-    nonce state is the truth, never the HTTP reply."""
+    transport level (or our own broadcast timed out), the authorization may
+    still have landed — the on-chain state is the truth, never the HTTP
+    reply. An undecidable outcome is returned with pending=True so the
+    caller parks the row as settle_pending instead of failing it."""
     mode = settler_mode()
     if mode == "self":
         from . import settle as _s
         s = _s.settle(payload, req)
-        if not s.get("success") and s.get("errorReason") == "receipt_timeout":
-            s = _reconcile(payload, req, s)
+        if not s.get("success") and (s.get("errorReason") == "receipt_timeout" or s.get("transport")):
+            s = reconcile(payload_fields(payload), req, s)
         return s
     s = facilitator_settle(payload, req)
     if not s.get("success") and s.get("transport"):
-        s = _reconcile(payload, req, s)
+        s = reconcile(payload_fields(payload), req, s)
     return s
 
 
-def _reconcile(payload: Dict[str, Any], req: Dict[str, Any], s: Dict[str, Any]) -> Dict[str, Any]:
-    f = payload_fields(payload)
-    used = wallet.authorization_state(str(req["asset"]), f["payer"], f["nonce"])
-    if used:
-        tx = s.get("transaction") or wallet.find_transfer_tx(str(req["asset"]), f["payer"], str(req["payTo"]))
-        oplog.op("x402.reconciled", params={"payer": f["payer"], "nonce": f["nonce"][:18], "tx": tx[:18]})
-        return {"success": True, "payer": f["payer"], "transaction": tx, "network": NETWORK,
-                "reconciled": True}
-    return s
+def reconcile(f: Dict[str, str], req: Dict[str, Any], s: Dict[str, Any]) -> Dict[str, Any]:
+    """Decide a lost-reply settlement from the chain. Success ONLY when the
+    exact authorization (payer + nonce) is found in a Transfer worth the
+    price whose tx is not already on the ledger; 'nonce used' alone proves
+    nothing (a previous sale or a cancelAuthorization also use nonces)."""
+    asset, payer, nonce = str(req["asset"]), f["payer"], f["nonce"]
+    used = wallet.authorization_state(asset, payer, nonce)
+    if used is None:
+        return {**s, "pending": True}
+    if not used:
+        return {**s, "pending": True}             # may still be in the mempool
+    tx = str(s.get("transaction") or "")
+    if not tx:
+        tx = wallet.find_settlement_tx(asset, payer, str(req["payTo"]), nonce, int(req["amount"]))
+    if not tx or is_settlement_tx(tx):
+        oplog.error("x402.reconcile", "nonce used but no matching settlement tx found",
+                    params={"payer": payer, "nonce": nonce[:18]})
+        return {**s, "pending": True}
+    oplog.op("x402.reconciled", params={"payer": payer, "nonce": nonce[:18], "tx": tx[:18]})
+    return {"success": True, "payer": payer, "transaction": tx, "network": NETWORK, "reconciled": True}
 
 
 # ----------------------------------------------------------------- ledger --
@@ -434,9 +457,104 @@ def begin(payer: str, nonce: str, product: str, req: Dict[str, Any], resource: s
 
 
 def finish(payment_id: int, status: str, tx: str = "", error: str = "",
-           owner_credits: float = 0.0) -> None:
+           owner_credits: Optional[float] = None) -> None:
+    """Advance a row. A known tx hash is never overwritten with '' (a
+    settle_pending row keeps the hash it broadcast); owner_credits only
+    changes when given."""
+    row = db.query_one("SELECT tx, owner_credits FROM x402_payments WHERE id=?", (int(payment_id),)) or {}
+    tx = (tx or "").lower() or (row.get("tx") or "")
+    oc = float(row.get("owner_credits") or 0) if owner_credits is None else float(owner_credits)
     db.execute("UPDATE x402_payments SET status=?, tx=?, error=?, owner_credits=? WHERE id=?",
-               (status, (tx or "").lower(), (error or "")[:300], float(owner_credits or 0), int(payment_id)))
+               (status, tx, (error or "")[:300], oc, int(payment_id)))
+
+
+def _meta(row: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        return json.loads(row.get("meta_json") or "{}") or {}
+    except ValueError:
+        return {}
+
+
+def update_meta(payment_id: int, **fields: Any) -> None:
+    row = db.query_one("SELECT meta_json FROM x402_payments WHERE id=?", (int(payment_id),)) or {}
+    m = _meta(row)
+    m.update(fields)
+    db.execute("UPDATE x402_payments SET meta_json=? WHERE id=?", (json.dumps(m, default=str), int(payment_id)))
+
+
+def get_payment(payer: str, nonce: str) -> Optional[Dict[str, Any]]:
+    ensure_schema()
+    row = db.query_one("SELECT * FROM x402_payments WHERE payer=? AND nonce=?",
+                       ((payer or "").lower(), (nonce or "").lower()))
+    if row:
+        row = dict(row)
+        row["meta"] = _meta(row)
+    return row
+
+
+def mark_delivered(payment_id: int) -> None:
+    update_meta(payment_id, delivered=True, delivered_at=time.time())
+
+
+def finalize_one(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Re-check one settle_pending row against the chain; flip to settled (and
+    pay the owner share) when the exact settlement is found. Content is NOT
+    delivered here — the buyer's retry with the same signature gets it."""
+    if row.get("status") != "settle_pending":
+        return row
+    sym = asset_symbol(row.get("asset") or "") or "USDC"
+    req = {"asset": row.get("asset") or ASSETS["USDC"]["address"], "payTo": pay_to(),
+           "amount": str(row.get("amount_atomic") or "0")}
+    f = {"payer": row["payer"], "nonce": row["nonce"]}
+    s = reconcile(f, req, {"success": False, "transaction": row.get("tx") or ""})
+    if s.get("success"):
+        finish(int(row["id"]), "settled", tx=s.get("transaction") or "", error="")
+        credits = 0.0
+        if row.get("agent_id"):
+            from ..models import agent_model
+            agent = agent_model.get(row["agent_id"])
+            if agent:
+                try:
+                    credits = credit_owner(agent, float(row.get("amount_usd") or 0),
+                                           s.get("transaction") or "", row.get("product") or "insight",
+                                           row["payer"], row["nonce"])
+                except Exception as e:
+                    oplog.error("x402.owner_share", repr(e)[:300], params={"id": row["id"]})
+                    update_meta(int(row["id"]), owner_share_failed=True)
+        finish(int(row["id"]), "settled", owner_credits=credits if credits else None)
+        return get_payment(row["payer"], row["nonce"]) or row
+    if time.time() - float(row.get("ts") or 0) > 24 * 3600:
+        finish(int(row["id"]), "settle_failed", error="unresolved after 24h")
+    return get_payment(row["payer"], row["nonce"]) or row
+
+
+def finalize_pending(limit: int = 50) -> Dict[str, int]:
+    """Autopilot pass: resolve settle_pending rows and retry owner shares that
+    failed to credit. Cheap when there is nothing to do."""
+    ensure_schema()
+    out = {"checked": 0, "settled": 0, "shares": 0}
+    for row in db.query_all("SELECT * FROM x402_payments WHERE status='settle_pending' ORDER BY id ASC LIMIT ?",
+                            (int(limit),)):
+        out["checked"] += 1
+        r = finalize_one(dict(row))
+        if r.get("status") == "settled":
+            out["settled"] += 1
+    for row in db.query_all("SELECT * FROM x402_payments WHERE status='settled' AND agent_id<>'' "
+                            "AND owner_credits=0 AND meta_json LIKE '%owner_share_failed%' LIMIT ?", (int(limit),)):
+        from ..models import agent_model
+        agent = agent_model.get(row["agent_id"])
+        if not agent:
+            continue
+        try:
+            c = credit_owner(agent, float(row["amount_usd"] or 0), row.get("tx") or "",
+                             row.get("product") or "insight", row["payer"], row["nonce"])
+        except Exception:
+            continue
+        if c:
+            finish(int(row["id"]), "settled", owner_credits=c)
+            update_meta(int(row["id"]), owner_share_failed=False)
+            out["shares"] += 1
+    return out
 
 
 def is_settlement_tx(txhash: str) -> bool:
@@ -447,6 +565,28 @@ def is_settlement_tx(txhash: str) -> bool:
         return False
     ensure_schema()
     return db.query_one("SELECT 1 FROM x402_payments WHERE tx=? AND tx<>''", (txhash.lower(),)) is not None
+
+
+SETTLEMENT_MATCH_WINDOW_S = 1800
+
+
+def is_settlement_like(txhash: str, sender: str, token: str, amount: float) -> bool:
+    """The scanner's guard when the hash is not (yet) on the ledger: the
+    settlement row may still be pending (we record the hash only after the
+    reply), or a lost reply left it without a hash. Match on payer + asset +
+    exact amount within the last 30 minutes, any non-failed status."""
+    if is_settlement_tx(txhash):
+        return True
+    a = ASSETS.get((token or "").upper())
+    if not a or not sender:
+        return False
+    ensure_schema()
+    atomic_amt = str(int(round(float(amount) * (10 ** a["decimals"]))))
+    row = db.query_one(
+        "SELECT 1 FROM x402_payments WHERE payer=? AND asset=? AND amount_atomic=? AND ts>? "
+        "AND status IN ('pending','settled','settle_pending','settle_failed') LIMIT 1",
+        ((sender or "").lower(), a["address"], atomic_amt, time.time() - SETTLEMENT_MATCH_WINDOW_S))
+    return row is not None
 
 
 def recent(limit: int = 100, status: str = "") -> List[Dict[str, Any]]:

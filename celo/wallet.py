@@ -23,7 +23,9 @@ import httpx
 
 RPC_URLS = ["https://forno.celo.org", "https://celo.drpc.org"]
 CHAIN_ID = 42220
-MIN_CELO = 0.05                 # below this the wallet is treated as unfunded
+MIN_CELO = 0.05                 # absolute floor; funded() also requires one tx worth of gas
+FLOOR_GAS = 250_000             # one registration incl. the 1.3× estimate margin
+_price_cache: Dict[str, Any] = {"at": 0.0, "wei": 0}
 RECEIPT_TIMEOUT_S = 90
 RECEIPT_POLL_S = 2.0
 
@@ -123,13 +125,36 @@ def invalidate_balance() -> None:
     _bal_cache["at"] = 0.0
 
 
-def funded(rpc_fn: Optional[RpcFn] = None, min_celo: float = MIN_CELO) -> bool:
-    """False only when we KNOW the balance is below the floor; an unreadable
-    balance is 'try anyway' so a flaky RPC never blocks the feature."""
+def gas_price_wei(rpc_fn: Optional[RpcFn] = None) -> int:
+    """Current gas price (60s cache); 0 when unreadable."""
+    now = time.time()
+    if _price_cache["wei"] and now - _price_cache["at"] < 60:
+        return int(_price_cache["wei"])
+    try:
+        wei = int((rpc_fn or rpc)("eth_gasPrice", []), 16)
+    except Exception:
+        return int(_price_cache["wei"] or 0)
+    _price_cache["wei"], _price_cache["at"] = wei, now
+    return wei
+
+
+def gas_floor_celo(rpc_fn: Optional[RpcFn] = None) -> float:
+    """What ONE registration-sized tx costs up front at today's price (×1.2
+    price multiplier) — the wallet must hold at least this, else the node
+    rejects the broadcast with 'insufficient funds' on every attempt."""
+    gp = gas_price_wei(rpc_fn)
+    return max(MIN_CELO, FLOOR_GAS * gp * 1.2 / 1e18) if gp else MIN_CELO
+
+
+def funded(rpc_fn: Optional[RpcFn] = None, min_celo: Optional[float] = None) -> bool:
+    """False only when we KNOW the balance is below the floor (the larger of
+    MIN_CELO and one tx of gas at the current price); an unreadable balance
+    is 'try anyway' so a flaky RPC never blocks the feature."""
     if not address():
         return False
     bal = balance_celo(rpc_fn)
-    return True if bal is None else bal >= min_celo
+    floor = gas_floor_celo(rpc_fn) if min_celo is None else min_celo
+    return True if bal is None else bal >= floor
 
 
 def revert_reason(err: Any) -> str:
@@ -173,6 +198,8 @@ def simulate(to: str, data: str, rpc_fn: Optional[RpcFn] = None,
 # keccak("authorizationState(address,bytes32)")[:4] — EIP-3009 view on FiatToken
 _SEL_AUTH_STATE = "e94a0102"
 _TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+# keccak("AuthorizationUsed(address,bytes32)") — emitted by transferWithAuthorization
+AUTH_USED_TOPIC = "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5"
 
 
 def authorization_state(asset: str, payer: str, nonce: str, rpc_fn: Optional[RpcFn] = None) -> Optional[bool]:
@@ -187,22 +214,65 @@ def authorization_state(asset: str, payer: str, nonce: str, rpc_fn: Optional[Rpc
         return None
 
 
-def find_transfer_tx(asset: str, payer: str, to: str, rpc_fn: Optional[RpcFn] = None,
-                     blocks: int = 300) -> str:
-    """Most recent Transfer(payer → to) on `asset` within the last `blocks`
-    (~5 min on Celo): the tx hash of a settlement whose reply we lost. '' if
-    none found or the RPC fails."""
+def find_settlement_tx(asset: str, payer: str, to: str, nonce: str, min_value: int,
+                       rpc_fn: Optional[RpcFn] = None, blocks: int = 900) -> str:
+    """The tx that settled ONE specific authorization: a Transfer(payer → to)
+    on `asset` worth ≥ min_value whose receipt also carries
+    AuthorizationUsed(payer, nonce). Never a previous sale, never a plain
+    top-up. '' when not found (or the RPC fails)."""
     try:
         call = rpc_fn or rpc
         latest = int(call("eth_blockNumber", []), 16)
+        p_topic = "0x" + payer.lower().replace("0x", "").rjust(64, "0")
+        n_topic = "0x" + nonce.lower().replace("0x", "").rjust(64, "0")
         logs = call("eth_getLogs", [{
             "fromBlock": hex(max(0, latest - blocks)), "toBlock": hex(latest), "address": asset,
-            "topics": [_TRANSFER_TOPIC,
-                       "0x" + payer.lower().replace("0x", "").rjust(64, "0"),
+            "topics": [_TRANSFER_TOPIC, p_topic,
                        "0x" + to.lower().replace("0x", "").rjust(64, "0")]}]) or []
-        return str((logs[-1].get("transactionHash") if logs else "") or "")
+        for lg in reversed(logs):
+            try:
+                if int(str(lg.get("data") or "0x0"), 16) < int(min_value):
+                    continue
+            except (TypeError, ValueError):
+                continue
+            txh = str(lg.get("transactionHash") or "")
+            if not txh:
+                continue
+            rec = call("eth_getTransactionReceipt", [txh]) or {}
+            for l2 in rec.get("logs") or []:
+                t = [str(x).lower() for x in (l2.get("topics") or [])]
+                if (str(l2.get("address") or "").lower() == asset.lower() and len(t) >= 3
+                        and t[0] == AUTH_USED_TOPIC and t[1] == p_topic and t[2] == n_topic):
+                    return txh
+        return ""
     except Exception:
         return ""
+
+
+def bump_pending(txhash: str, rpc_fn: Optional[RpcFn] = None, bump: float = 1.15) -> str:
+    """Replace-by-fee for a stuck registrar tx: re-sign the SAME nonce/calldata
+    with a higher gas price (a fresh nonce would only queue behind it). Returns
+    the new hash; the old one when already mined; raises LookupError when the
+    node no longer knows the tx (dropped → the caller may re-send)."""
+    from eth_account import Account
+    call = rpc_fn or rpc
+    tx = call("eth_getTransactionByHash", [txhash])
+    if tx is None:
+        raise LookupError(f"tx unknown to the node: {txhash}")
+    if tx.get("blockNumber"):
+        return txhash
+    acct = Account.from_key(key())
+    old_price = int(str(tx.get("gasPrice") or "0x0"), 16)
+    cur = gas_price_wei(call) or old_price
+    price = max(int(old_price * bump) + 1, int(cur * 1.2))
+    with _send_lock:
+        signed = acct.sign_transaction({
+            "chainId": CHAIN_ID, "nonce": int(str(tx["nonce"]), 16), "to": tx.get("to"),
+            "value": int(str(tx.get("value") or "0x0"), 16), "gas": int(str(tx.get("gas")), 16),
+            "gasPrice": price, "data": tx.get("input") or "0x"})
+        raw = signed.raw_transaction.hex()
+        raw = raw if raw.startswith("0x") else "0x" + raw
+        return str(call("eth_sendRawTransaction", [raw]))
 
 
 def send_and_wait(to: str, data: str, *, rpc_fn: Optional[RpcFn] = None, value: int = 0,
@@ -241,10 +311,15 @@ def send_and_wait(to: str, data: str, *, rpc_fn: Optional[RpcFn] = None, value: 
         txh = call("eth_sendRawTransaction", [raw])
         invalidate_balance()
     receipt = None
-    # module constants read at CALL time (tests shorten them)
+    # module constants read at CALL time (tests shorten them). After the
+    # broadcast NOTHING may lose the hash: a failing poll is retried until the
+    # deadline and the only ways out are a receipt or ReceiptTimeout(txh).
     deadline = time.time() + (RECEIPT_TIMEOUT_S if receipt_timeout_s is None else receipt_timeout_s)
     while time.time() < deadline:
-        receipt = call("eth_getTransactionReceipt", [txh])
+        try:
+            receipt = call("eth_getTransactionReceipt", [txh])
+        except Exception:
+            receipt = None
         if receipt:
             break
         time.sleep(RECEIPT_POLL_S)

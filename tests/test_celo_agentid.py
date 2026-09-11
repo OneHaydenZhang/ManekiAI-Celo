@@ -321,3 +321,79 @@ def test_repoint_uris_only_sends_where_different(monkeypatch):
     assert ca.platform_agent()["uri"].startswith("https://arena.manekiai.io")
     data = ca._encode_set_agent_uri(4242, "https://arena.manekiai.io/api/agent-card/maneki-analyst")
     assert data.startswith("0x" + ca.SEL_SET_AGENT_URI) and int(data[10:74], 16) == 4242
+
+
+def test_reverted_pending_is_cleared_and_resent_after_backoff(monkeypatch):
+    monkeypatch.setenv("ZEROG_REGISTRAR_KEY", DEV_KEY)
+    _agent("ag_rev2")
+    db.execute("UPDATE agents SET celo_agent_tx='0xdead', celo_registered_at=? WHERE agent_id='ag_rev2'", (time.time(),))
+    sent = []
+
+    def rpc(method, params):
+        if method == "eth_getBalance":
+            return hex(10 ** 18)
+        if method == "eth_getTransactionReceipt":
+            return {"status": "0x0", "logs": []} if params[0] == "0xdead" else \
+                   {"status": "0x1", "logs": [{"address": ca.REGISTRY, "topics": [zg.TOPIC_REGISTERED, "0x" + hex(9)[2:].rjust(64, "0")]}]}
+        if method == "eth_sendRawTransaction":
+            sent.append(1); return "0xfresh"
+        if method == "eth_getTransactionByHash":
+            return {"hash": params[0]}
+        return {"eth_getTransactionCount": "0x1", "eth_gasPrice": "0x1", "eth_estimateGas": hex(180_000)}[method]
+    monkeypatch.setattr(ca, "_rpc", rpc)
+    r = ca.register_agent("ag_rev2")
+    assert not r["ok"] and "cleared" in r["error"] and sent == []
+    assert agent_model.get("ag_rev2")["celo_agent_tx"] == "" and ca._last_fail["ag_rev2"] > 0
+    # autopilot respects the backoff; the admin batch forces the resend
+    assert ca.register_all_missing(respect_backoff=True)["backoff"] == 1 and sent == []
+    r2 = ca.register_all_missing()
+    assert r2["registered"] == 1 and sent == [1] and agent_model.get("ag_rev2")["celo_agent_id"] == 9
+
+
+def test_unknown_pending_tx_waits_then_resends_and_stuck_tx_is_bumped(monkeypatch):
+    monkeypatch.setenv("ZEROG_REGISTRAR_KEY", DEV_KEY)
+    _agent("ag_lag")
+    db.execute("UPDATE agents SET celo_agent_tx='0xlag', celo_registered_at=? WHERE agent_id='ag_lag'", (time.time(),))
+    sent = []
+
+    def rpc(method, params):
+        if method == "eth_getBalance":
+            return hex(10 ** 18)
+        if method == "eth_getTransactionReceipt":
+            return None
+        if method == "eth_getTransactionByHash":
+            return None                                    # a lagging gateway does not know it
+        if method == "eth_sendRawTransaction":
+            sent.append(params[0]); return "0xnew"
+        return {"eth_getTransactionCount": "0x2", "eth_gasPrice": "0x1", "eth_estimateGas": hex(180_000)}[method]
+    monkeypatch.setattr(ca, "_rpc", rpc)
+    monkeypatch.setattr(ca.wallet, "RECEIPT_TIMEOUT_S", 0.01); monkeypatch.setattr(ca.wallet, "RECEIPT_POLL_S", 0.001)
+    # fresh + unknown → wait (no resend)
+    assert ca.register_agent("ag_lag")["skipped"] == "pending receipt" and sent == []
+    # old + unknown → cleared and re-sent
+    db.execute("UPDATE agents SET celo_registered_at=? WHERE agent_id='ag_lag'", (time.time() - 7200,))
+    r = ca.register_agent("ag_lag")
+    assert r["skipped"] == "pending receipt" and r["txhash"] == "0xnew" and len(sent) == 1
+    # old + known-but-stuck → replace-by-fee on the SAME nonce, never a fresh send
+    _agent("ag_stuck")
+    db.execute("UPDATE agents SET celo_agent_tx='0xstuck', celo_registered_at=? WHERE agent_id='ag_stuck'", (time.time() - 7200,))
+    bumped = []
+
+    def rpc2(method, params):
+        if method == "eth_getBalance":
+            return hex(10 ** 18)
+        if method == "eth_getTransactionReceipt":
+            return None
+        if method == "eth_getTransactionByHash":
+            return {"hash": "0xstuck", "nonce": "0x3", "gasPrice": hex(10 ** 9), "gas": hex(180_000),
+                    "to": ca.REGISTRY, "value": "0x0", "input": "0x" + "ab" * 8, "blockNumber": None}
+        if method == "eth_gasPrice":
+            return hex(2 * 10 ** 9)
+        if method == "eth_sendRawTransaction":
+            bumped.append(params[0]); return "0xbumped"
+        raise AssertionError(method)
+    monkeypatch.setattr(ca, "_rpc", rpc2)
+    ca.wallet._price_cache["at"] = 0.0
+    r = ca.register_agent("ag_stuck")
+    assert r["skipped"] == "pending receipt" and r["txhash"] == "0xbumped" and len(bumped) == 1
+    assert agent_model.get("ag_stuck")["celo_agent_tx"] == "0xbumped"

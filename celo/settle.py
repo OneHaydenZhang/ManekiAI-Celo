@@ -24,7 +24,10 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, Optional
 
+from ..services import oplog
 from . import wallet
+
+ERR_UNAVAILABLE = "settlement temporarily unavailable"
 
 USDC = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C"   # EIP-55 checksum (the docs page mis-cases it)
 USAT = "0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771"   # Tether America USD, 6 dec, EIP-3009 (verified 2026-09-11)
@@ -127,7 +130,11 @@ def verify(payload: Dict[str, Any], req: Dict[str, Any], rpc_fn=None) -> Dict[st
         return {"isValid": False, "invalidReason": f"malformed authorization: {e}", "payer": payer, "settler": "self"}
     ok, reason, gas = wallet.simulate(str(req["asset"]), data, rpc_fn)
     if not ok:
-        return {"isValid": False, "invalidReason": _classify(reason), "payer": payer, "settler": "self"}
+        code = _classify(reason)
+        if code == "verifier_unavailable":
+            oplog.error("x402.self_verify", reason[:300])
+        return {"isValid": False, "invalidReason": code, "payer": payer, "settler": "self",
+                "transport": code == "verifier_unavailable"}
     return {"isValid": True, "payer": payer, "settler": "self", "gas": gas}
 
 
@@ -150,6 +157,12 @@ def settle(payload: Dict[str, Any], req: Dict[str, Any], rpc_fn=None) -> Dict[st
         return {**base, "errorReason": "receipt_timeout", "transaction": e.txhash}
     except Exception as e:
         msg = str(e)
-        reason = _classify(msg) if "would revert" in msg else msg[:160]
-        return {**base, "errorReason": reason}
+        if "would revert" in msg:
+            return {**base, "errorReason": _classify(msg)}
+        if "reverted on-chain" in msg:
+            oplog.error("x402.self_settle", msg[:200])
+            return {**base, "errorReason": "settlement_reverted", "transaction": msg.rsplit(" ", 1)[-1]}
+        # transport / node trouble: the real text goes to the operator log only
+        oplog.error("x402.self_settle", repr(e)[:300])
+        return {**base, "errorReason": ERR_UNAVAILABLE, "transport": True}
     return {**base, "success": True, "transaction": r["txhash"], "gas_used": r.get("gas_used", 0)}

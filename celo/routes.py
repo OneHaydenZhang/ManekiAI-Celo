@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -45,8 +46,22 @@ _MIN_VALID_S = 60                 # authorization must outlive verify + content 
 # three paid generations run concurrently.
 _FAIL_WINDOW_S, _FAIL_MAX = 600, 2
 _payer_fails: Dict[str, List[float]] = {}
+# Unverified attempts per payer address (bogus signatures cost a verifier
+# round trip): 10 per 10 min, then 429. Verified payments never count.
+_ATTEMPT_WINDOW_S, _ATTEMPT_MAX = 600, 10
+_payer_attempts: Dict[str, List[float]] = {}
 _llm_sem = asyncio.Semaphore(3)
+_LLM_QUEUE_TIMEOUT_S = 30
+_LLM_MIN_VALID_LEFT_S = 45         # the signature must still cover generation + settle
 _activity_cache: Dict[str, Any] = {"at": 0.0, "val": None}
+# (payer, nonce) currently being verified — replay protection BEFORE a ledger
+# row exists (rows are only written for verified payments).
+_verifying_lock = threading.Lock()
+_verifying: set = set()
+# Content generated for a payment whose settlement is still pending: the
+# buyer's retry with the SAME signature gets it without a second model call.
+_content_cache: Dict[Tuple[str, str], Tuple[float, Dict[str, Any]]] = {}
+_CONTENT_CACHE_TTL_S = 900
 
 # Per-IP request budget on the paid surface (the 402 challenge itself is free
 # to request; the payment is the real rate limiter for content).
@@ -74,6 +89,46 @@ def _note_payer_failure(payer: str) -> None:
         now = time.time()
         for k in [k for k, v in _payer_fails.items() if not v or now - v[-1] > _FAIL_WINDOW_S]:
             _payer_fails.pop(k, None)
+
+
+def _attempt_ok(payer: str) -> bool:
+    now = time.time()
+    q = [t for t in _payer_attempts.get(payer, []) if now - t < _ATTEMPT_WINDOW_S]
+    _payer_attempts[payer] = q
+    if len(q) >= _ATTEMPT_MAX:
+        return False
+    q.append(now)
+    if len(_payer_attempts) > 5000:
+        for k in [k for k, v in _payer_attempts.items() if not v or now - v[-1] > _ATTEMPT_WINDOW_S]:
+            _payer_attempts.pop(k, None)
+    return True
+
+
+def _pending_response(info_or_product: Any, resource: str = "") -> JSONResponse:
+    """202: the settlement is undecided (lost reply / unmined). The client
+    keeps its signed payload and retries the same request; a settled row is
+    then served without paying again."""
+    resp = JSONResponse(status_code=202, content={
+        "status": "settle_pending", "retry_after_s": 8, "retry_with_same_signature": True,
+        "message": "Settlement is being confirmed on Celo — retry this request with the same "
+                   "PAYMENT-SIGNATURE in a few seconds; you will not be charged twice."})
+    resp.headers["Access-Control-Expose-Headers"] = _EXPOSE
+    return resp
+
+
+def _cache_content(payer: str, nonce: str, content: Dict[str, Any]) -> None:
+    now = time.time()
+    _content_cache[(payer, nonce)] = (now, content)
+    if len(_content_cache) > 500:
+        for k in [k for k, (t, _) in _content_cache.items() if now - t > _CONTENT_CACHE_TTL_S]:
+            _content_cache.pop(k, None)
+
+
+def _cached_content(payer: str, nonce: str) -> Optional[Dict[str, Any]]:
+    ent = _content_cache.get((payer, nonce))
+    if ent and time.time() - ent[0] < _CONTENT_CACHE_TTL_S:
+        return ent[1]
+    return None
 
 
 def _rate_ok(ip: str) -> bool:
@@ -147,31 +202,72 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
             return _402(product, resource, "authorization.value below the required amount"), {}
     except (TypeError, ValueError):
         return _402(product, resource, "authorization fields must be integers"), {}
+    decimals = x402.ASSETS.get(x402.asset_symbol(req["asset"]) or "USDC", x402.ASSETS["USDC"])["decimals"]
+    info: Dict[str, Any] = {"payload": payload, "req": req, "product": product, "resource": resource,
+                            "payer": f["payer"], "nonce": f["nonce"],
+                            "asset": x402.asset_symbol(req["asset"]) or "USDC",
+                            "amount_usd": int(req["amount"]) / (10 ** decimals),
+                            "valid_before": int(f["valid_before"])}
+    # Same signature again? Serve what it already paid for.
+    existing = await asyncio.to_thread(x402.get_payment, f["payer"], f["nonce"])
+    if existing:
+        if existing["status"] == "settle_pending":
+            existing = await asyncio.to_thread(x402.finalize_one, existing)
+        if existing["status"] == "settled" and not existing.get("meta", {}).get("delivered"):
+            info.update({"pid": int(existing["id"]), "already_settled": True, "tx": existing.get("tx") or ""})
+            return None, info
+        if existing["status"] == "settle_pending":
+            return _pending_response(product, resource), {}
+        if existing["status"] == "pending":
+            return _402(product, resource, "this payment is still being processed"), {}
+        return _402(product, resource, "duplicate payment nonce — sign a fresh authorization"), {}
     if _payer_cooling(f["payer"]):
         raise HTTPException(429, "too many failed payments from this wallet — try again in 10 minutes")
+    if not _attempt_ok(f["payer"]):
+        raise HTTPException(429, "too many payment attempts from this wallet — try again in 10 minutes")
+    key = (f["payer"], f["nonce"])
+    with _verifying_lock:
+        if key in _verifying:
+            return _402(product, resource, "this payment is still being verified"), {}
+        _verifying.add(key)
     try:
-        pid = x402.begin(f["payer"], f["nonce"], product, req, resource, agent_id=agent_id,
-                         meta={"ip": ip})
-    except x402.Duplicate:
-        return _402(product, resource, "duplicate payment nonce — sign a fresh authorization"), {}
-    except ValueError:
-        return _402(product, resource, "authorization.from and nonce are required"), {}
-    v = await asyncio.to_thread(x402.verify, payload, req)
-    if not v.get("isValid"):
-        reason = str(v.get("invalidReason") or "rejected")[:160]
-        x402.finish(pid, "invalid", error=reason)
-        oplog.error("x402.verify", reason, params={"product": product, "payer": f["payer"][:12]}, status=402)
-        return _402(product, resource, f"payment invalid: {reason}"), {}
-    decimals = x402.ASSETS.get(x402.asset_symbol(req["asset"]) or "USDC", x402.ASSETS["USDC"])["decimals"]
-    return None, {"pid": pid, "payload": payload, "req": req, "product": product,
-                  "resource": resource, "payer": (v.get("payer") or f["payer"]).lower(),
-                  "asset": x402.asset_symbol(req["asset"]) or "USDC",
-                  "amount_usd": int(req["amount"]) / (10 ** decimals)}
+        v = await asyncio.to_thread(x402.verify, payload, req)
+        if not v.get("isValid"):
+            reason = str(v.get("invalidReason") or "rejected")[:160]
+            oplog.error("x402.verify", reason, params={"product": product, "payer": f["payer"][:12]}, status=402)
+            # No strike here: nothing was generated, so nothing was wasted —
+            # the per-payer attempt cap bounds verifier round trips instead.
+            return _402(product, resource, f"payment invalid: {reason}"), {}
+        try:
+            pid = x402.begin(f["payer"], f["nonce"], product, req, resource, agent_id=agent_id,
+                             meta={"ip": ip})
+        except x402.Duplicate:
+            return _402(product, resource, "duplicate payment nonce — sign a fresh authorization"), {}
+    finally:
+        with _verifying_lock:
+            _verifying.discard(key)
+    info.update({"pid": pid, "payer": (v.get("payer") or f["payer"]).lower()})
+    return None, info
+
+
+async def _llm_slot(info: Dict[str, Any]) -> Optional[JSONResponse]:
+    """Take a generation slot; refuse (nothing charged, no strike) when the
+    queue would eat the signature's validity window."""
+    try:
+        await asyncio.wait_for(_llm_sem.acquire(), timeout=_LLM_QUEUE_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        return _content_failed(info, "analyst queue full")
+    if int(info.get("valid_before") or 0) < int(time.time()) + _LLM_MIN_VALID_LEFT_S:
+        _llm_sem.release()
+        return _content_failed(info, "authorization window too short after queueing")
+    return None
 
 
 def _content_failed(info: Dict[str, Any], reason: str) -> JSONResponse:
-    x402.finish(info["pid"], "content_failed", error=reason)
-    _note_payer_failure(info["payer"])
+    # Our failure, not the buyer's: no strike. An already-settled row keeps
+    # its status (the retry will get the content once we recover).
+    if not info.get("already_settled"):
+        x402.finish(info["pid"], "content_failed", error=reason)
     oplog.error("x402.content", reason, params={"product": info["product"]}, status=503)
     return JSONResponse(status_code=503, content={
         "error": "The analyst is busy right now — nothing was charged, please retry shortly.",
@@ -180,28 +276,49 @@ def _content_failed(info: Dict[str, Any], reason: str) -> JSONResponse:
 
 async def _deliver(info: Dict[str, Any], content: Dict[str, Any],
                    agent: Optional[Dict[str, Any]] = None) -> JSONResponse:
-    s = await asyncio.to_thread(x402.settle, info["payload"], info["req"])
-    if not s.get("success"):
-        reason = str(s.get("errorReason") or "settlement rejected")[:160]
-        x402.finish(info["pid"], "settle_failed", error=reason)
-        _note_payer_failure(info["payer"])
-        oplog.error("x402.settle", reason, params={"product": info["product"],
-                                                    "payer": info["payer"][:12]}, status=402)
-        return _402(info["product"], info["resource"], f"settlement failed: {reason}")
-    tx = str(s.get("transaction") or "")
-    credits = 0.0
-    if agent is not None:
-        try:
-            credits = await asyncio.to_thread(x402.credit_owner, agent, info["amount_usd"], tx,
-                                              info["product"], info["payer"],
-                                              x402.payload_fields(info["payload"])["nonce"])
-        except Exception as e:
-            oplog.error("x402.owner_share", repr(e)[:300], params={"tx": tx[:18]})
-    x402.finish(info["pid"], "settled", tx=tx, owner_credits=credits)
-    oplog.op("x402.sale", params={"product": info["product"], "payer": info["payer"],
-                                  "usd": info["amount_usd"], "tx": tx[:18],
-                                  "agent_id": (agent or {}).get("agent_id", ""),
-                                  "owner_credits": credits})
+    pid = info["pid"]
+    if info.get("already_settled"):
+        # Paid earlier, content never delivered (lost reply): serve it now.
+        s = {"success": True, "transaction": info.get("tx") or "", "settler": x402.settler_mode()}
+        tx = str(info.get("tx") or "")
+        credits = 0.0
+    else:
+        _cache_content(info["payer"], info["nonce"], content)
+        s = await asyncio.to_thread(x402.settle, info["payload"], info["req"])
+        if not s.get("success"):
+            reason = str(s.get("errorReason") or "settlement rejected")[:160]
+            if s.get("pending"):
+                # Undecided (lost reply / unmined broadcast): keep the hash if we
+                # have one, park the row, let the buyer retry the same signature.
+                x402.finish(pid, "settle_pending", tx=str(s.get("transaction") or ""), error=reason)
+                oplog.error("x402.settle", f"pending: {reason}", params={"product": info["product"],
+                                                                         "payer": info["payer"][:12]}, status=202)
+                return _pending_response(info["product"], info["resource"])
+            x402.finish(pid, "settle_failed", tx=str(s.get("transaction") or ""), error=reason)
+            if reason in x402.PAYER_FAULT_REASONS:
+                _note_payer_failure(info["payer"])
+            oplog.error("x402.settle", reason, params={"product": info["product"],
+                                                        "payer": info["payer"][:12]}, status=402)
+            return _402(info["product"], info["resource"], f"settlement failed: {reason}")
+        tx = str(s.get("transaction") or "")
+        # The hash goes to the ledger FIRST — from this instant the deposit
+        # scanner knows this Transfer is a sale, not a top-up.
+        x402.finish(pid, "settled", tx=tx, error="")
+        credits = 0.0
+        if agent is not None:
+            try:
+                credits = await asyncio.to_thread(x402.credit_owner, agent, info["amount_usd"], tx,
+                                                  info["product"], info["payer"], info["nonce"])
+                x402.finish(pid, "settled", owner_credits=credits)
+            except Exception as e:
+                oplog.error("x402.owner_share", repr(e)[:300], params={"tx": tx[:18]})
+                x402.update_meta(pid, owner_share_failed=True)   # autopilot retries it
+        oplog.op("x402.sale", params={"product": info["product"], "payer": info["payer"],
+                                      "usd": info["amount_usd"], "tx": tx[:18],
+                                      "agent_id": (agent or {}).get("agent_id", ""),
+                                      "owner_credits": credits})
+    x402.mark_delivered(pid)
+    _content_cache.pop((info["payer"], info["nonce"]), None)
     body = dict(content)
     body["payment"] = {"tx": tx, "explorer": (x402.CHAIN["explorer_tx"] + tx) if tx else "",
                        "payer": info["payer"], "amount_usd": info["amount_usd"],
@@ -365,19 +482,26 @@ async def paid_chat(request: Request):
     resp, info = await _gate(request, "chat")
     if resp is not None:
         return resp
-    c = _analyst_config()
-    async with _llm_sem:
-        data = await asyncio.to_thread(chat_service._run_chat, c, [], message, _full_symbol(symbol), False)
-    if not data.pop("_billable", False):
-        return _content_failed(info, "model busy / no answer")
-    structured = {"on_topic": data.get("on_topic", True), "headline": data.get("headline", ""),
-                  "points": data.get("points") or [], "analysis": data.get("analysis"),
-                  "note": data.get("note")}
-    content = {"product": "chat", "symbol": _bare(symbol), "reply": chat_service._flatten(structured),
-               "structured": structured,
-               "idea": {k: data.get(k) for k in ("has_trade_idea", "side", "confidence", "rationale", "mark")
-                        if data.get(k) is not None},
-               "ts": time.time()}
+    content = _cached_content(info["payer"], info["nonce"])
+    if content is None:
+        busy = await _llm_slot(info)
+        if busy is not None:
+            return busy
+        try:
+            c = _analyst_config()
+            data = await asyncio.to_thread(chat_service._run_chat, c, [], message, _full_symbol(symbol), False)
+        finally:
+            _llm_sem.release()
+        if not data.pop("_billable", False):
+            return _content_failed(info, "model busy / no answer")
+        structured = {"on_topic": data.get("on_topic", True), "headline": data.get("headline", ""),
+                      "points": data.get("points") or [], "analysis": data.get("analysis"),
+                      "note": data.get("note")}
+        content = {"product": "chat", "symbol": _bare(symbol), "reply": chat_service._flatten(structured),
+                   "structured": structured,
+                   "idea": {k: data.get(k) for k in ("has_trade_idea", "side", "confidence", "rationale", "mark")
+                            if data.get(k) is not None},
+                   "ts": time.time()}
     return await _deliver(info, content)
 
 
@@ -425,10 +549,17 @@ async def paid_brief(request: Request, symbol: str = ""):
     resp, info = await _gate(request, "brief")
     if resp is not None:
         return resp
-    async with _llm_sem:
-        content = await asyncio.to_thread(_brief_sync, symbol)
+    content = _cached_content(info["payer"], info["nonce"])
     if content is None:
-        return _content_failed(info, "model busy / no brief")
+        busy = await _llm_slot(info)
+        if busy is not None:
+            return busy
+        try:
+            content = await asyncio.to_thread(_brief_sync, symbol)
+        finally:
+            _llm_sem.release()
+        if content is None:
+            return _content_failed(info, "model busy / no brief")
     return await _deliver(info, content)
 
 
@@ -474,7 +605,9 @@ async def paid_insight(code: str, request: Request):
     resp, info = await _gate(request, "insight", agent_id=agent["agent_id"])
     if resp is not None:
         return resp
-    content = await asyncio.to_thread(_insight_sync, agent)
-    if not content.get("decision"):
-        return _content_failed(info, "agent has no decision yet")
+    content = _cached_content(info["payer"], info["nonce"])
+    if content is None:
+        content = await asyncio.to_thread(_insight_sync, agent)
+        if not content.get("decision"):
+            return _content_failed(info, "agent has no decision yet")
     return await _deliver(info, content, agent=agent)

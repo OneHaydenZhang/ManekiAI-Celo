@@ -163,7 +163,16 @@ def test_settle_refuses_when_registrar_unfunded():
 def test_settle_reports_onchain_revert():
     payload, _ = _signed()
     r = settle.settle(payload, REQ, rpc_fn=_Rpc(receipt_status="0x0"))
-    assert not r["success"] and "reverted" in r["errorReason"]
+    assert not r["success"] and r["errorReason"] == "settlement_reverted" and r["transaction"] == "0xselfsettled"
+    # transport trouble after broadcast is NOT leaked to the buyer
+    class Flaky(_Rpc):
+        def __call__(self, method, params):
+            if method == "eth_getTransactionCount":
+                raise RuntimeError("celo rpc failed on all gateways: ConnectError('secret-host')")
+            return super().__call__(method, params)
+    r2 = settle.settle(payload, REQ, rpc_fn=Flaky())
+    assert r2["errorReason"] == settle.ERR_UNAVAILABLE and r2.get("transport") is True
+    assert "secret-host" not in str(r2)
 
 
 def test_wallet_serializes_sends(monkeypatch):
@@ -183,3 +192,80 @@ def test_wallet_serializes_sends(monkeypatch):
           for _ in range(2)]
     [t.start() for t in ts]; [t.join() for t in ts]
     assert order == ["nonce", "send", "nonce", "send"]
+
+
+# --------------------------------------------------- wallet robustness ----
+
+def test_receipt_poll_survives_rpc_errors_and_keeps_the_hash(monkeypatch):
+    monkeypatch.setattr(wallet, "RECEIPT_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(wallet, "RECEIPT_POLL_S", 0.005)
+    node = _Rpc()
+    state = {"polls": 0}
+    orig = node.__call__
+
+    def flaky(method, params):
+        if method == "eth_getTransactionReceipt":
+            state["polls"] += 1
+            if state["polls"] < 3:
+                raise wallet.RpcError(method, {"code": -32005, "message": "rate limited"})
+            return None                                   # still pending
+        return orig(method, params)
+    with pytest.raises(wallet.ReceiptTimeout) as ei:
+        wallet.send_and_wait(settle.USDC, "0x" + "00" * 4, rpc_fn=flaky)
+    assert ei.value.txhash == "0xselfsettled" and state["polls"] >= 3
+
+
+def test_bump_pending_reuses_nonce_with_higher_price():
+    sent = []
+
+    def rpc(method, params):
+        if method == "eth_getTransactionByHash":
+            return {"hash": "0xstuck", "nonce": "0x7", "gasPrice": hex(100_000_000_000), "gas": hex(180_000),
+                    "to": settle.USDC, "value": "0x0", "input": "0x" + "ab" * 8, "blockNumber": None}
+        if method == "eth_gasPrice":
+            return hex(120_000_000_000)
+        if method == "eth_sendRawTransaction":
+            sent.append(params[0]); return "0xbumped"
+        raise AssertionError(method)
+    wallet._price_cache["at"] = 0.0
+    assert wallet.bump_pending("0xstuck", rpc_fn=rpc) == "0xbumped" and len(sent) == 1
+    from eth_account import Account
+    from eth_account.typed_transactions import TypedTransaction  # noqa: F401  (import guard only)
+    import rlp
+    tx = rlp.decode(bytes.fromhex(sent[0][2:]))
+    assert int.from_bytes(tx[0], "big") == 7                        # same nonce
+    assert int.from_bytes(tx[1], "big") >= int(120_000_000_000 * 1.2)   # bumped price
+    with pytest.raises(LookupError):
+        wallet.bump_pending("0xgone", rpc_fn=lambda m, p: None if m == "eth_getTransactionByHash" else "0x0")
+
+
+def test_find_settlement_tx_requires_matching_authorization_used():
+    payer = "0x" + "aa" * 20; to = PAY_TO; nonce = "0x" + "bb" * 32
+    good = {"transactionHash": "0xgood", "data": hex(20000)}
+    old = {"transactionHash": "0xold", "data": hex(50000)}
+    small = {"transactionHash": "0xsmall", "data": hex(1)}
+    receipts = {
+        "0xgood": {"logs": [{"address": settle.USDC, "topics": [wallet.AUTH_USED_TOPIC,
+                             "0x" + payer[2:].rjust(64, "0"), nonce]}]},
+        "0xold": {"logs": [{"address": settle.USDC, "topics": [wallet.AUTH_USED_TOPIC,
+                            "0x" + payer[2:].rjust(64, "0"), "0x" + "cc" * 32]}]},
+    }
+
+    def rpc(method, params):
+        if method == "eth_blockNumber":
+            return hex(1000)
+        if method == "eth_getLogs":
+            return [small, good, old]                        # oldest → newest
+        if method == "eth_getTransactionReceipt":
+            return receipts.get(params[0], {"logs": []})
+        raise AssertionError(method)
+    assert wallet.find_settlement_tx(settle.USDC, payer, to, nonce, 20000, rpc_fn=rpc) == "0xgood"
+    assert wallet.find_settlement_tx(settle.USDC, payer, to, "0x" + "dd" * 32, 20000, rpc_fn=rpc) == ""
+
+
+def test_gas_floor_tracks_price(monkeypatch):
+    wallet._price_cache["at"] = 0.0
+    floor = wallet.gas_floor_celo(rpc_fn=lambda m, p: hex(200_000_000_000))
+    assert floor == pytest.approx(250_000 * 200e9 * 1.2 / 1e18)          # 0.06 CELO
+    wallet.invalidate_balance(); wallet._bal_cache["wei"] = None
+    assert not wallet.funded(rpc_fn=lambda m, p: hex(55_000_000_000_000_000) if m == "eth_getBalance" else hex(200_000_000_000))
