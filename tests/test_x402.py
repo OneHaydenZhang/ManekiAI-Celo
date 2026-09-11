@@ -39,6 +39,12 @@ def _clean(monkeypatch):
     celo_routes.invalidate_catalog()
     celo_routes._RL.clear()
     celo_routes._brief_cache.clear()
+    celo_routes._payer_fails.clear()
+    celo_routes._activity_cache["val"] = None
+    monkeypatch.delenv("X402_SETTLER", raising=False)
+    monkeypatch.delenv("X402_OPERATOR_WALLETS", raising=False)
+    monkeypatch.delenv("CELO_REGISTRAR_KEY", raising=False)
+    monkeypatch.delenv("ZEROG_REGISTRAR_KEY", raising=False)
     yield
 
 
@@ -202,7 +208,8 @@ def test_chat_happy_path_settles_and_records(client, monkeypatch):
     assert body["structured"]["points"][0]["label"] == "Trend"
     assert body["idea"]["side"] == "long"
     assert body["payment"] == {"tx": "0xsettled", "explorer": "https://celoscan.io/tx/0xsettled",
-                               "payer": PAYER, "amount_usd": 0.02, "asset": "USDC", "network": "eip155:42220"}
+                               "payer": PAYER, "amount_usd": 0.02, "asset": "USDC", "network": "eip155:42220",
+                               "settler": "facilitator"}
     assert x402.b64d(r.headers["PAYMENT-RESPONSE"])["transaction"] == "0xsettled"
     assert calls == {"verify": 1, "settle": 1}
     row = x402.recent()[0]
@@ -336,15 +343,20 @@ def test_insight_happy_path_pays_owner(client, monkeypatch):
     assert client.get("/api/x402/agents/A-NOPE99/insight").status_code == 404
 
 
-def test_insight_without_decision_is_not_charged(client, monkeypatch):
+def test_insight_without_decision_is_refused_before_any_signature(client, monkeypatch):
     calls = _mock_facilitator(monkeypatch)
     agent = _sell_agent("ag_new", with_decision=False)
     code = agent_model.agent_code("ag_new")
+    # 409 on the FREE challenge already — the buyer never signs for nothing
+    assert client.get(f"/api/x402/agents/{code}/insight").status_code == 409
     req = x402.requirements("insight", "u")
     r = client.get(f"/api/x402/agents/{code}/insight",
                    headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req))})
-    assert r.status_code == 503 and calls["settle"] == 0
-    assert points_model.balance(OWNER) == 0.0
+    assert r.status_code == 409 and calls == {"verify": 0, "settle": 0}
+    assert points_model.balance(OWNER) == 0.0 and x402.recent() == []
+    cat = client.get("/api/x402/catalog").json()
+    entry = [a for a in cat["agents"] if a["code"] == code][0]
+    assert entry["purchasable"] is False and entry["last_action"] == "" and entry["last_round"] == 0
 
 
 def test_owner_share_keys_on_nonce_when_tx_missing():
@@ -354,3 +366,149 @@ def test_owner_share_keys_on_nonce_when_tx_missing():
     assert x402.credit_owner(agent, 0.05, "", "insight", PAYER, nonce="0xn2") == 0.0    # same sale → no double
     assert x402.credit_owner(agent, 0.05, "", "insight", PAYER) == 0.0                  # no key at all → refuse
     assert points_model.balance(OWNER) == 70.0
+
+
+# ----------------------------------------------- round-2 hardening (09-11) ----
+
+def test_two_accepts_usdc_first_and_usat_payment_path(client, monkeypatch):
+    calls = _mock_facilitator(monkeypatch, tx="0xusat")
+    _mock_llm(monkeypatch)
+    r0 = client.post("/api/x402/chat", json={"message": "hi"})
+    acc = x402.b64d(r0.headers["PAYMENT-REQUIRED"])["accepts"]
+    assert [a["asset"] for a in acc] == [x402.USDC, x402.USAT]
+    assert acc[1]["extra"] == {"name": "Tether America USD", "version": "1"} and acc[1]["amount"] == "20000"
+    # paying with the USA₮ offer works end to end and is recorded as USAT
+    r = client.post("/api/x402/chat", json={"message": "hi"},
+                    headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(acc[1]))})
+    assert r.status_code == 200, r.text
+    assert r.json()["payment"]["asset"] == "USAT" and calls["settle"] == 1
+    assert x402.recent()[0]["asset"] == x402.USAT and x402.recent()[0]["amount_usd"] == pytest.approx(0.02)
+
+
+def test_structural_rejections_happen_before_verify_and_ledger(client, monkeypatch):
+    calls = _mock_facilitator(monkeypatch)
+    req = x402.requirements("chat", "u")
+    short = _payload(req, nonce="0x" + "01" * 32)
+    short["payload"]["authorization"]["validBefore"] = str(int(time.time()) + 7)
+    r = client.post("/api/x402/chat", json={"message": "hi"}, headers={"PAYMENT-SIGNATURE": x402.b64e(short)})
+    assert r.status_code == 402 and "authorization_expired" in r.json()["error"]
+    bad = _payload(req, payer="0xnotanaddress", nonce="0x" + "02" * 32)
+    r = client.post("/api/x402/chat", json={"message": "hi"}, headers={"PAYMENT-SIGNATURE": x402.b64e(bad)})
+    assert r.status_code == 402 and "well-formed" in r.json()["error"]
+    cheap = _payload(req, nonce="0x" + "03" * 32, value="1")
+    r = client.post("/api/x402/chat", json={"message": "hi"}, headers={"PAYMENT-SIGNATURE": x402.b64e(cheap)})
+    assert r.status_code == 402 and "below the required amount" in r.json()["error"]
+    assert calls["verify"] == 0 and x402.recent() == []
+    # empty message is a plain 400 before any payment work
+    assert client.post("/api/x402/chat", json={"message": ""}).status_code == 400
+
+
+def test_payer_cooldown_after_repeated_failures(client, monkeypatch):
+    calls = _mock_facilitator(monkeypatch, settle_ok=False)
+    _mock_llm(monkeypatch)
+    req = x402.requirements("chat", "u")
+    for i in range(2):
+        r = client.post("/api/x402/chat", json={"message": "hi"},
+                        headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + f"{i + 10:02d}" * 32))})
+        assert r.status_code == 402
+    r = client.post("/api/x402/chat", json={"message": "hi"},
+                    headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + "77" * 32))})
+    assert r.status_code == 429 and calls["verify"] == 2          # third attempt never reaches the verifier
+
+
+def test_settlement_reconciles_lost_reply_from_chain(client, monkeypatch):
+    """Facilitator broadcast the tx but the HTTP reply was lost: the on-chain
+    nonce state says 'used' → deliver + settled, never 'charged without content'."""
+    from auto_service.celo import wallet
+    calls = {"verify": 0}
+
+    def verify(payload, req):
+        calls["verify"] += 1
+        return {"isValid": True, "payer": PAYER}
+    monkeypatch.setattr(x402, "facilitator_verify", verify)
+    monkeypatch.setattr(x402, "facilitator_settle",
+                        lambda p, r: {"success": False, "errorReason": x402.ERR_FACILITATOR_DOWN,
+                                      "transaction": "", "network": x402.NETWORK, "transport": True})
+    monkeypatch.setattr(wallet, "authorization_state", lambda asset, payer, nonce, rpc_fn=None: True)
+    monkeypatch.setattr(wallet, "find_transfer_tx", lambda asset, payer, to, rpc_fn=None, blocks=300: "0xfoundOnChain")
+    _mock_llm(monkeypatch)
+    req = x402.requirements("chat", "u")
+    r = client.post("/api/x402/chat", json={"message": "hi"},
+                    headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req))})
+    assert r.status_code == 200, r.text
+    assert r.json()["payment"]["tx"] == "0xfoundOnChain"
+    assert x402.recent()[0]["status"] == "settled" and x402.recent()[0]["tx"] == "0xfoundonchain"
+
+
+def test_facilitator_errors_are_sanitized(monkeypatch):
+    import httpx as _h
+
+    def boom(*a, **k):
+        raise _h.ConnectError("Connection refused to https://api.x402.celo.org/verify (secret-host)")
+    monkeypatch.setattr(x402.httpx, "post", boom)
+    v = x402.facilitator_verify({}, {})
+    s = x402.facilitator_settle({}, {})
+    assert v == {"isValid": False, "invalidReason": "facilitator unreachable", "transport": True}
+    assert s["errorReason"] == "facilitator unreachable" and s["transport"] is True
+    assert "secret-host" not in json.dumps(v) + json.dumps(s)
+
+
+def test_deposit_scanner_skips_x402_settlements():
+    from auto_service.services import deposits
+    req = x402.requirements("insight", "u")
+    pid = x402.begin(PAYER, "0xn9", "insight", req, "u")
+    x402.finish(pid, "settled", tx="0xSALE")
+    assert deposits._is_x402_settlement("0xsale") and deposits._is_x402_settlement("0xSALE")
+    assert not deposits._is_x402_settlement("0xother") and not deposits._is_x402_settlement("")
+
+
+def test_owner_share_rolls_back_marker_when_credit_fails(monkeypatch):
+    agent = {"agent_id": "ag_1", "address": OWNER, "label": "A", "symbol": "xyz:NVDA"}
+
+    def broken(*a, **k):
+        raise RuntimeError("db locked")
+    monkeypatch.setattr(points_model, "credit", broken)
+    with pytest.raises(RuntimeError):
+        x402.credit_owner(agent, 0.05, "0xT1", "insight", PAYER)
+    assert db.query_one("SELECT 1 FROM bonus_grants WHERE address=? AND tag='x402:0xt1'", (OWNER,)) is None
+    monkeypatch.undo()
+    assert x402.credit_owner(agent, 0.05, "0xT1", "insight", PAYER) == 35.0      # retry succeeds
+
+
+def test_activity_is_public_safe_and_excludes_operator(client, monkeypatch):
+    monkeypatch.setenv("X402_OPERATOR_WALLETS", "0x" + "ee" * 20)
+    agent = _sell_agent("ag_act")
+    req = x402.requirements("insight", "u")
+    p1 = x402.begin(PAYER, "0xa1", "insight", req, "u", agent_id="ag_act", meta={"ip": "9.9.9.9"})
+    x402.finish(p1, "settled", tx="0xreal1")
+    p2 = x402.begin("0x" + "ee" * 20, "0xa2", "chat", req, "u")
+    x402.finish(p2, "settled", tx="0xoperator")
+    from auto_service import admin_store
+    admin_store.set("celo_platform_agent", {"agentId": 4242, "txhash": "0xplat"})
+    r = client.get("/api/x402/activity")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    blob = json.dumps(d)
+    assert "9.9.9.9" not in blob and PAYER not in blob and OWNER not in blob and "meta_json" not in blob
+    assert d["summary"]["settled"] == 1 and d["summary"]["payers"] == 1
+    assert [x["tx"] for x in d["recent"]] == ["0xreal1"] and d["recent"][0]["payer_short"] == "0x857b…6b66"
+    assert d["recent"][0]["agent_code"] == agent_model.agent_code("ag_act")
+    assert d["registrations"]["platform"]["agentId"] == 4242 and d["registrations"]["count"] == 1
+    assert d["registrations"]["agents"][0]["celo_agent_id"] == 5150
+    assert d["wallets"]["pay_to"] == TREASURY and d["links"]["repo"].startswith("https://github.com/")
+    assert d["deposits"]["assets"] == ["USDC", "USD₮", "USDm", "USA₮"]
+    cfg = client.get("/api/x402/config").json()
+    assert cfg["settler"] == "facilitator" and set(cfg["assets"]) == {"USDC", "USAT"} and "analyst_ready" in cfg
+
+
+def test_self_settler_mode_is_explicit_only(monkeypatch):
+    assert x402.settler_mode() == "facilitator"
+    monkeypatch.delenv("X402_API_KEY")
+    assert x402.settler_mode() == "off" and not x402.enabled()
+    monkeypatch.setenv("X402_SETTLER", "self")
+    assert x402.settler_mode() == "off"                              # no registrar key → still off
+    monkeypatch.setenv("CELO_REGISTRAR_KEY", "0x" + "44" * 32)
+    assert x402.settler_mode() == "self" and x402.enabled()
+    monkeypatch.delenv("X402_SETTLER")
+    monkeypatch.setenv("X402_API_KEY", "k")
+    assert x402.settler_mode() == "facilitator"                      # never auto-selects self

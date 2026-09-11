@@ -23,6 +23,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from .. import db
+from ..admin_auth import client_ip
 from ..models import agent_model, config_model, trade_model
 from ..services import agent_service, chat_service, oplog, pricing
 from . import x402, agentid
@@ -31,9 +32,21 @@ router = APIRouter(prefix="/api/x402")
 
 _EXPOSE = "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-Trace-Id"
 _SYMBOL_RE = re.compile(r"[A-Za-z0-9:._\-]{1,24}")
+_ADDR_RE = re.compile(r"0x[0-9a-f]{40}")
+_NONCE_RE = re.compile(r"0x[0-9a-f]{64}")
 _MSG_MAX = 600
 _BRIEF_TTL_S = 600
 _CATALOG_TTL_S = 30
+_ACTIVITY_TTL_S = 60
+_MIN_VALID_S = 60                 # authorization must outlive verify + content + settle
+# Abuse guards (review 2026-09-11): a payer who makes settlement fail after
+# the LLM ran (deliberately short validBefore, drained balance) burns model
+# cost for free — two failures in 10 min → 429 for that payer; and at most
+# three paid generations run concurrently.
+_FAIL_WINDOW_S, _FAIL_MAX = 600, 2
+_payer_fails: Dict[str, List[float]] = {}
+_llm_sem = asyncio.Semaphore(3)
+_activity_cache: Dict[str, Any] = {"at": 0.0, "val": None}
 
 # Per-IP request budget on the paid surface (the 402 challenge itself is free
 # to request; the payment is the real rate limiter for content).
@@ -44,8 +57,23 @@ _catalog_cache: Dict[str, Any] = {"at": 0.0, "val": None}
 
 
 def _ip(request: Request) -> str:
-    fwd = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
-    return fwd or (request.client.host if request.client else "?")
+    # Never the first X-Forwarded-For hop (client-controlled): see admin_auth.client_ip.
+    return client_ip(request)
+
+
+def _payer_cooling(payer: str) -> bool:
+    now = time.time()
+    q = [t for t in _payer_fails.get(payer, []) if now - t < _FAIL_WINDOW_S]
+    _payer_fails[payer] = q
+    return len(q) >= _FAIL_MAX
+
+
+def _note_payer_failure(payer: str) -> None:
+    _payer_fails.setdefault(payer, []).append(time.time())
+    if len(_payer_fails) > 5000:
+        now = time.time()
+        for k in [k for k, v in _payer_fails.items() if not v or now - v[-1] > _FAIL_WINDOW_S]:
+            _payer_fails.pop(k, None)
 
 
 def _rate_ok(ip: str) -> bool:
@@ -87,7 +115,7 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
     if not _rate_ok(ip):
         raise HTTPException(429, "too many requests — slow down")
     resource = _resource_url(request)
-    req = x402.requirements(product, resource)
+    offers = x402.accepts(product, resource)
     sig = request.headers.get("payment-signature") or ""
     if not sig:
         return _402(product, resource, "PAYMENT-SIGNATURE header is required"), {}
@@ -99,11 +127,28 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
         return _402(product, resource, "malformed PAYMENT-SIGNATURE header"), {}
     if int(payload.get("x402Version") or 0) != 2:
         return _402(product, resource, "x402Version must be 2"), {}
-    if not x402.matches(payload.get("accepted") or {}, req):
+    req = x402.match_offer(payload.get("accepted") or {}, offers)
+    if req is None:
         return _402(product, resource, "payment requirements mismatch — re-read PAYMENT-REQUIRED"), {}
     f = x402.payload_fields(payload)
+    # Shape + validity window BEFORE anything is recorded or verified: the
+    # ledger is permanent and the verifier costs a network round trip.
+    if not _ADDR_RE.fullmatch(f["payer"]) or not _NONCE_RE.fullmatch(f["nonce"]):
+        return _402(product, resource, "authorization.from and nonce must be well-formed hex"), {}
     if f["to"] != req["payTo"].lower():
         return _402(product, resource, "authorization.to must equal payTo"), {}
+    try:
+        now = int(time.time())
+        if int(f["valid_after"]) > now:
+            return _402(product, resource, "authorization_not_yet_valid"), {}
+        if int(f["valid_before"]) < now + _MIN_VALID_S:
+            return _402(product, resource, "authorization_expired — sign with validBefore ≥ now + 60s"), {}
+        if int(f["value"]) < int(req["amount"]):
+            return _402(product, resource, "authorization.value below the required amount"), {}
+    except (TypeError, ValueError):
+        return _402(product, resource, "authorization fields must be integers"), {}
+    if _payer_cooling(f["payer"]):
+        raise HTTPException(429, "too many failed payments from this wallet — try again in 10 minutes")
     try:
         pid = x402.begin(f["payer"], f["nonce"], product, req, resource, agent_id=agent_id,
                          meta={"ip": ip})
@@ -111,19 +156,22 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
         return _402(product, resource, "duplicate payment nonce — sign a fresh authorization"), {}
     except ValueError:
         return _402(product, resource, "authorization.from and nonce are required"), {}
-    v = await asyncio.to_thread(x402.facilitator_verify, payload, req)
+    v = await asyncio.to_thread(x402.verify, payload, req)
     if not v.get("isValid"):
         reason = str(v.get("invalidReason") or "rejected")[:160]
         x402.finish(pid, "invalid", error=reason)
         oplog.error("x402.verify", reason, params={"product": product, "payer": f["payer"][:12]}, status=402)
         return _402(product, resource, f"payment invalid: {reason}"), {}
+    decimals = x402.ASSETS.get(x402.asset_symbol(req["asset"]) or "USDC", x402.ASSETS["USDC"])["decimals"]
     return None, {"pid": pid, "payload": payload, "req": req, "product": product,
                   "resource": resource, "payer": (v.get("payer") or f["payer"]).lower(),
-                  "amount_usd": int(req["amount"]) / (10 ** x402.USDC_DECIMALS)}
+                  "asset": x402.asset_symbol(req["asset"]) or "USDC",
+                  "amount_usd": int(req["amount"]) / (10 ** decimals)}
 
 
 def _content_failed(info: Dict[str, Any], reason: str) -> JSONResponse:
     x402.finish(info["pid"], "content_failed", error=reason)
+    _note_payer_failure(info["payer"])
     oplog.error("x402.content", reason, params={"product": info["product"]}, status=503)
     return JSONResponse(status_code=503, content={
         "error": "The analyst is busy right now — nothing was charged, please retry shortly.",
@@ -132,10 +180,11 @@ def _content_failed(info: Dict[str, Any], reason: str) -> JSONResponse:
 
 async def _deliver(info: Dict[str, Any], content: Dict[str, Any],
                    agent: Optional[Dict[str, Any]] = None) -> JSONResponse:
-    s = await asyncio.to_thread(x402.facilitator_settle, info["payload"], info["req"])
+    s = await asyncio.to_thread(x402.settle, info["payload"], info["req"])
     if not s.get("success"):
         reason = str(s.get("errorReason") or "settlement rejected")[:160]
         x402.finish(info["pid"], "settle_failed", error=reason)
+        _note_payer_failure(info["payer"])
         oplog.error("x402.settle", reason, params={"product": info["product"],
                                                     "payer": info["payer"][:12]}, status=402)
         return _402(info["product"], info["resource"], f"settlement failed: {reason}")
@@ -156,7 +205,8 @@ async def _deliver(info: Dict[str, Any], content: Dict[str, Any],
     body = dict(content)
     body["payment"] = {"tx": tx, "explorer": (x402.CHAIN["explorer_tx"] + tx) if tx else "",
                        "payer": info["payer"], "amount_usd": info["amount_usd"],
-                       "asset": "USDC", "network": x402.NETWORK}
+                       "asset": info.get("asset", "USDC"), "network": x402.NETWORK,
+                       "settler": s.get("settler") or x402.settler_mode()}
     resp = JSONResponse(body)
     resp.headers["PAYMENT-RESPONSE"] = x402.b64e({
         "success": True, "payer": s.get("payer") or info["payer"], "transaction": tx,
@@ -167,18 +217,41 @@ async def _deliver(info: Dict[str, Any], content: Dict[str, Any],
 
 # ------------------------------------------------------------ free reads --
 
+def _analyst_ready() -> bool:
+    try:
+        return chat_service._client(config_model.load("")) is not None
+    except Exception:
+        return False
+
+
 @router.get("/config")
 async def x402_config() -> Dict[str, Any]:
     cfg = x402.public_config()
     cfg["agentid"] = await asyncio.to_thread(agentid.public_status)
     cfg["analyst_card"] = agentid.platform_uri()
+    cfg["analyst_ready"] = await asyncio.to_thread(_analyst_ready)
     return cfg
+
+
+@router.get("/activity")
+async def x402_activity() -> Dict[str, Any]:
+    """PUBLIC on-chain proof: totals, recent settlements, registrations,
+    deposit-lane senders. 60s cache; never IPs, full payer or owner addresses."""
+    now = time.time()
+    if _activity_cache["val"] is not None and now - _activity_cache["at"] < _ACTIVITY_TTL_S:
+        return _activity_cache["val"]
+    val = await asyncio.to_thread(x402.activity)
+    _activity_cache["val"], _activity_cache["at"] = val, now
+    return val
 
 
 def _agent_public(agent: Dict[str, Any]) -> Dict[str, Any]:
     """Catalog entry — public facts + performance, never the owner address."""
     st = agent_service.estimated_stats(agent)
     last_ts = trade_model.last_decision_ts(agent["agent_id"]) or 0.0
+    last = trade_model.list_decisions(agent_id=agent["agent_id"], limit=1)
+    last_action = str((last[0].get("action") if last else "") or "")
+    last_round = int((last[0].get("tick_no") if last else 0) or 0)
     model = agent.get("model") or ""
     return {
         "code": agent_model.agent_code(agent["agent_id"]),
@@ -192,6 +265,11 @@ def _agent_public(agent: Dict[str, Any]) -> Dict[str, Any]:
         "total_ticks": int(agent.get("total_ticks") or 0),
         "created_at": agent.get("created_at") or 0,
         "last_decision_ts": last_ts,
+        # Free teaser: the action word only (never reasoning / confidence /
+        # market read — those are the paid insight).
+        "last_action": last_action,
+        "last_round": last_round,
+        "purchasable": last_ts > 0,
         "estimated_profit": st.get("estimated_profit"),
         "trade_volume": st.get("trade_volume"),
         "closed_trades": st.get("closed_trades"),
@@ -231,11 +309,14 @@ def _catalog_sync() -> Dict[str, Any]:
     return val
 
 
+_DEFAULT_SYMBOLS = ["NVDA", "TSLA", "AAPL", "MSFT", "AMZN", "META", "GOOGL", "AMD", "COIN", "MSTR"]
+
+
 def _tracked_symbols() -> List[str]:
     rows = db.query_all("SELECT DISTINCT symbol FROM agents WHERE deleted_at=0 "
                         "ORDER BY symbol LIMIT 40")
-    syms = sorted({_bare(r["symbol"]) for r in rows if r.get("symbol")})
-    return syms or ["NVDA", "TSLA", "AAPL", "MSFT"]
+    syms = {_bare(r["symbol"]) for r in rows if r.get("symbol")}
+    return sorted(syms | set(_DEFAULT_SYMBOLS))
 
 
 def invalidate_catalog() -> None:
@@ -279,13 +360,14 @@ async def paid_chat(request: Request):
         raise HTTPException(400, "invalid symbol")
     if len(message) > _MSG_MAX:
         raise HTTPException(400, f"message must be ≤ {_MSG_MAX} characters")
+    if not message:
+        raise HTTPException(400, "message required")
     resp, info = await _gate(request, "chat")
     if resp is not None:
         return resp
-    if not message:
-        return _content_failed(info, "empty message")   # nothing charged
     c = _analyst_config()
-    data = await asyncio.to_thread(chat_service._run_chat, c, [], message, _full_symbol(symbol), False)
+    async with _llm_sem:
+        data = await asyncio.to_thread(chat_service._run_chat, c, [], message, _full_symbol(symbol), False)
     if not data.pop("_billable", False):
         return _content_failed(info, "model busy / no answer")
     structured = {"on_topic": data.get("on_topic", True), "headline": data.get("headline", ""),
@@ -336,10 +418,15 @@ async def paid_brief(request: Request, symbol: str = ""):
     symbol = (symbol or "").strip()
     if not symbol or not _SYMBOL_RE.fullmatch(symbol):
         raise HTTPException(400, "symbol required, e.g. ?symbol=NVDA")
+    if _bare(symbol) not in set(_tracked_symbols()):
+        # One brief per tracked symbol (each is one shared LLM call) — an
+        # arbitrary string must not mint a fresh model call per request.
+        raise HTTPException(400, "unknown symbol — see /api/x402/catalog analyst.symbols")
     resp, info = await _gate(request, "brief")
     if resp is not None:
         return resp
-    content = await asyncio.to_thread(_brief_sync, symbol)
+    async with _llm_sem:
+        content = await asyncio.to_thread(_brief_sync, symbol)
     if content is None:
         return _content_failed(info, "model busy / no brief")
     return await _deliver(info, content)
@@ -382,6 +469,8 @@ async def paid_insight(code: str, request: Request):
     agent = await asyncio.to_thread(agent_model.by_code, code)
     if not agent or not int(agent.get("x402_sell") or 0):
         raise HTTPException(404, "this agent is not for sale")
+    if not (trade_model.last_decision_ts(agent["agent_id"]) or 0):
+        raise HTTPException(409, "this agent has no decision yet — nothing to unlock")
     resp, info = await _gate(request, "insight", agent_id=agent["agent_id"])
     if resp is not None:
         return resp

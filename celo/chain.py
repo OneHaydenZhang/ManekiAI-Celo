@@ -37,6 +37,7 @@ EXPLORER_TX_PREFIX = "https://celoscan.io/tx/"
 USDC = "0xceba9300f2b948710d2653dd7b07f33a8b32118c"   # Circle native USDC, 6 dec, EIP-3009
 USDT = "0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e"   # Tether USD (USD₮), 6 dec
 USDM = "0x765de816845861e75a25fca122bb6898b8b1282a"   # Mento Dollar (ex-cUSD), 18 dec
+USAT = "0xd2ab3c9a02dbbab236bfec45d1d755df4267f771"   # Tether America USD (USA₮), 6 dec, EIP-3009
 
 # keccak("Transfer(address,address,uint256)") — the ERC20 transfer event.
 _TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
