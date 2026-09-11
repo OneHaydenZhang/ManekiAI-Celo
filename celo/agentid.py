@@ -9,24 +9,18 @@ agent cards that carry BOTH chains' registrations plus the x402 services.
 
 Scope (product decision 2026-09-10 — "the fleet, not just one model"): unlike
 0G, where only 0G-Compute agents register, on Celo EVERY live (non-deleted)
-agent is registered, regardless of model. One registration ≈ 180k gas
-≈ 0.037 CELO at today's 200 gwei.
+agent is registered, regardless of model. One registration ≈ 183k gas
+≈ 0.04 CELO at today's gas price.
 
-Signing: the registrar wallet (celo/wallet.py — key `CELO_REGISTRAR_KEY`,
-falls back to `ZEROG_REGISTRAR_KEY`; one nonce chain shared with self-settled
-x402 payments). No key → the feature is silently OFF. The wallet only pays
+Signing: a REGISTRAR wallet whose key lives in the server env
+(`CELO_REGISTRAR_KEY`; falls back to `ZEROG_REGISTRAR_KEY` — one EVM key works
+on every chain). No key → the feature is silently OFF. The wallet only pays
 gas; it never receives user funds (the treasury is a separate, receive-only
 address). Fund it with a little CELO.
 
-Zero-touch (2026-09-11): app.py runs `autopilot_tick()` every two minutes —
-as soon as the registrar holds ≥ 0.05 CELO it mints the platform Analyst and
-then every live agent that has no id, no admin click needed. A broadcast
-whose receipt did not arrive in time is PERSISTED (celo_agent_tx with id 0)
-and finalised on a later pass instead of minting a second id.
-
 Failure model: best-effort and asynchronous — registration never blocks or
-fails agent creation. Errors land in oplog; the admin console can still
-force a batch. Idempotent: an agent with an id is never re-registered.
+fails agent creation. Errors land in oplog; the admin console can batch
+backfill. Idempotent: an agent with an id is never re-registered.
 """
 from __future__ import annotations
 
@@ -36,45 +30,47 @@ import threading
 import time
 from typing import Any, Dict, List, Optional
 
+import httpx
+
 from .. import db, admin_store
 from ..models import agent_model
 from ..services import oplog
 from ..services import zerog_agentid as zg
-from . import wallet
 
-RPC_URLS = wallet.RPC_URLS
+RPC_URLS = ["https://forno.celo.org", "https://celo.drpc.org"]
 CHAIN_ID = 42220
 REGISTRY = zg.REGISTRY                      # 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
 REPUTATION_REGISTRY = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63"
 REGISTRY_CAIP = f"eip155:{CHAIN_ID}:{REGISTRY}"
 EXPLORER_TX = "https://celoscan.io/tx/"
 EXPLORER_ADDR = "https://celoscan.io/address/"
-# keccak("setAgentURI(uint256,string)")[:4] / keccak("tokenURI(uint256)")[:4]
-SEL_SET_AGENT_URI = "0af28bd3"
-SEL_TOKEN_URI = "c87b56dd"
 
 # The platform's own agent — the "ManekiAI Analyst" that answers Ask-ManekiAI
 # and symbol briefs over x402. Registered once; its id/tx live in the admin
 # store (there is no agents row for it).
 PLATFORM_CODE = "maneki-analyst"
 _PLATFORM_KEY = "celo_platform_agent"
-_PLATFORM_PENDING_KEY = "celo_platform_pending_tx"
 
 GAS_LIMIT_FALLBACK = 400_000
-MIN_REGISTRAR_CELO = wallet.MIN_CELO
-RETRY_BACKOFF_S = 600
-PENDING_MAX_AGE_S = 3600        # a persisted-but-unmined tx older than this may be re-sent
+RECEIPT_TIMEOUT_S = 90
+RECEIPT_POLL_S = 2.0
 
 _inflight_lock = threading.Lock()
 _inflight: set = set()
-_bal_cache = wallet._bal_cache  # shared with the wallet (tests reset it here)
+# Review fix (2026-09-11): an unfunded registrar must not spawn a failing tx
+# attempt on EVERY agent edit. Balance is checked (60s cache) before signing,
+# and a failed agent waits RETRY_BACKOFF_S before the create/edit hook retries.
+MIN_REGISTRAR_CELO = 0.05
+RETRY_BACKOFF_S = 600
+_bal_cache: Dict[str, Any] = {"at": 0.0, "wei": None}
 _last_fail: Dict[str, float] = {}
 
 
 # ------------------------------------------------------------- config -----
 
 def registrar_key() -> str:
-    return wallet.key()
+    return (os.environ.get("CELO_REGISTRAR_KEY", "").strip()
+            or os.environ.get("ZEROG_REGISTRAR_KEY", "").strip())
 
 
 def enabled() -> bool:
@@ -86,7 +82,13 @@ def enabled() -> bool:
 
 
 def registrar_address() -> str:
-    return wallet.address()
+    if not registrar_key():
+        return ""
+    try:
+        from eth_account import Account
+        return Account.from_key(registrar_key()).address
+    except Exception:
+        return ""
 
 
 def public_base_url() -> str:
@@ -104,45 +106,77 @@ def platform_uri() -> str:
 # ---------------------------------------------------------- rpc plumbing --
 
 def _rpc(method: str, params: list) -> Any:
-    """Module-level so tests can stub the node; the wallet primitives receive
-    it as rpc_fn and therefore see the stub too."""
-    return wallet.rpc(method, params)
+    """JSON-RPC against the first gateway that answers (forno, then dRPC)."""
+    last: Exception | None = None
+    for url in RPC_URLS:
+        try:
+            r = httpx.post(url, json={"jsonrpc": "2.0", "id": 1,
+                                      "method": method, "params": params}, timeout=20.0)
+            r.raise_for_status()
+            body = r.json() or {}
+            if body.get("error"):
+                raise RuntimeError(f"{method}: {body['error']}")
+            return body.get("result")
+        except Exception as e:          # try the next gateway
+            last = e
+    raise RuntimeError(f"celo rpc failed on all gateways: {last!r}")
 
 
 def registrar_balance_celo() -> Optional[float]:
-    return wallet.balance_celo(rpc_fn=_rpc)
+    """Registrar's CELO balance (60s cache). None when the RPC read fails —
+    callers treat 'unknown' as 'try anyway' so a flaky read never blocks."""
+    addr = registrar_address()
+    if not addr:
+        return None
+    now = time.time()
+    if _bal_cache["wei"] is not None and now - _bal_cache["at"] < 60:
+        return _bal_cache["wei"] / 1e18
+    try:
+        wei = int(_rpc("eth_getBalance", [addr, "latest"]), 16)
+    except Exception:
+        return None
+    _bal_cache["wei"], _bal_cache["at"] = wei, now
+    return wei / 1e18
 
 
 def _funded() -> bool:
-    return wallet.funded(rpc_fn=_rpc)
+    bal = registrar_balance_celo()
+    return True if bal is None else bal >= MIN_REGISTRAR_CELO
 
 
 def _send_register(uri: str) -> Dict[str, Any]:
-    """Sign + broadcast register(uri) from the registrar (serialized on the
-    wallet's send lock), wait for the receipt, return {agentId, txhash}.
-    Raises wallet.ReceiptTimeout (hash attached) when the tx is out but
-    unconfirmed, RuntimeError on revert."""
+    """Sign + broadcast register(uri) from the registrar, wait for the receipt,
+    return {agentId, txhash}. Raises on revert / receipt timeout."""
+    from eth_account import Account
+    acct = Account.from_key(registrar_key())
     data = zg._encode_register(uri)
-    r = wallet.send_and_wait(REGISTRY, data, rpc_fn=_rpc, gas_fallback=GAS_LIMIT_FALLBACK)
-    aid = zg._parse_agent_id(r["receipt"])
+    nonce = int(_rpc("eth_getTransactionCount", [acct.address, "pending"]), 16)
+    gas_price = int(_rpc("eth_gasPrice", []), 16)
+    try:
+        gas = int(_rpc("eth_estimateGas", [{"from": acct.address, "to": REGISTRY, "data": data}]), 16)
+        gas = int(gas * 1.3)
+    except Exception:
+        gas = GAS_LIMIT_FALLBACK
+    signed = acct.sign_transaction({
+        "chainId": CHAIN_ID, "nonce": nonce, "to": REGISTRY, "value": 0,
+        "gas": gas, "gasPrice": int(gas_price * 1.2), "data": data,
+    })
+    txh = _rpc("eth_sendRawTransaction", [zg._raw_hex(signed)])
+    receipt = None
+    deadline = time.time() + RECEIPT_TIMEOUT_S
+    while time.time() < deadline:
+        receipt = _rpc("eth_getTransactionReceipt", [txh])
+        if receipt:
+            break
+        time.sleep(RECEIPT_POLL_S)
+    if not receipt:
+        raise RuntimeError(f"receipt timeout for {txh}")
+    if (receipt.get("status") or "").lower() != "0x1":
+        raise RuntimeError(f"register tx reverted: {txh}")
+    aid = zg._parse_agent_id(receipt)
     if aid is None:
-        raise RuntimeError(f"agentId not found in receipt logs: {r['txhash']}")
-    return {"agentId": aid, "txhash": r["txhash"]}
-
-
-def _finalize_pending(txhash: str) -> Optional[Dict[str, Any]]:
-    """A broadcast we persisted without a receipt: mined → {agentId, txhash};
-    still pending → None; unknown to the node → LookupError (caller may
-    re-send); reverted → RuntimeError."""
-    rec = wallet.receipt_of(txhash, rpc_fn=_rpc)
-    if rec is None:
-        return None
-    if (rec.get("status") or "").lower() != "0x1":
-        raise RuntimeError(f"register tx reverted: {txhash}")
-    aid = zg._parse_agent_id(rec)
-    if aid is None:
-        raise RuntimeError(f"agentId not found in receipt logs: {txhash}")
-    return {"agentId": aid, "txhash": txhash}
+        raise RuntimeError(f"agentId not found in receipt logs: {txh}")
+    return {"agentId": aid, "txhash": txh}
 
 
 # ------------------------------------------------------------ registration --
@@ -159,6 +193,8 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
         return {"ok": False, "skipped": "agent deleted"}
     if int(agent.get("celo_agent_id") or 0) > 0:
         return {"ok": True, "already": True, "agentId": int(agent["celo_agent_id"])}
+    if not _funded():
+        return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
     with _inflight_lock:
         if agent_id in _inflight:
             return {"ok": False, "skipped": "in flight"}
@@ -166,31 +202,7 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
     try:
         code = agent_model.agent_code(agent_id)
         uri = agent_uri(code)
-        pending = (agent.get("celo_agent_tx") or "").strip()
-        r: Optional[Dict[str, Any]] = None
-        if pending:
-            # A previous broadcast without a receipt — never mint twice.
-            try:
-                r = _finalize_pending(pending)
-                if r is None:
-                    if time.time() - float(agent.get("celo_registered_at") or 0) < PENDING_MAX_AGE_S:
-                        return {"ok": False, "skipped": "pending receipt", "txhash": pending}
-                    raise LookupError("stale pending tx")           # fall through to a fresh send
-            except LookupError:
-                r = None
-                db.execute("UPDATE agents SET celo_agent_tx='' WHERE agent_id=?", (agent_id,))
-        if r is None:
-            if not _funded():
-                return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
-            try:
-                r = _send_register(uri)
-            except wallet.ReceiptTimeout as e:
-                # Persist the hash (id stays 0); the next pass finalises it.
-                db.execute("UPDATE agents SET celo_agent_tx=?, celo_registered_at=? WHERE agent_id=?",
-                           (e.txhash, time.time(), agent_id))
-                oplog.error("agent.celo_register", f"receipt timeout, persisted {e.txhash}",
-                            address=agent.get("address") or "", params={"agent_id": agent_id})
-                return {"ok": False, "skipped": "pending receipt", "txhash": e.txhash}
+        r = _send_register(uri)
         db.execute(
             "UPDATE agents SET celo_agent_id=?, celo_agent_tx=?, celo_registered_at=? WHERE agent_id=?",
             (r["agentId"], r["txhash"], time.time(), agent_id),
@@ -198,8 +210,8 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
         oplog.op("agent.celo_register", agent.get("address") or "",
                  params={"agent_id": agent_id, "celo_agent_id": r["agentId"],
                          "txhash": r["txhash"][:18], "uri": uri})
-        print(f"[vectora-live] celo: minted {code} Agent ID #{r['agentId']} tx {r['txhash']}")
         _last_fail.pop(agent_id, None)
+        _bal_cache["at"] = 0.0          # balance moved — re-read next time
         return {"ok": True, "agentId": r["agentId"], "txhash": r["txhash"], "uri": uri}
     except Exception as e:
         _last_fail[agent_id] = time.time()
@@ -222,15 +234,15 @@ def maybe_register_async(agent_id: str) -> None:
         if int(agent.get("celo_agent_id") or 0) > 0:
             return
         if time.time() - _last_fail.get(agent_id, 0.0) < RETRY_BACKOFF_S:
-            return                       # recent failure — the autopilot / admin batch retries
+            return                       # recent failure — the admin backfill can force it
         threading.Thread(target=register_agent, args=(agent_id,), daemon=True).start()
     except Exception:
         pass
 
 
 def register_all_missing(limit: int = 50) -> Dict[str, Any]:
-    """Register every live agent that has no Celo id yet. Sequential on
-    purpose (one registrar nonce chain)."""
+    """Admin backfill: register every live agent that has no Celo id yet.
+    Sequential on purpose (one registrar nonce chain)."""
     if not enabled():
         return {"ok": False, "skipped": "disabled"}
     rows = db.query_all(
@@ -273,45 +285,25 @@ def register_all_missing_async(limit: int = 50) -> Dict[str, Any]:
 
 
 def register_platform() -> Dict[str, Any]:
-    """Mint the platform Analyst's Celo Agent ID once (idempotent, timeout-safe)."""
+    """Mint the platform Analyst's Celo Agent ID once (idempotent)."""
     if not enabled():
         return {"ok": False, "skipped": "disabled"}
     cur = platform_agent()
     if cur:
         return {"ok": True, "already": True, **cur}
+    if not _funded():
+        return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
     with _inflight_lock:
         if PLATFORM_CODE in _inflight:
             return {"ok": False, "skipped": "in flight"}
         _inflight.add(PLATFORM_CODE)
     try:
-        r: Optional[Dict[str, Any]] = None
-        pend = admin_store.get(_PLATFORM_PENDING_KEY, None)
-        if isinstance(pend, dict) and pend.get("txhash"):
-            try:
-                r = _finalize_pending(pend["txhash"])
-                if r is None:
-                    if time.time() - float(pend.get("at") or 0) < PENDING_MAX_AGE_S:
-                        return {"ok": False, "skipped": "pending receipt", "txhash": pend["txhash"]}
-                    raise LookupError("stale pending tx")
-            except LookupError:
-                r = None
-                admin_store.set(_PLATFORM_PENDING_KEY, {})
-        if r is None:
-            if not _funded():
-                return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
-            try:
-                r = _send_register(platform_uri())
-            except wallet.ReceiptTimeout as e:
-                admin_store.set(_PLATFORM_PENDING_KEY, {"txhash": e.txhash, "at": time.time()})
-                oplog.error("celo.platform_register", f"receipt timeout, persisted {e.txhash}")
-                return {"ok": False, "skipped": "pending receipt", "txhash": e.txhash}
+        r = _send_register(platform_uri())
         rec = {"agentId": r["agentId"], "txhash": r["txhash"], "uri": platform_uri(),
                "registered_at": time.time(), "chain_id": CHAIN_ID, "registry": REGISTRY}
         admin_store.set(_PLATFORM_KEY, rec)
-        admin_store.set(_PLATFORM_PENDING_KEY, {})
         oplog.op("celo.platform_register", params={"celo_agent_id": r["agentId"],
                                                     "txhash": r["txhash"][:18]})
-        print(f"[vectora-live] celo: minted platform Analyst Agent ID #{r['agentId']} tx {r['txhash']}")
         return {"ok": True, **rec}
     except Exception as e:
         oplog.error("celo.platform_register", repr(e)[:400])
@@ -336,109 +328,6 @@ def registered_count() -> int:
     return int(row["c"]) if row else 0
 
 
-def pending_count() -> int:
-    row = db.query_one("SELECT COUNT(*) c FROM agents WHERE deleted_at=0 AND celo_agent_id=0")
-    return int(row["c"]) if row else 0
-
-
-# ------------------------------------------------------------- autopilot --
-
-_autopilot_lock = threading.Lock()
-
-
-def autopilot_tick(limit: int = 50) -> Dict[str, Any]:
-    """One pass of the zero-touch registrar: re-read the balance, mint the
-    platform Analyst if missing, then the live agents without an id. Safe to
-    call every couple of minutes (idempotent, skips while unfunded, one pass
-    at a time). Returns what it did for the caller's log line."""
-    if not enabled():
-        return {"skipped": "disabled"}
-    if not _autopilot_lock.acquire(blocking=False):
-        return {"skipped": "busy"}
-    try:
-        wallet.invalidate_balance()
-        bal = registrar_balance_celo()
-        if bal is not None and bal < MIN_REGISTRAR_CELO:
-            return {"skipped": "unfunded", "registrar_celo": bal, "pending": pending_count()}
-        out: Dict[str, Any] = {"registrar_celo": bal}
-        if platform_agent() is None:
-            out["platform"] = register_platform()
-        if pending_count() > 0:
-            r = register_all_missing(limit)
-            out["registered"] = r.get("registered", 0)
-            out["failed"] = r.get("failed", 0)
-        out["pending"] = pending_count()
-        return out
-    finally:
-        _autopilot_lock.release()
-
-
-# -------------------------------------------------------- URI maintenance --
-
-def _encode_set_agent_uri(agent_id_onchain: int, uri: str) -> str:
-    b = uri.encode()
-    pad = ((len(b) + 31) // 32) * 32
-    enc = (int(agent_id_onchain).to_bytes(32, "big") + (64).to_bytes(32, "big")
-           + len(b).to_bytes(32, "big") + b + b"\x00" * (pad - len(b)))
-    return "0x" + SEL_SET_AGENT_URI + enc.hex()
-
-
-def token_uri(agent_id_onchain: int) -> str:
-    """Current agentURI on-chain ('' when unreadable)."""
-    try:
-        data = "0x" + SEL_TOKEN_URI + int(agent_id_onchain).to_bytes(32, "big").hex()
-        res = _rpc("eth_call", [{"to": REGISTRY, "data": data}, "latest"]) or "0x"
-        b = bytes.fromhex(res[2:])
-        ln = int.from_bytes(b[32:64], "big")
-        return b[64:64 + ln].decode(errors="replace")
-    except Exception:
-        return ""
-
-
-def set_agent_uri(agent_id_onchain: int, uri: str) -> Dict[str, Any]:
-    """setAgentURI(agentId, uri) from the registrar (the NFT owner). Used by
-    repoint_uris() when the public host changes after minting."""
-    if not enabled():
-        return {"ok": False, "skipped": "disabled"}
-    if not _funded():
-        return {"ok": False, "skipped": "registrar unfunded (needs CELO for gas)"}
-    try:
-        r = wallet.send_and_wait(REGISTRY, _encode_set_agent_uri(agent_id_onchain, uri),
-                                 rpc_fn=_rpc, gas_fallback=0)
-        return {"ok": True, "txhash": r["txhash"]}
-    except Exception as e:
-        return {"ok": False, "error": str(e)[:200]}
-
-
-def repoint_uris(dry_run: bool = False) -> Dict[str, Any]:
-    """Re-derive every registered URI from the CURRENT public base and send
-    setAgentURI only where the on-chain value differs. Lets IDs be minted
-    today and follow the host later."""
-    targets: List[Dict[str, Any]] = []
-    plat = platform_agent()
-    if plat:
-        targets.append({"kind": "platform", "onchain": int(plat["agentId"]), "uri": platform_uri()})
-    for r in db.query_all("SELECT agent_id, celo_agent_id FROM agents WHERE celo_agent_id>0"):
-        targets.append({"kind": "agent", "agent_id": r["agent_id"], "onchain": int(r["celo_agent_id"]),
-                        "uri": agent_uri(agent_model.agent_code(r["agent_id"]))})
-    changed, same, failed = [], [], []
-    for t in targets:
-        cur = token_uri(t["onchain"])
-        if cur == t["uri"]:
-            same.append(t["onchain"])
-            continue
-        if dry_run:
-            changed.append({**t, "current": cur})
-            continue
-        res = set_agent_uri(t["onchain"], t["uri"])
-        (changed if res.get("ok") else failed).append({**t, "current": cur, **res})
-    if not dry_run and changed and plat:
-        admin_store.set(_PLATFORM_KEY, {**plat, "uri": platform_uri()})
-    oplog.op("celo.repoint_uris", params={"changed": len(changed), "same": len(same),
-                                          "failed": len(failed), "dry_run": dry_run})
-    return {"ok": True, "changed": changed, "unchanged": len(same), "failed": failed, "dry_run": dry_run}
-
-
 def public_status() -> Dict[str, Any]:
     """Facts safe to expose (no keys)."""
     return {
@@ -451,7 +340,6 @@ def public_status() -> Dict[str, Any]:
         "explorer_tx": EXPLORER_TX,
         "platform_agent": platform_agent(),
         "registered_agents": registered_count(),
-        "pending_agents": pending_count(),
     }
 
 
@@ -527,7 +415,6 @@ def platform_card() -> Dict[str, Any]:
             {"name": "x402-brief", "version": "x402/2", "endpoint": f"{base}/api/x402/brief",
              "method": "GET", "price": {"asset": "USDC", "network": x.NETWORK, "usd": x.price_usd("brief")}},
             {"name": "x402-catalog", "endpoint": f"{base}/api/x402/catalog"},
-            {"name": "x402-activity", "endpoint": f"{base}/api/x402/activity"},
         ],
         "supportedTrust": ["reputation"],
         "x402Support": x.enabled(),

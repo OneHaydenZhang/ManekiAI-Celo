@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Agent Arena · Maneki AI on Celo</title>
 <meta name="description" content="Buy ManekiAI answers and live trading-agent insights for a few cents in USDC on Celo — no login, no exchange keys, settled over x402." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Agent Arena · Maneki AI on Celo" />
+<meta property="og:description" content="Buy ManekiAI answers and live trading-agent insights for a few cents in USDC on Celo — no login, no exchange keys, settled over x402." />
+<meta property="og:image" content="https://manekiai.io/maneki-mascot.png" />
+<meta property="og:url" content="https://manekiai.io/arena" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Agent Arena · Maneki AI on Celo" />
+<meta name="twitter:description" content="Buy ManekiAI answers and live trading-agent insights for a few cents in USDC on Celo — no login, no exchange keys, settled over x402." />
+<meta name="twitter:image" content="https://manekiai.io/maneki-mascot.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
 <link rel="icon" href="/maneki-icon.png" />
@@ -41,6 +50,23 @@
   textarea.textarea{height:88px;padding:12px 14px;resize:vertical;font:inherit}
   .foot{margin-top:26px;font-size:12px;color:var(--muted);line-height:1.7;word-break:break-all}
   .lang{cursor:pointer;font-size:12px;color:var(--muted);text-decoration:underline}
+  .disclaimer{font-size:11px;color:var(--muted);opacity:.8;margin-top:8px}
+  .gbox{border:1px solid var(--amber);border-radius:14px;padding:14px;margin-bottom:16px;background:var(--card2);display:grid;gap:8px;font-size:13px}
+  .gbox .hd{font-weight:800;font-size:15px}
+  .gbox a{color:var(--accent2)}
+  .badge-new{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;background:rgba(20,214,186,.18);color:var(--green)}
+  .tag.stale{opacity:.75}
+  .latest{font-size:12px;color:var(--muted)}
+  .acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
+  .act-rows{margin-top:12px;font-size:12px;overflow-x:auto}
+  .act-rows table{width:100%;border-collapse:collapse;min-width:520px}
+  .act-rows th,.act-rows td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  .act-rows th{font-weight:600;color:var(--muted)}
+  details.purchases summary{cursor:pointer;font-weight:800;font-size:15px;list-style:none;display:flex;align-items:center;gap:8px}
+  details.purchases summary::-webkit-details-marker{display:none}
+  .purchase{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card2);margin-top:8px;font-size:13px}
+  .purchase .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .purchase .reread{cursor:pointer;color:var(--accent2);font-size:12px;text-decoration:underline}
   @media (max-width:820px){.hero{grid-template-columns:1fr}}
 </style>
 </head>
@@ -52,9 +78,13 @@
       <span class="lang" id="langToggle">中文</span>
       <a class="btn ghost sm" href="/" data-t="back">← App</a>
       <span class="tag gray" id="usdcBal" hidden>USDC —</span>
+      <span class="tag gray" id="usatBal" hidden>USA₮ —</span>
       <button class="btn primary sm" id="btnConnect" data-t="connect">Connect wallet</button>
     </div>
   </div>
+  <p class="msg" id="walletMsg" hidden></p>
+  <div class="gbox" id="mobileWallet" hidden></div>
+  <div class="gbox" id="getUsdcBox" hidden></div>
 
   <div class="hero">
     <div class="card pad">
@@ -66,6 +96,7 @@
         <div class="step"><b>3</b><span data-t="s3">The answer arrives with the on-chain settlement link. Agent owners earn a share of every insight sold.</span></div>
       </div>
       <p class="msg warn" id="enabledMsg" hidden></p>
+      <p class="msg warn" id="analystMsg" hidden></p>
     </div>
     <div class="card pad">
       <div class="label" data-t="prices">Prices · USDC on Celo</div>
@@ -89,6 +120,7 @@
       <span class="msg" id="askMsgLine"></span>
     </div>
     <div id="askAnswer" style="margin-top:12px"></div>
+    <p class="disclaimer" data-t="nfa">Market commentary for information only — not financial advice.</p>
   </div>
 
   <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:6px 0 10px">
@@ -96,6 +128,22 @@
     <span class="tiny" id="agentsSub"></span>
   </div>
   <div class="grid" id="agentGrid"><span class="tiny">…</span></div>
+  <p class="disclaimer" data-t="nfa">Market commentary for information only — not financial advice.</p>
+
+  <div class="card pad" id="purchasesWrap" style="margin-top:16px" hidden>
+    <details class="purchases" id="purchasesDetails">
+      <summary><span data-t="purchases">Your purchases</span> <span class="tag gray" id="purchasesCount">0</span></summary>
+      <div id="purchasesList"></div>
+    </details>
+  </div>
+
+  <div class="card pad" id="activity" style="margin-top:16px">
+    <div class="row" style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <h2 style="margin:0" data-t="actTitle">On-chain activity</h2>
+      <span class="tiny" id="actSub"></span>
+    </div>
+    <div id="actBody"><span class="tiny">…</span></div>
+  </div>
 
   <div class="foot" id="foot"></div>
 </div>
@@ -116,13 +164,38 @@
       askSub: 'The platform analyst — same market data and model the trading agents use. One question, one answer.',
       askBtn: 'Ask · pay with USDC', briefBtn: 'Symbol brief', agentsTitle: 'Live agents selling insights',
       unlock: 'Unlock latest insight', disabled: 'x402 payments are not switched on for this server yet — the catalog is live, purchases open soon.',
-      noWallet: 'No EVM wallet found — install MetaMask / Rabby / OKX Wallet.', signing: 'Sign the USDC authorization in your wallet (no gas)…',
+      noWallet: 'No EVM wallet found — install MetaMask / Rabby / OKX Wallet, or open this page inside MiniPay.',
+      noWalletMobileHd: 'Open in a wallet app',
+      noWalletMobile: 'No wallet detected in this browser. Open this page inside your wallet app:',
+      openMetaMask: 'Open in MetaMask', miniPayNote: 'MiniPay users: open the Arena from the MiniPay app — the wallet connects automatically and already holds USDC on Celo.',
+      signing: 'Sign the USDC authorization in your wallet (no gas)…',
       settling: 'Settling on Celo…', paid: 'Paid & settled on Celo', needMsg: 'Type a question first.',
-      noAgents: 'No agent is selling insights right now — owners opt in from their agent settings.',
+      noAgents: 'No agent is selling yet — run your own at manekiai.io and switch on “Sell insights” (you earn a share of every sale).',
       busy: 'The analyst is busy — nothing was charged, retry shortly.', rounds: 'rounds', est: 'Est. P&L', win: 'Win rate', ord: 'Order success',
       running: 'live', stopped: 'idle', action: 'Action', conf: 'Confidence', why: 'Reasoning', market: 'Market read', lessons: 'Lessons the agent learned',
       viewTx: 'View settlement on Celoscan', celoId: 'Celo Agent ID', owner: 'owner share', tierStd: 'Standard', tierGpt: 'GPT tier', tierClaude: 'Claude tier', tierZerog: '0G tier',
       registered: 'agents registered on Celo (ERC-8004)',
+      nfa: 'Market commentary for information only — not financial advice.',
+      analystOff: 'The analyst is offline right now — Ask and Brief are paused; agent insights still work.',
+      connected: 'Wallet connected', walletChanged: 'Wallet account changed', connectFail: 'Could not connect the wallet — please try again.',
+      needFunds: 'Not enough USDC on Celo for this purchase — nothing was signed or charged.',
+      getUsdcHd: 'Get USDC on Celo', getUsdc1: 'Bridge or swap from any chain with Jumper (LI.FI) — prefilled to USDC on Celo →',
+      getUsdc2: 'Withdraw USDC or USDT to the Celo network from an exchange (Binance, OKX, Bybit, Coinbase…).',
+      getUsdc3: 'MiniPay wallets already hold USDC on Celo — open the Arena from the MiniPay app.',
+      getUsdc4: 'Or use the app’s own bridge: manekiai.io → Settings → “Get USDC on Celo” →', close: 'close',
+      purchases: 'Your purchases', reread: 'read again', newDec: 'new decisions since you unlocked', noNew: 'no new decision since you unlocked',
+      latest: 'Latest', stale: 'stale', noDecision: 'no decision yet', noDecisionBtn: 'No decision yet',
+      genAgo: 'generated', refresh10: 'refreshes every 10 min', shared: 'shared brief',
+      actTitle: 'On-chain activity', actSettled: 'Settled purchases', actPayers: 'Distinct payers', actReturning: 'Returning payers', actUsd: 'USDC volume',
+      actDeposits: 'Celo deposits', actSenders: 'senders', actRecent: 'Most recent settlements', actNone: 'No settlements yet — be the first.',
+      actFail: 'Activity feed unavailable right now.', actRegs: 'Registrations', actPlatform: 'Platform Agent ID', actAgents: 'agents registered',
+      when: 'When', product: 'Product', amount: 'Amount', payer: 'Payer', agent: 'Agent', tx: 'Tx',
+      errFunds: 'Not enough USDC on Celo for this purchase.', errSig: 'The wallet signature was not accepted — please try again.',
+      errNonce: 'This payment authorization was already used — please try again.', errExpired: 'The signature expired, please try again.',
+      errNotYet: 'The signature is not valid yet — check your device clock and try again.', errBusy: 'Payment service busy, nothing was charged, try again in a minute.',
+      errSettle: 'Settlement on Celo did not go through — please try again.', errRate: 'Too many requests — please wait a moment and retry.',
+      errRejected: 'Signature cancelled in the wallet.', errGeneric: 'Something went wrong — please try again.', errChain: 'Please switch your wallet to the Celo network.',
+      ref: 'ref',
     },
     zh: {
       back: '← 返回应用', connect: '连接钱包', h1: 'Agent 在干活——花几美分买它们的研究，就在 Celo 上。',
@@ -134,13 +207,38 @@
       askSub: '平台分析师——与交易 Agent 使用同一套行情数据与模型。一问一答。',
       askBtn: '提问 · 用 USDC 支付', briefBtn: '个股简报', agentsTitle: '在售洞察的在跑 Agent',
       unlock: '解锁最新洞察', disabled: '本服务器尚未开启 x402 支付——目录已上线，购买即将开放。',
-      noWallet: '未检测到 EVM 钱包——请安装 MetaMask / Rabby / OKX Wallet。', signing: '请在钱包中签署 USDC 授权（无 gas）…',
+      noWallet: '未检测到 EVM 钱包——请安装 MetaMask / Rabby / OKX Wallet，或在 MiniPay 内打开本页。',
+      noWalletMobileHd: '在钱包 App 中打开',
+      noWalletMobile: '当前浏览器未检测到钱包。请在钱包 App 内打开本页：',
+      openMetaMask: '在 MetaMask 中打开', miniPayNote: 'MiniPay 用户：从 MiniPay App 打开竞技场即可自动连接，钱包里已有 Celo USDC。',
+      signing: '请在钱包中签署 USDC 授权（无 gas）…',
       settling: '正在 Celo 上结算…', paid: '已支付并在 Celo 结算', needMsg: '先输入问题。',
-      noAgents: '目前没有 Agent 在售洞察——主人可在 Agent 设置里开启。',
+      noAgents: '目前还没有 Agent 在售——去 manekiai.io 跑一个你自己的，并打开「出售洞察」（每次售出你都有分成）。',
       busy: '分析师繁忙——未扣费，请稍后重试。', rounds: '回合', est: '预计盈亏', win: '胜率', ord: '下单成功率',
       running: '运行中', stopped: '空闲', action: '动作', conf: '置信度', why: '推理', market: '行情读数', lessons: 'Agent 学到的经验',
       viewTx: '在 Celoscan 查看结算', celoId: 'Celo Agent ID', owner: '主人分成', tierStd: '标准档', tierGpt: 'GPT 档', tierClaude: 'Claude 档', tierZerog: '0G 档',
       registered: '个 Agent 已在 Celo 注册（ERC-8004）',
+      nfa: '市场评论仅供参考——不构成投资建议。',
+      analystOff: '分析师当前离线——提问与简报暂停，Agent 洞察仍可购买。',
+      connected: '钱包已连接', walletChanged: '钱包账户已切换', connectFail: '钱包连接失败——请重试。',
+      needFunds: '你在 Celo 上的 USDC 不足以完成本次购买——未签名、未扣费。',
+      getUsdcHd: '获取 Celo 上的 USDC', getUsdc1: '用 Jumper（LI.FI）从任意链跨链/兑换——已预填为 Celo USDC →',
+      getUsdc2: '从交易所（Binance、OKX、Bybit、Coinbase…）把 USDC 或 USDT 提现到 Celo 网络。',
+      getUsdc3: 'MiniPay 钱包本身就持有 Celo USDC——从 MiniPay App 打开竞技场即可。',
+      getUsdc4: '或使用应用内置的桥：manekiai.io → 设置 → 「获取 Celo USDC」→', close: '关闭',
+      purchases: '你的购买记录', reread: '再看一次', newDec: '个新决策（自你解锁后）', noNew: '自你解锁后暂无新决策',
+      latest: '最新', stale: '已过时', noDecision: '尚无决策', noDecisionBtn: '尚无决策',
+      genAgo: '生成于', refresh10: '每 10 分钟刷新', shared: '共享简报',
+      actTitle: '链上活动', actSettled: '已结算购买', actPayers: '付款人数', actReturning: '回头付款人', actUsd: 'USDC 成交额',
+      actDeposits: 'Celo 充值', actSenders: '位发送方', actRecent: '最近结算', actNone: '暂无结算——来做第一个。',
+      actFail: '活动数据暂时不可用。', actRegs: '链上注册', actPlatform: '平台 Agent ID', actAgents: '个 Agent 已注册',
+      when: '时间', product: '产品', amount: '金额', payer: '付款人', agent: 'Agent', tx: '交易',
+      errFunds: '你在 Celo 上的 USDC 不足以完成本次购买。', errSig: '钱包签名未被接受——请重试。',
+      errNonce: '这份支付授权已被使用——请重试。', errExpired: '签名已过期，请重试。',
+      errNotYet: '签名尚未生效——请检查设备时间后重试。', errBusy: '支付服务繁忙，未扣费，请一分钟后重试。',
+      errSettle: 'Celo 结算未完成——请重试。', errRate: '请求过于频繁——请稍候再试。',
+      errRejected: '已在钱包中取消签名。', errGeneric: '出了点问题——请重试。', errChain: '请把钱包切换到 Celo 网络。',
+      ref: '编码',
     },
   };
   let LANG = (() => { try { return localStorage.getItem('arena_lang') || ((navigator.language || '').startsWith('zh') ? 'zh' : 'en'); } catch (_) { return 'en'; } })();
@@ -149,27 +247,66 @@
     document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
     $('#langToggle').textContent = LANG === 'zh' ? 'English' : '中文';
     document.documentElement.lang = LANG === 'zh' ? 'zh' : 'en';
-    if (CFG) { renderPrices(); renderAgents(); }
+    if (CFG) { renderPrices(); renderAgents(); renderFoot(); renderGates(); }
+    renderPurchases(); renderActivity(); renderMobileWallet();
+    if (!$('#getUsdcBox').hidden) renderGetUsdc();
   }
   $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); } catch (_) {} applyLang(); };
 
   // ------------------------------------------------------------ state ----
-  let CFG = null, CAT = null, ACCOUNT = '';
+  let CFG = null, CAT = null, ACT = null, ACT_FAILED = false, ACCOUNT = '';
   const b64e = (s) => btoa(unescape(encodeURIComponent(s)));
   const b64d = (s) => decodeURIComponent(escape(atob(s)));
   const provider = () => (window.ethereum || null);
+  const isMobileUA = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+  const isMiniPay = () => !!(window.ethereum && window.ethereum.isMiniPay);
   const short = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
   const usd = (n) => (n == null || isNaN(n)) ? '—' : ((+n >= 0 ? '+' : '−') + '$' + Math.abs(+n).toFixed(2));
   const tierName = (tier) => ({ standard: t('tierStd'), gpt: t('tierGpt'), claude: t('tierClaude'), zerog: t('tierZerog') }[tier] || tier);
   const randomHex32 = () => { const a = new Uint8Array(32); crypto.getRandomValues(a); return '0x' + Array.from(a, (b) => b.toString(16).padStart(2, '0')).join(''); };
+  const addrLink = (a) => a ? `<a class="txlink" target="_blank" rel="noopener" href="https://celoscan.io/address/${esc(a)}">${esc(a)}</a>` : '';
+  const USDC_ADDR = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C';
+  const JUMPER = 'https://jumper.exchange/?toChain=42220&toToken=' + USDC_ADDR;
+  const APP_BRIDGE = 'https://manekiai.io/#settings';
+  const ACTIONS = { open_long: ['open long', '开多'], open_short: ['open short', '开空'], close: ['close', '平仓'], close_long: ['close long', '平多'], close_short: ['close short', '平空'],
+                    hold: ['hold', '观望'], add: ['add', '加仓'], reduce: ['reduce', '减仓'], wait: ['wait', '等待'] };
+  const actionLabel = (a) => { const k = String(a || '').toLowerCase(); const m = ACTIONS[k]; return m ? (LANG === 'zh' ? m[1] : m[0]) : k.replace(/_/g, ' '); };
+  function ago(ts) {
+    if (!ts) return '';
+    const s = Math.max(0, Date.now() / 1000 - +ts), zh = LANG === 'zh';
+    if (s < 60) return zh ? '刚刚' : 'just now';
+    const m = Math.floor(s / 60); if (m < 60) return zh ? `${m} 分钟前` : `${m} min ago`;
+    const h = Math.floor(m / 60); if (h < 24) return zh ? `${h} 小时前` : `${h} h ago`;
+    const d = Math.floor(h / 24); return zh ? `${d} 天前` : `${d} d ago`;
+  }
+  const assetList = () => {
+    const out = [];
+    const A = (CFG && CFG.assets) || {};
+    if (A.USDC && A.USDC.address) out.push(Object.assign({ key: 'USDC' }, A.USDC));
+    else if (CFG && CFG.asset && CFG.asset.address) out.push(Object.assign({ key: 'USDC' }, CFG.asset));
+    if (A.USAT && A.USAT.address) out.push(Object.assign({ key: 'USAT' }, A.USAT));
+    return out;
+  };
+  const assetName = (addr) => { const a = assetList().find((x) => String(x.address).toLowerCase() === String(addr || '').toLowerCase()); return a ? (a.key === 'USAT' ? 'USA₮' : a.key) : 'USDC'; };
 
   async function load() {
     const [cfg, cat] = await Promise.all([fetch('/api/x402/config').then((r) => r.json()), fetch('/api/x402/catalog').then((r) => r.json())]);
     CFG = cfg; CAT = cat;
-    renderPrices(); renderAgents(); renderFoot();
+    renderPrices(); renderAgents(); renderFoot(); renderGates();
     const syms = (cat.analyst && cat.analyst.symbols) || ['NVDA'];
     $('#askSymbol').innerHTML = syms.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-    if (!cfg.enabled) { $('#enabledMsg').hidden = false; $('#enabledMsg').textContent = t('disabled'); }
+  }
+  function renderGates() {
+    if (!CFG) return;
+    const en = $('#enabledMsg'); en.hidden = !!CFG.enabled; if (!CFG.enabled) en.textContent = t('disabled');
+    const off = CFG.analyst_ready === false;
+    const am = $('#analystMsg'); am.hidden = !off; if (off) am.textContent = t('analystOff');
+    $('#btnAsk').disabled = $('#btnBrief').disabled = off;
+    $('#btnAsk').classList.toggle('off', off); $('#btnBrief').classList.toggle('off', off);
+  }
+  function loadActivity() {
+    return fetch('/api/x402/activity').then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then((d) => { ACT = d || {}; ACT_FAILED = false; }).catch(() => { ACT_FAILED = true; }).then(renderActivity);
   }
 
   function renderPrices() {
@@ -180,15 +317,19 @@
     $('#askPrice').textContent = '$' + (+((p.chat || {}).usd || 0)).toFixed(2) + ' USDC';
     $('#btnBrief').textContent = t('briefBtn') + ' · $' + (+((p.brief || {}).usd || 0)).toFixed(2);
     const a = CFG.agentid || {}, pa = a.platform_agent;
-    $('#idsLine').innerHTML = (pa ? `${t('celoId')} #${esc(pa.agentId)} <a class="txlink" target="_blank" rel="noopener" href="${esc(a.explorer_tx + pa.txhash)}">↗</a> · ` : '')
-      + `${esc(a.registered_agents || 0)} ${t('registered')} · ${LANG === 'zh' ? '收款地址' : 'payTo'} <span class="txlink">${esc(short(CFG.pay_to))}</span>`;
+    $('#idsLine').innerHTML = (pa ? `${t('celoId')} #${esc(pa.agentId)} <a class="txlink" target="_blank" rel="noopener" href="${esc((a.explorer_tx || 'https://celoscan.io/tx/') + pa.txhash)}">↗</a> · ` : '')
+      + `${esc(a.registered_agents || 0)} ${t('registered')} · ${LANG === 'zh' ? '收款地址' : 'payTo'} <a class="txlink" target="_blank" rel="noopener" href="https://celoscan.io/address/${esc(CFG.pay_to || '')}">${esc(short(CFG.pay_to))}</a>`;
   }
 
   function renderFoot() {
-    const a = (CFG && CFG.agentid) || {};
-    $('#foot').innerHTML = `ERC-8004 Identity Registry (Celo 42220): ${esc(a.identity_registry || '')} · Reputation Registry: ${esc(a.reputation_registry || '')}<br>
-      x402 facilitator: ${esc(CFG.facilitator || '')} · asset: USDC ${esc(CFG.asset && CFG.asset.address)} · payTo: ${esc(CFG.pay_to || '')}<br>
-      Analyst card: <a class="txlink" href="${esc(CFG.analyst_card || '')}" target="_blank" rel="noopener">${esc(CFG.analyst_card || '')}</a> · Built for Celo “Agents at Work” (Sep 2026).`;
+    if (!CFG) return;
+    const a = CFG.agentid || {}, L = CFG.links || {};
+    const assets = assetList().map((x) => `${x.key === 'USAT' ? 'USA₮' : x.key} ${addrLink(x.address)}`).join(' · ');
+    const extra = [L.repo ? `<a class="txlink" href="${esc(L.repo)}" target="_blank" rel="noopener">GitHub ↗</a>` : '', L.dune ? `<a class="txlink" href="${esc(L.dune)}" target="_blank" rel="noopener">Dune ↗</a>` : ''].filter(Boolean).join(' · ');
+    const card = L.analyst_card || CFG.analyst_card || '';
+    $('#foot').innerHTML = `ERC-8004 Identity Registry (Celo 42220): ${addrLink(a.identity_registry)} · Reputation Registry: ${addrLink(a.reputation_registry)}${a.registrar ? ` · ${LANG === 'zh' ? '注册钱包' : 'registrar'}: ${addrLink(a.registrar)}${a.registrar_celo != null ? ` (${(+a.registrar_celo).toFixed(3)} CELO)` : ''}` : ''}<br>
+      x402 facilitator: ${esc(CFG.facilitator || '')}${CFG.settler ? ` (${esc(CFG.settler)})` : ''} · ${LANG === 'zh' ? '资产' : 'assets'}: ${assets} · payTo: ${addrLink(CFG.pay_to)}<br>
+      Analyst card: <a class="txlink" href="${esc(card)}" target="_blank" rel="noopener">${esc(card)}</a>${extra ? ' · ' + extra : ''} · Built for Celo “Agents at Work” (Sep 2026).`;
   }
 
   function renderAgents() {
@@ -196,33 +337,129 @@
     const list = CAT.agents || [];
     $('#agentsSub').textContent = list.length ? `${list.length} ${LANG === 'zh' ? '个在售' : 'for sale'}` : '';
     if (!list.length) { $('#agentGrid').innerHTML = `<p class="tiny">${t('noAgents')}</p>`; return; }
-    $('#agentGrid').innerHTML = list.map((a) => `
+    const bought = purchasesFor(ACCOUNT);
+    $('#agentGrid').innerHTML = list.map((a) => {
+      const lastTs = +a.last_decision_ts || 0;
+      const purchasable = a.purchasable !== false && (a.purchasable === true || lastTs > 0 || (a.total_ticks || 0) > 0);
+      const stale = lastTs > 0 && (Date.now() / 1000 - lastTs) > 86400;
+      const latest = lastTs > 0 || a.last_action
+        ? `<div class="latest">${t('latest')}: <b>${esc(actionLabel(a.last_action) || '—')}</b>${lastTs ? ` · ${esc(ago(lastTs))}` : ''}${a.last_round ? ` · ${LANG === 'zh' ? '第 ' + esc(a.last_round) + ' 回合' : 'round ' + esc(a.last_round)}` : ''}${stale ? ` <span class="tag gray stale">${t('stale')}</span>` : ''}</div>`
+        : `<div class="latest">${t('latest')}: ${t('noDecision')}</div>`;
+      const mine = bought.filter((p) => p.product === 'insight' && p.code === a.code).sort((x, y) => (y.ts || 0) - (x.ts || 0))[0];
+      let badge = '';
+      if (mine) {
+        const n = mine.round ? Math.max(0, (+a.total_ticks || 0) - (+mine.round || 0)) : (lastTs > (mine.ts || 0) ? 1 : 0);
+        badge = n > 0 ? `<span class="badge-new">${n} ${t('newDec')}</span>` : `<span class="tiny">${t('noNew')}</span>`;
+      }
+      return `
       <div class="card pad agent-card" data-code="${esc(a.code)}">
         <div class="row"><div><b style="font-size:16px">${esc(a.label)}</b> <span class="tag gray" style="margin-left:6px">${esc(a.symbol)}</span></div>
           <span class="tag ${a.running ? 'green' : 'gray'}">${a.running ? t('running') : t('stopped')}</span></div>
         <div class="row tiny"><span>${esc(tierName(a.model_tier))} · ${esc(a.persona)} · ${esc(a.total_ticks)} ${t('rounds')}</span>
           ${a.celo_agent_id > 0 ? `<a class="txlink" target="_blank" rel="noopener" href="https://celoscan.io/tx/${esc(a.celo_agent_tx)}">${t('celoId')} #${esc(a.celo_agent_id)} ↗</a>` : ''}</div>
+        ${latest}
         <div class="kpis">
           <div class="kpi"><span class="tiny">${t('est')}</span><b class="${(+a.estimated_profit || 0) >= 0 ? 'green' : 'red'}">${usd(a.estimated_profit)}</b></div>
           <div class="kpi"><span class="tiny">${t('win')}</span><b>${a.win_rate == null ? '—' : (+a.win_rate).toFixed(0) + '%'}</b></div>
           <div class="kpi"><span class="tiny">${t('ord')}</span><b>${a.order_success_rate == null ? '—' : a.order_success_rate + '%'}</b></div>
         </div>
-        <div class="row"><button class="btn primary sm btn-unlock" data-code="${esc(a.code)}">${t('unlock')} · $${(+a.price_usd).toFixed(2)} USDC</button>
+        <div class="row"><button class="btn primary sm btn-unlock${purchasable ? '' : ' off'}" data-code="${esc(a.code)}" ${purchasable ? '' : 'disabled'}>${purchasable ? `${t('unlock')} · $${(+a.price_usd).toFixed(2)} USDC` : t('noDecisionBtn')}</button>
           <a class="tiny" href="${esc(a.card)}" target="_blank" rel="noopener">agent card ↗</a></div>
+        ${badge ? `<div>${badge}</div>` : ''}
         <div class="msg" id="msg-${esc(a.code)}"></div>
         <div id="ins-${esc(a.code)}"></div>
-      </div>`).join('');
+      </div>`; }).join('');
     document.querySelectorAll('.btn-unlock').forEach((b) => { b.onclick = () => buyInsight(b.dataset.code); });
   }
 
+  // --------------------------------------------------------- activity ----
+  function renderActivity() {
+    const body = $('#actBody'); if (!body) return;
+    if (ACT_FAILED) { body.innerHTML = `<p class="tiny">${t('actFail')}</p>`; $('#actSub').textContent = ''; return; }
+    if (!ACT) return;
+    const s = ACT.summary || {}, dep = ACT.deposits || {}, regs = ACT.registrations || {}, L = ACT.links || (CFG && CFG.links) || {};
+    $('#actSub').textContent = ACT.generated_at ? `${LANG === 'zh' ? '更新于' : 'updated'} ${ago(ACT.generated_at)}` : '';
+    const kpi = (label, v) => `<div class="kpi"><span class="tiny">${label}</span><b>${v}</b></div>`;
+    const tiles = kpi(t('actSettled'), esc(s.settled || 0)) + kpi(t('actPayers'), esc(s.payers || 0)) + kpi(t('actReturning'), esc(s.returning_payers || 0))
+      + kpi(t('actUsd'), '$' + (+(s.usd || 0)).toFixed(2)) + kpi(t('actDeposits'), `${esc(dep.count || 0)} <span class="tiny">· ${esc(dep.senders || 0)} ${t('actSenders')} · $${(+(dep.usd || 0)).toFixed(2)}</span>`);
+    const byp = (s.by_product || []).length ? `<p class="tiny" style="margin-top:8px">${s.by_product.map((b) => `${esc(b.product)} ${esc(b.n)} · $${(+(b.usd || 0)).toFixed(2)}`).join(' · ')}</p>` : '';
+    const recent = (ACT.recent || []).slice(0, 20);
+    const rows = recent.length ? `<div class="act-rows"><div class="tiny" style="margin-bottom:4px">${t('actRecent')}</div><table><thead><tr><th>${t('when')}</th><th>${t('product')}</th><th>${t('amount')}</th><th>${t('payer')}</th><th>${t('agent')}</th><th>${t('tx')}</th></tr></thead><tbody>${recent.map((r) => `<tr><td>${esc(ago(r.ts))}</td><td>${esc(r.product)}</td><td>$${(+(r.amount_usd || 0)).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td>${esc(r.payer_short || '')}</td><td>${esc(r.agent_code || '')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || ('https://celoscan.io/tx/' + r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')}</tbody></table></div>`
+      : `<p class="tiny" style="margin-top:10px">${t('actNone')}</p>`;
+    const pf = regs.platform;
+    const regLine = `<p class="tiny" style="margin-top:10px"><b>${t('actRegs')}</b>: ${pf && pf.agentId ? `${t('actPlatform')} #${esc(pf.agentId)}${pf.txhash ? ` <a class="txlink" target="_blank" rel="noopener" href="${esc(pf.explorer || ('https://celoscan.io/tx/' + pf.txhash))}">↗</a>` : ''} · ` : ''}${esc(regs.count || (regs.agents || []).length || 0)} ${t('actAgents')}</p>`;
+    const links = [L.repo ? `<a class="txlink" href="${esc(L.repo)}" target="_blank" rel="noopener">GitHub ↗</a>` : '', L.dune ? `<a class="txlink" href="${esc(L.dune)}" target="_blank" rel="noopener">Dune ↗</a>` : ''].filter(Boolean).join(' · ');
+    body.innerHTML = `<div class="acts">${tiles}</div>${byp}${rows}${regLine}${links ? `<p class="tiny">${links}</p>` : ''}`;
+  }
+
+  // -------------------------------------------------------- purchases ----
+  const pKey = (acct) => 'arena_purchases_' + String(acct || '').toLowerCase();
+  function purchasesFor(acct) { if (!acct) return []; try { const v = JSON.parse(localStorage.getItem(pKey(acct)) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; } }
+  function savePurchase(rec) {
+    if (!ACCOUNT) return;
+    try {
+      const list = purchasesFor(ACCOUNT); list.unshift(rec);
+      localStorage.setItem(pKey(ACCOUNT), JSON.stringify(list.slice(0, 50)));
+    } catch (_) {}
+    renderPurchases();
+  }
+  function renderPurchases() {
+    const wrap = $('#purchasesWrap'); if (!wrap) return;
+    const list = purchasesFor(ACCOUNT).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    wrap.hidden = !list.length; $('#purchasesCount').textContent = String(list.length);
+    if (!list.length) { $('#purchasesList').innerHTML = ''; return; }
+    $('#purchasesList').innerHTML = list.map((p, i) => `<div class="purchase" data-i="${i}">
+      <div class="row"><span><b>${esc(p.product)}</b> ${esc(p.code || p.symbol || '')}${p.round ? ` · ${LANG === 'zh' ? '第 ' + esc(p.round) + ' 回合' : 'round ' + esc(p.round)}` : ''} <span class="tiny">· ${esc(ago(p.ts))}</span></span>
+        <span>${p.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(p.explorer || ('https://celoscan.io/tx/' + p.tx))}">${t('viewTx')} ↗</a> · ` : ''}<span class="reread" data-i="${i}">${t('reread')}</span></span></div>
+      <div class="p-body" id="pbody-${i}"></div></div>`).join('');
+    $('#purchasesList').querySelectorAll('.reread').forEach((el) => { el.onclick = () => {
+      const p = list[+el.dataset.i], box = $('#pbody-' + el.dataset.i); if (!p || !box) return;
+      box.innerHTML = box.innerHTML ? '' : (p.product === 'insight' ? insightHtml(p.content || {}) : answerHtml(p.content || {}));
+    }; });
+  }
+
   // ----------------------------------------------------------- wallet ----
+  function setWalletMsg(text, cls) { const el = $('#walletMsg'); el.hidden = !text; el.textContent = text || ''; el.className = 'msg' + (cls ? ' ' + cls : ''); }
+  function renderMobileWallet() {
+    const box = $('#mobileWallet'); if (!box) return;
+    if (provider() || !isMobileUA()) { box.hidden = true; return; }
+    const target = location.host + location.pathname + location.search;
+    box.hidden = false;
+    box.innerHTML = `<div class="hd">${t('noWalletMobileHd')}</div><div>${t('noWalletMobile')}</div>
+      <div><a class="btn primary sm" href="https://metamask.app.link/dapp/${esc(target)}" rel="noopener">${t('openMetaMask')} →</a></div>
+      <div class="tiny">${t('miniPayNote')}</div>`;
+  }
+  function renderGetUsdc() {
+    const box = $('#getUsdcBox'); if (!box) return;
+    box.hidden = false;
+    box.innerHTML = `<div class="row" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div class="hd">${t('getUsdcHd')}</div><span class="lang" id="getUsdcClose">${t('close')}</span></div>
+      <div>· <a href="${JUMPER}" target="_blank" rel="noopener">${t('getUsdc1')}</a></div>
+      <div>· ${t('getUsdc2')}</div>
+      <div>· ${t('getUsdc3')}</div>
+      <div>· <a href="${APP_BRIDGE}" target="_blank" rel="noopener">${t('getUsdc4')}</a></div>`;
+    $('#getUsdcClose').onclick = () => { box.hidden = true; };
+    try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
+  }
+  function setAccount(addr) {
+    ACCOUNT = String(addr || '').toLowerCase();
+    $('#btnConnect').textContent = ACCOUNT ? short(ACCOUNT) : t('connect');
+    if (!ACCOUNT) { $('#usdcBal').hidden = true; $('#usatBal').hidden = true; }
+    refreshBalance(); renderPurchases(); renderAgents();
+  }
+  let _eventsBound = false;
+  function bindProviderEvents() {
+    const p = provider(); if (!p || _eventsBound || typeof p.on !== 'function') return;
+    _eventsBound = true;
+    p.on('accountsChanged', (accts) => { const a = (accts && accts[0]) || ''; setAccount(a); setWalletMsg(a ? t('walletChanged') + ' · ' + short(a) : '', a ? 'ok' : ''); });
+    p.on('chainChanged', () => { refreshBalance(); });
+  }
   async function connect() {
     const p = provider();
-    if (!p) { throw new Error(t('noWallet')); }
+    if (!p) { renderMobileWallet(); throw new Error(t('noWallet')); }
     const accts = await p.request({ method: 'eth_requestAccounts' });
-    ACCOUNT = ((accts && accts[0]) || '').toLowerCase();
-    $('#btnConnect').textContent = short(ACCOUNT);
-    refreshBalance();
+    setAccount((accts && accts[0]) || '');
+    bindProviderEvents();
+    setWalletMsg(ACCOUNT ? t('connected') + ' · ' + short(ACCOUNT) : '', 'ok');
     return ACCOUNT;
   }
   async function ensureChain() {
@@ -233,33 +470,58 @@
     catch (e) {
       if (e && (e.code === 4902 || /unrecognized|not added|4902/i.test(String(e.message || '')))) {
         await p.request({ method: 'wallet_addEthereumChain', params: [{ chainId: c.chain_id_hex, chainName: c.name, nativeCurrency: { name: c.symbol, symbol: c.symbol, decimals: c.decimals }, rpcUrls: [c.rpc], blockExplorerUrls: [c.explorer] }] });
-      } else { throw e; }
+      } else { const err = new Error(t('errChain')); err.friendly = true; throw err; }
     }
+  }
+  async function balanceOf(asset, account) {
+    const data = '0x70a08231' + String(account).slice(2).padStart(64, '0');
+    const r = await fetch(CFG.chain.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: asset, data }, 'latest'] }) });
+    const d = await r.json(); return BigInt((d && d.result) || '0x0');
   }
   async function refreshBalance() {
     if (!ACCOUNT || !CFG) return;
-    try {
-      const data = '0x70a08231' + ACCOUNT.slice(2).padStart(64, '0');
-      const r = await fetch(CFG.chain.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CFG.asset.address, data }, 'latest'] }) });
-      const d = await r.json(); const raw = BigInt(d.result || '0x0');
-      const el = $('#usdcBal'); el.hidden = false; el.textContent = 'USDC ' + (Number(raw) / 1e6).toFixed(2) + ' · Celo';
-    } catch (_) {}
+    for (const a of assetList()) {
+      const el = $(a.key === 'USAT' ? '#usatBal' : '#usdcBal'); if (!el) continue;
+      try {
+        const raw = await balanceOf(a.address, ACCOUNT);
+        const v = Number(raw) / Math.pow(10, +a.decimals || 6);
+        if (a.key === 'USAT') { el.hidden = !(v > 0); el.textContent = 'USA₮ ' + v.toFixed(2) + ' · Celo'; }
+        else { el.hidden = false; el.textContent = 'USDC ' + v.toFixed(2) + ' · Celo'; }
+      } catch (_) {}
+    }
   }
-  $('#btnConnect').onclick = () => connect().catch((e) => alert(e.message || e));
+  $('#btnConnect').onclick = () => connect().catch((e) => setWalletMsg((e && e.message) || t('connectFail'), 'err'));
 
   // --------------------------------------------------------- x402 pay ----
+  function walletError(e) {
+    if (e && e.friendly) return e;
+    const code = e && (e.code || (e.data && e.data.code)), msg = String((e && e.message) || '');
+    const err = new Error(code === 4001 || /rejected|denied|cancel/i.test(msg) ? t('errRejected') : t('errGeneric'));
+    err.friendly = true; return err;
+  }
+  async function pickAccept(accepts) {
+    // USDC first, then USA₮ — the first asset the wallet holds ≥ amount of wins.
+    const order = (a) => (String(a.asset || '').toLowerCase() === USDC_ADDR.toLowerCase() ? 0 : 1);
+    const list = accepts.slice().sort((a, b) => order(a) - order(b));
+    for (const acc of list) {
+      try { if ((await balanceOf(acc.asset, ACCOUNT)) >= BigInt(String(acc.amount || '0'))) return acc; } catch (_) {}
+    }
+    return null;
+  }
   async function payFetch(url, opts, onStatus) {
     opts = opts || {};
     let r = await fetch(url, opts);
     if (r.status !== 402) return r;
     const prHdr = r.headers.get('PAYMENT-REQUIRED');
-    const pr = prHdr ? JSON.parse(b64d(prHdr)) : await r.json();
-    const acc = (pr.accepts || [])[0];
-    if (!acc) throw new Error('no payment option offered');
+    const pr = prHdr ? JSON.parse(b64d(prHdr)) : await readJson(r);
+    const accepts = (pr.accepts || []).filter((a) => a && a.asset && a.amount != null);
+    if (!accepts.length) { const err = new Error(t('errGeneric')); err.friendly = true; throw err; }
     if (!ACCOUNT) await connect();
     await ensureChain();
+    const acc = await pickAccept(accepts);
+    if (!acc) { renderGetUsdc(); const err = new Error(t('needFunds')); err.friendly = true; err.noFunds = true; throw err; }
     const auth = { from: ACCOUNT, to: acc.payTo, value: String(acc.amount), validAfter: '0',
-                   validBefore: String(Math.floor(Date.now() / 1000) + 600), nonce: randomHex32() };
+                   validBefore: String(Math.floor(Date.now() / 1000) + Math.min(600, +acc.maxTimeoutSeconds || 600)), nonce: randomHex32() };
     const typed = {
       types: {
         EIP712Domain: [{ name: 'name', type: 'string' }, { name: 'version', type: 'string' }, { name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' }],
@@ -269,8 +531,10 @@
       domain: { name: (acc.extra || {}).name || 'USDC', version: (acc.extra || {}).version || '2', chainId: CFG.chain.chain_id, verifyingContract: acc.asset },
       message: auth,
     };
-    onStatus && onStatus(t('signing'));
-    const sig = await provider().request({ method: 'eth_signTypedData_v4', params: [ACCOUNT, JSON.stringify(typed)] });
+    onStatus && onStatus(t('signing').replace('USDC', assetName(acc.asset)));
+    let sig;
+    try { sig = await provider().request({ method: 'eth_signTypedData_v4', params: [ACCOUNT, JSON.stringify(typed)] }); }
+    catch (e) { throw walletError(e); }
     const payload = { x402Version: 2, resource: pr.resource, accepted: acc, payload: { signature: sig, authorization: auth } };
     onStatus && onStatus(t('settling'));
     const headers = Object.assign({}, opts.headers || {}, { 'PAYMENT-SIGNATURE': b64e(JSON.stringify(payload)) });
@@ -278,18 +542,49 @@
     return r;
   }
   async function readJson(r) { try { return await r.json(); } catch (_) { return {}; } }
+  // Server error strings → friendly bilingual copy. Never surfaces internals;
+  // the short log id (when present) is appended so support can trace it.
+  function friendlyError(status, d) {
+    d = d || {};
+    const raw = String(d.error || '').toLowerCase();
+    let key = 'errGeneric', funds = false;
+    if (status === 429) key = 'errRate';
+    else if (status === 503) key = 'busy';
+    else if (raw.includes('insufficient_funds') || raw.includes('insufficient funds')) { key = 'errFunds'; funds = true; }
+    else if (raw.includes('invalid_signature')) key = 'errSig';
+    else if (raw.includes('nonce_already_used') || raw.includes('duplicate payment nonce')) key = 'errNonce';
+    else if (raw.includes('authorization_expired')) key = 'errExpired';
+    else if (raw.includes('authorization_not_yet_valid')) key = 'errNotYet';
+    else if (raw.includes('verifier_unavailable') || raw.includes('facilitator unreachable')) key = 'errBusy';
+    else if (raw.includes('settlement failed')) key = 'errSettle';
+    const ref = d.log_id ? ` (${t('ref')} ${d.log_id})` : '';
+    return { text: t(key) + ref, funds, cls: (status === 503 || key === 'errBusy') ? 'warn' : 'err' };
+  }
+  function showError(m, status, d) { const f = friendlyError(status, d); setMsg(m, f.text, f.cls); if (f.funds) renderGetUsdc(); }
   function payLine(pay) {
     if (!pay || !pay.tx) return '';
-    return `<div class="tiny">✓ ${t('paid')} · ${(+pay.amount_usd).toFixed(2)} USDC · <a class="txlink" target="_blank" rel="noopener" href="${esc(pay.explorer)}">${t('viewTx')} ↗</a></div>`;
+    return `<div class="tiny">✓ ${t('paid')} · ${(+pay.amount_usd).toFixed(2)} ${esc(pay.asset || 'USDC')} · <a class="txlink" target="_blank" rel="noopener" href="${esc(pay.explorer)}">${t('viewTx')} ↗</a></div>`;
   }
-  function setMsg(el, text, cls) { el.textContent = text || ''; el.className = 'msg' + (cls ? ' ' + cls : ''); }
+  function setMsg(el, text, cls) { if (!el) return; el.textContent = text || ''; el.className = 'msg' + (cls ? ' ' + cls : ''); }
 
   // -------------------------------------------------------------- ask ----
+  function answerHtml(d) {
+    const st = d.structured || {};
+    const idea = d.idea || d.stance || {};
+    const gen = d.product === 'brief' || d.generated_at
+      ? `<div class="tiny">${t('shared')} · ${t('genAgo')} ${esc(ago(d.generated_at))} · ${t('refresh10')}</div>` : '';
+    return `<div class="answer"><div class="hd">${esc(st.headline || d.reply || d.brief || '')}</div>
+        ${(st.points || []).map((p) => `<div class="pt">· <b>${esc(p.label)}</b>：${esc(p.text)}</div>`).join('')}
+        ${st.analysis ? `<div>${esc(st.analysis)}</div>` : ''}${st.note ? `<div class="tiny">${esc(st.note)}</div>` : ''}
+        ${idea.side ? `<div class="tiny">${LANG === 'zh' ? '倾向' : 'Stance'}: <b>${esc(idea.side)}</b>${idea.confidence != null ? ` · ${t('conf')} ${(+idea.confidence * 100).toFixed(0)}%` : ''}${idea.mark ? ` · mark $${esc(idea.mark)}` : ''}</div>` : ''}
+        ${gen}${payLine(d.payment)}<div class="disclaimer">${t('nfa')}</div></div>`;
+  }
   async function ask(kind) {
     const m = $('#askMsgLine'), out = $('#askAnswer');
     const symbol = $('#askSymbol').value, message = ($('#askMsg').value || '').trim();
     if (kind === 'chat' && !message) { setMsg(m, t('needMsg'), 'warn'); return; }
     if (!CFG.enabled) { setMsg(m, t('disabled'), 'warn'); return; }
+    if (CFG.analyst_ready === false) { setMsg(m, t('analystOff'), 'warn'); return; }
     $('#btnAsk').disabled = $('#btnBrief').disabled = true;
     try {
       setMsg(m, '…');
@@ -297,50 +592,60 @@
         ? await payFetch('/api/x402/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, symbol }) }, (s) => setMsg(m, s))
         : await payFetch('/api/x402/brief?symbol=' + encodeURIComponent(symbol), { method: 'GET' }, (s) => setMsg(m, s));
       const d = await readJson(r);
-      if (r.status === 503) { setMsg(m, t('busy'), 'warn'); return; }
-      if (!r.ok) { setMsg(m, (d.error || ('HTTP ' + r.status)) + (d.log_id ? ' · ' + d.log_id : ''), 'err'); return; }
-      const st = d.structured || {};
-      const idea = d.idea || d.stance || {};
-      out.innerHTML = `<div class="answer"><div class="hd">${esc(st.headline || d.reply || d.brief || '')}</div>
-        ${(st.points || []).map((p) => `<div class="pt">· <b>${esc(p.label)}</b>：${esc(p.text)}</div>`).join('')}
-        ${st.analysis ? `<div>${esc(st.analysis)}</div>` : ''}${st.note ? `<div class="tiny">${esc(st.note)}</div>` : ''}
-        ${idea.side ? `<div class="tiny">${LANG === 'zh' ? '倾向' : 'Stance'}: <b>${esc(idea.side)}</b>${idea.confidence != null ? ` · ${t('conf')} ${(+idea.confidence * 100).toFixed(0)}%` : ''}${idea.mark ? ` · mark $${esc(idea.mark)}` : ''}</div>` : ''}
-        ${payLine(d.payment)}</div>`;
+      if (!r.ok) { showError(m, r.status, d); return; }
+      if (d.product == null) d.product = kind;
+      out.innerHTML = answerHtml(d);
       setMsg(m, '✓', 'ok'); refreshBalance();
-    } catch (e) { setMsg(m, String((e && e.message) || e).slice(0, 160), 'err'); }
-    finally { $('#btnAsk').disabled = $('#btnBrief').disabled = false; }
+      savePurchase({ ts: Math.floor(Date.now() / 1000), product: kind, symbol, round: 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
+    } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && e.noFunds) ? 'warn' : 'err'); }
+    finally { $('#btnAsk').disabled = $('#btnBrief').disabled = CFG.analyst_ready === false; }
   }
   $('#btnAsk').onclick = () => ask('chat');
   $('#btnBrief').onclick = () => ask('brief');
 
   // ---------------------------------------------------------- insight ----
-  async function buyInsight(code) {
-    const m = $('#msg-' + code), box = $('#ins-' + code), btn = document.querySelector(`.btn-unlock[data-code="${code}"]`);
-    if (!CFG.enabled) { setMsg(m, t('disabled'), 'warn'); return; }
-    btn.disabled = true;
-    try {
-      setMsg(m, '…');
-      const r = await payFetch('/api/x402/agents/' + encodeURIComponent(code) + '/insight', { method: 'GET' }, (s) => setMsg(m, s));
-      const d = await readJson(r);
-      if (r.status === 503) { setMsg(m, t('busy'), 'warn'); return; }
-      if (!r.ok) { setMsg(m, (d.error || ('HTTP ' + r.status)) + (d.log_id ? ' · ' + d.log_id : ''), 'err'); return; }
-      const dec = d.decision || {}, mk = dec.market || {}, st = d.stats || {};
-      const when = dec.ts ? new Date(dec.ts * 1000).toLocaleString() : '';
-      box.innerHTML = `<div class="answer">
-        <div class="hd">${t('action')}: ${esc(dec.action || '—')} · ${t('conf')} ${dec.confidence != null ? (+dec.confidence * 100).toFixed(0) + '%' : '—'} <span class="tiny">· ${LANG === 'zh' ? '第' : 'round'} ${esc(dec.round)} · ${esc(when)}${dec.executed ? ' · executed' : ''}</span></div>
+  function insightHtml(d) {
+    const dec = d.decision || {}, mk = dec.market || {}, st = d.stats || {};
+    const when = dec.ts ? new Date(dec.ts * 1000).toLocaleString() : '';
+    return `<div class="answer">
+        <div class="hd">${t('action')}: ${esc(actionLabel(dec.action) || '—')} · ${t('conf')} ${dec.confidence != null ? (+dec.confidence * 100).toFixed(0) + '%' : '—'} <span class="tiny">· ${LANG === 'zh' ? '第' : 'round'} ${esc(dec.round)} · ${esc(when)}${dec.ts ? ` (${esc(ago(dec.ts))})` : ''}${dec.executed ? ' · executed' : ''}</span></div>
         <div><b>${t('why')}</b><br>${esc(LANG === 'zh' && dec.reasoning_zh ? dec.reasoning_zh : dec.reasoning)}</div>
         <div class="tiny"><b>${t('market')}</b>: ${esc(mk.symbol || '')} mid $${esc(mk.mid)} · mark $${esc(mk.mark)} · funding ${mk.funding != null ? (+mk.funding * 100).toFixed(4) + '%' : '—'} · OI ${esc(mk.open_interest == null ? '—' : mk.open_interest)} · position ${esc(mk.position || '')}</div>
         <div class="tiny">${t('est')} ${usd(st.estimated_profit)} · ${t('win')} ${st.win_rate == null ? '—' : (+st.win_rate).toFixed(0) + '%'} · ${t('ord')} ${st.order_success_rate == null ? '—' : st.order_success_rate + '%'} (${esc(st.order_executed || 0)}/${esc(st.order_attempted || 0)})</div>
         ${d.lessons ? `<div class="tiny"><b>${t('lessons')}</b><br>${esc(d.lessons)}</div>` : ''}
-        ${payLine(d.payment)}</div>`;
+        ${payLine(d.payment)}<div class="disclaimer">${t('nfa')}</div></div>`;
+  }
+  async function buyInsight(code) {
+    const m = $('#msg-' + code), box = $('#ins-' + code), btn = document.querySelector(`.btn-unlock[data-code="${code}"]`);
+    if (!CFG.enabled) { setMsg(m, t('disabled'), 'warn'); return; }
+    if (btn) btn.disabled = true;
+    try {
+      setMsg(m, '…');
+      const r = await payFetch('/api/x402/agents/' + encodeURIComponent(code) + '/insight', { method: 'GET' }, (s) => setMsg(m, s));
+      const d = await readJson(r);
+      if (!r.ok) { showError(m, r.status, d); return; }
+      box.innerHTML = insightHtml(d);
       setMsg(m, '✓', 'ok'); refreshBalance();
-    } catch (e) { setMsg(m, String((e && e.message) || e).slice(0, 160), 'err'); }
-    finally { btn.disabled = false; }
+      const dec = d.decision || {};
+      savePurchase({ ts: Math.floor(Date.now() / 1000), product: 'insight', code, round: +dec.round || 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
+    } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && e.noFunds) ? 'warn' : 'err'); }
+    finally { if (btn) btn.disabled = false; }
   }
 
   applyLang();
-  load().then(() => { applyLang(); const p = provider(); if (p && p.selectedAddress) { ACCOUNT = p.selectedAddress.toLowerCase(); $('#btnConnect').textContent = short(ACCOUNT); refreshBalance(); } })
-        .catch((e) => { $('#agentGrid').innerHTML = `<p class="tiny">load failed: ${esc(e.message || e)}</p>`; });
+  renderMobileWallet();
+  load().then(() => {
+    applyLang();
+    const p = provider();
+    bindProviderEvents();
+    if (isMiniPay()) {
+      // MiniPay injects a ready wallet — connect silently and drop the button.
+      $('#btnConnect').hidden = true;
+      connect().catch(() => { $('#btnConnect').hidden = false; });
+    } else if (p && p.selectedAddress) { setAccount(p.selectedAddress); }
+    else if (p && typeof p.request === 'function') { p.request({ method: 'eth_accounts' }).then((a) => { if (a && a[0]) setAccount(a[0]); }).catch(() => {}); }
+  }).catch(() => { $('#agentGrid').innerHTML = `<p class="tiny">${LANG === 'zh' ? '加载失败，请刷新重试。' : 'Could not load the catalog — please refresh.'}</p>`; });
+  loadActivity();
 })();
 </script>
 </body>
