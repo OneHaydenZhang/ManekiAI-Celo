@@ -52,6 +52,25 @@ group by 1 order by 1
 > **ManekiAI — AI trading agents that work for you, identified on Celo.**
 > Every ManekiAI agent is an autonomous LLM trader running 24/7 on Hyperliquid with real fills and real P&L. During Agents at Work we brought the fleet on-chain on Celo: each agent mints an ERC-8004 identity, is fueled by Celo stablecoins (USDC / USD₮ / USDm / USA₮ top-ups become agent "Gas"), and sells its latest market insight over x402 — anyone with USDC on Celo can ask ManekiAI or unlock an agent's reasoning for a few cents, no login, no exchange keys, settled by the Celo facilitator. Owners earn 70 % of what their agents sell; buyers can rate agents in the Reputation Registry. Primary track: Real World Adoption (+ Stablecoin Adoption via x402 settlement in USDC / USA₮ and stablecoin Gas top-ups); secondary: Judges' Favorite (ERC-8004 × x402 agent economy).
 
+## 分发邀请文案（发黑客松 Telegram / Celo & MiniPay 社区 / X；参与者必须用自己的钱，我们不能转钱给任何人）
+
+> **中文**
+> 🐱 ManekiAI 上了 Celo：6 个真在 Hyperliquid 交易美股永续的 AI Agent，现在把它们的最新决策放到链上卖，一份 $0.05 USDC，问一次平台分析师 $0.02，个股简报 $0.01。
+> 不用注册、不用交易所 key、不用 CELO 付 gas：连上 Celo 钱包 → 点一下 → 签一个授权 → 内容和 Celoscan 结算链接一起回来（x402 微支付，官方 facilitator 结算）。
+> 30 秒体验：http://34.68.151.4/arena （桌面浏览器 + MetaMask / Rabby / OKX；钱包里要有 Celo 上的一点 USDC，没有就用 Jumper 换：https://jumper.exchange/?toChain=42220&toToken=0xcebA9300f2b948710d2653dD7B07f33A8B32118C ）
+> 这是 Celo「Agents at Work」黑客松参赛作品，指南和链上证明：http://34.68.151.4/hackathon
+>
+> **English**
+> 🐱 ManekiAI is on Celo: 6 AI agents that really trade US-stock perps on Hyperliquid now sell their latest decision on-chain — $0.05 USDC per insight, $0.02 to ask the platform analyst, $0.01 for a symbol brief.
+> No sign-up, no exchange keys, no CELO for gas: connect a Celo wallet → click → sign one authorization → the content comes back with its Celoscan settlement link (x402 micro-payment, settled by the official facilitator).
+> 30-second try: http://34.68.151.4/arena (desktop browser + MetaMask / Rabby / OKX; you need a little USDC on Celo — swap with Jumper: https://jumper.exchange/?toChain=42220&toToken=0xcebA9300f2b948710d2653dD7B07f33A8B32118C )
+> Built for the Celo “Agents at Work” hackathon — guide & on-chain proofs: http://34.68.151.4/hackathon
+
+## 程序化买家（Agent 买 Agent 的研究）
+
+`auto_service/celo/tools/x402_buyer.py`：不用浏览器的 x402 客户端，拿 402 → 选资产 → 签 EIP-3009 → 重发 → 打印内容与结算 tx。私钥只从环境变量 `X402_BUYER_KEY` 读，永不进命令行。用途：团队冒烟测试（不计分）与"机器付费给机器"的演示。
+`python auto_service/celo/tools/x402_buyer.py --base http://34.68.151.4 brief --symbol NVDA --dry-run` 只看报价；去掉 `--dry-run` 即真实购买。
+
 ## 演示视频脚本（2–3 分钟，可选）
 
 1. 创建/编辑 Agent → 打开「在 Celo 竞技场出售洞察」→ 详情页出现 Celo Agent ID 链接（celoscan）。

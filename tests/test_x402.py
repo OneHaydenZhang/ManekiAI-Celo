@@ -623,6 +623,31 @@ def test_reconcile_needs_the_exact_settlement_not_just_a_used_nonce(monkeypatch)
     assert x402.reconcile(f, req, {"success": False})["pending"] is True
 
 
+def test_buyer_cli_signs_a_payload_the_server_accepts(client, monkeypatch):
+    # auto_service/celo/tools/x402_buyer.py is the programmatic Arena client
+    # (agent buys agent research). Its signature must recover to the payer
+    # exactly like the browser's, and the wire shape must pass _gate().
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location(
+        "x402_buyer", Path(celo_routes.__file__).resolve().parent / "tools" / "x402_buyer.py")
+    buyer = importlib.util.module_from_spec(spec); spec.loader.exec_module(buyer)
+    req = x402.requirements("brief", "u")
+    offer = {"resource": {"url": "http://t/api/x402/brief?symbol=NVDA"}, "accepts": [req]}
+    payload, payer = buyer.build_payment_payload(_REAL_KEY, offer, req, nonce="0x" + "cd" * 32)
+    assert payload["x402Version"] == 2 and payload["payload"]["authorization"]["from"] == payer
+    assert x402.signature_matches_payer(payload, req)                # real ecrecover
+    calls = _mock_facilitator(monkeypatch)
+    _mock_llm(monkeypatch)
+    r = client.get("/api/x402/brief?symbol=NVDA", headers={"PAYMENT-SIGNATURE": x402.b64e(payload)})
+    assert r.status_code == 200 and r.json()["payment"]["tx"] and calls["settle"] == 1
+    row = x402.get_payment(payer.lower(), "0x" + "cd" * 32)      # ledger row keyed on OUR payer + nonce
+    assert row and row["status"] == "settled" and row["product"] == "brief"
+    # --dry-run style: an unsigned request yields the offer the CLI parses
+    r = client.get("/api/x402/brief?symbol=NVDA")
+    assert r.status_code == 402 and buyer.b64d(r.headers["PAYMENT-REQUIRED"])["accepts"][0]["payTo"] == req["payTo"]
+
+
 def test_public_pages_and_guide_link(client, monkeypatch):
     # /arena and /hackathon are served by app.py (not mounted in this bare
     # router fixture), so check the page files themselves; the guide is
