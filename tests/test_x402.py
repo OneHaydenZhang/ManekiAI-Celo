@@ -623,6 +623,22 @@ def test_reconcile_needs_the_exact_settlement_not_just_a_used_nonce(monkeypatch)
     assert x402.reconcile(f, req, {"success": False})["pending"] is True
 
 
+def test_public_pages_and_guide_link(client, monkeypatch):
+    # /arena and /hackathon are served by app.py (not mounted in this bare
+    # router fixture), so check the page files themselves; the guide is
+    # advertised in config.links so the host app can show its strip.
+    from pathlib import Path
+    web = Path(celo_routes.__file__).resolve().parent / "web"
+    arena = (web / "arena.html").read_text(encoding="utf-8")
+    guide = (web / "guide.html").read_text(encoding="utf-8")
+    assert "Agent Arena" in arena and 'href="/hackathon"' in arena
+    assert "Agents at Work" in guide and "/api/x402/activity" in guide and "/api/x402/catalog" in guide
+    cfg = client.get("/api/x402/config").json()
+    assert cfg["links"]["guide"].endswith("/hackathon")
+    monkeypatch.setenv("CELO_GUIDE_ENABLED", "0")
+    assert "guide" not in client.get("/api/x402/config").json()["links"]
+
+
 def test_verified_purchases_never_count_toward_the_attempt_cap(client, monkeypatch):
     # Review 2026-09-13: the cap is for signature spam, not for a real buyer —
     # one demo wallet must be able to buy more than 10 times in 10 minutes.

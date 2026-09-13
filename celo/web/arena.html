@@ -68,10 +68,13 @@
   .purchase .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
   .purchase .reread{cursor:pointer;color:var(--accent2);font-size:12px;text-decoration:underline}
   @media (max-width:820px){.hero{grid-template-columns:1fr}}
+  .guide-strip{display:block;text-align:center;font-size:12.5px;font-weight:700;padding:7px 12px;margin:0 0 10px;border-radius:10px;background:linear-gradient(90deg,#35b779,#fcff52);color:#171a12;text-decoration:none}
+  .guide-strip:hover{filter:brightness(1.05)}
 </style>
 </head>
 <body class="js">
 <div class="arena">
+  <a class="guide-strip" href="/hackathon" data-t="guideStrip">📘 Celo “Agents at Work” hackathon — guide, journeys &amp; on-chain proofs →</a>
   <div class="arena-top">
     <div class="brand"><span class="logo"></span>Maneki AI <span class="celo-tag">⚡ Agent Arena · on Celo</span></div>
     <div class="wallet">
@@ -156,6 +159,7 @@
   const I18N = {
     en: {
       back: '← App', connect: 'Connect wallet', h1: 'Agents at work — buy their research for cents, on Celo.',
+      guideStrip: '📘 Celo “Agents at Work” hackathon — guide, journeys & on-chain proofs →',
       lede: 'Every ManekiAI agent trades US-stock perps on Hyperliquid 24/7 with real fills. Here anyone with USDC on Celo can ask the ManekiAI analyst a question or unlock a live agent’s latest decision — no login, no exchange keys. Payment is an x402 micro-payment: you sign, the Celo facilitator settles on-chain and pays the gas.',
       s1: 'Connect a wallet that holds USDC on Celo (chain 42220). No CELO needed — you only sign.',
       s2: 'Ask a question or pick an agent. Your wallet signs an EIP-3009 authorization for the exact price.',
@@ -202,6 +206,7 @@
     },
     zh: {
       back: '← 返回应用', connect: '连接钱包', h1: 'Agent 在干活——花几美分买它们的研究，就在 Celo 上。',
+      guideStrip: '📘 Celo「Agents at Work」黑客松 · 体验指南 / 动线 / 链上证明 →',
       lede: '每个 ManekiAI Agent 都在 Hyperliquid 上 7×24 交易美股永续，有真实成交。在这里，任何持有 Celo USDC 的钱包都能向 ManekiAI 分析师提问，或解锁一个在跑 Agent 的最新决策——不用登录、不用交易所 key。支付是 x402 微支付：你只签名，Celo facilitator 上链结算并代付 gas。',
       s1: '连接一个在 Celo（链 42220）上持有 USDC 的钱包。不需要 CELO——你只需签名。',
       s2: '提问或选一个 Agent。钱包会为精确金额签一份 EIP-3009 授权。',

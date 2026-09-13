@@ -159,9 +159,15 @@ def public_base() -> str:
 
 
 def links() -> Dict[str, str]:
-    return {"repo": os.environ.get("CELO_PUBLIC_REPO", "").strip() or "https://github.com/OneHaydenZhang/ManekiAI-Celo",
-            "dune": os.environ.get("CELO_DUNE_URL", "").strip(),
-            "analyst_card": f"{public_base()}/api/agent-card/maneki-analyst"}
+    out = {"repo": os.environ.get("CELO_PUBLIC_REPO", "").strip() or "https://github.com/OneHaydenZhang/ManekiAI-Celo",
+           "dune": os.environ.get("CELO_DUNE_URL", "").strip(),
+           "analyst_card": f"{public_base()}/api/agent-card/maneki-analyst"}
+    # The hackathon guide page (/hackathon: requirements, journeys, proofs,
+    # live counters). Advertised here so the host app can show its top strip;
+    # CELO_GUIDE_ENABLED=0 hides both the link and the strip.
+    if os.environ.get("CELO_GUIDE_ENABLED", "1").strip().lower() not in ("0", "false", "off", "no"):
+        out["guide"] = f"{public_base()}/hackathon"
+    return out
 
 
 def prices() -> Dict[str, float]:
