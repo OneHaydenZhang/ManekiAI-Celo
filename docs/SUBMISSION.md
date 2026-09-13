@@ -8,14 +8,14 @@
 | 字段 | 值 | 状态 |
 |---|---|---|
 | Project | ManekiAI — AI trading agents that work for you, identified on Celo | ✓ |
-| Public GitHub | https://github.com/OneHaydenZhang/ManekiAI-Celo | 仓库只含黑客松新增代码（`celo/` 包 + Celo/x402 测试 + 本文档），不含宿主私有代码；**填表/评审时必须是 Public** |
+| Public GitHub | https://github.com/OneHaydenZhang/ManekiAI-Celo | ✓ Public（2026-09-13 切回）。仓库只含黑客松新增代码（`celo/` 包 + Celo/x402 测试 + 本文档），不含宿主私有代码 |
 | ERC-8004 Agent ID（平台 Analyst） | `#9837`（Celo Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`，注册 tx [`0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f`](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f)） | ✓ 已铸造 |
 | Agent 钱包地址 | 收款/x402 payTo：`0x26523f5cea5da5d9411749afefe741ba340f6566`（只收款）；注册钱包（付 gas）：`0xaf6fA147e8F85781196627765FcaFC1044F89308` | ✓ |
-| Telegram handle | `@TBD`（用户填写） | 待填 |
+| Telegram handle | 已由负责人在报名表填写（不在此记录） | ✓ |
 | Primary track | Real World Adoption | ✓ |
-| Secondary（一句话） | Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm on Celo + every Arena purchase is an x402 settlement in USDC; Judges' Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners | ✓ |
+| Secondary（一句话） | Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm/USA₮ on Celo + every Arena purchase is an x402 settlement in USDC; Judges' Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners | ✓（报名表所填，与 /hackathon 第 5 节一致） |
 | Distribution channel | Existing audience (manekiai.io users, X) + the public login-free Arena for the Celo community | ✓ |
-| Demo | http://34.68.151.4/arena · http://34.68.151.4/api/agent-card/maneki-analyst · http://34.68.151.4/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
+| Demo | **指南/证明/动线：http://34.68.151.4/hackathon** · Arena http://34.68.151.4/arena · http://34.68.151.4/api/agent-card/maneki-analyst · http://34.68.151.4/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
 
 ## 链上证据（部署后逐项填 · `scripts/fill_celo_submission.py --activity <url|file>` 可自动回填）
 
@@ -25,15 +25,18 @@
 - 首笔 x402 结算 tx（facilitator 签名者 `0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48`）：`TBD`
 - 公开活动端点（免登录、60 s 缓存，结算笔数/付款人/注册/充值汇总 + 最近结算 tx）：http://34.68.151.4/api/x402/activity
 - Agent ID 铸造：所有 ERC-8004 注册都由注册钱包 `0xaf6fA147e8F85781196627765FcaFC1044F89308` 签名付 gas（可在 Celoscan 该地址的交易列表回查全部铸造）；agentURI 指向 `http://34.68.151.4/api/agent-card/{code}`。如后续更换公共域名，用 `setAgentURI` 重定向（admin「URI 重定向」），ID 不变、不重铸。
-- Dune 查询（distinct 钱包 / 日；USDC + USD₮ + USA₮）：
+- Dune 查询（distinct 钱包 / 日；USDC + USD₮ + USDm + USA₮，按各自精度换算；payTo 同时收 x402 结算，所以结果 = 充值 + Arena 购买）：
 
 ```sql
 select date_trunc('day', evt_block_time) d,
-       count(distinct "from") wallets, count(*) txs, sum(value)/1e6 usd
+       count(distinct "from") wallets, count(*) txs,
+       sum(case when contract_address = 0x765DE816845861e75A25fCA122bb6898B8B1282a then cast(value as double) / 1e18   -- USDm: 18 decimals
+                else cast(value as double) / 1e6 end) usd                                                              -- USDC / USD₮ / USA₮: 6 decimals
 from erc20_celo.evt_Transfer
 where "to" = 0x26523f5cea5da5d9411749afefe741ba340f6566
-  and contract_address in (0xcEBA9300f2b948710d2653dD7B07f33A8B32118C,   -- USDC
+  and contract_address in (0xcebA9300f2b948710d2653dD7B07f33A8B32118C,   -- USDC
                            0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,   -- USD₮ (USDT)
+                           0x765DE816845861e75A25fCA122bb6898B8B1282a,   -- USDm (Mento Dollar, ex-cUSD)
                            0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771)   -- USA₮ (Tether America USD)
 group by 1 order by 1
 ```
@@ -47,7 +50,7 @@ group by 1 order by 1
 ## 英文叙事
 
 > **ManekiAI — AI trading agents that work for you, identified on Celo.**
-> Every ManekiAI agent is an autonomous LLM trader running 24/7 on Hyperliquid with real fills and real P&L. During Agents at Work we brought the fleet on-chain on Celo: each agent mints an ERC-8004 identity, is fueled by Celo stablecoins (USDC / USD₮ / USDm top-ups become agent "Gas"), and sells its latest market insight over x402 — anyone with USDC on Celo can ask ManekiAI or unlock an agent's reasoning for a few cents, no login, no exchange keys, settled by the Celo facilitator. Owners earn 70 % of what their agents sell; buyers can rate agents in the Reputation Registry. Primary track: Real World Adoption (+ Stablecoin Adoption via x402 settlement and USD₮/USDC); secondary: Judges' Favorite (ERC-8004 × x402 agent economy).
+> Every ManekiAI agent is an autonomous LLM trader running 24/7 on Hyperliquid with real fills and real P&L. During Agents at Work we brought the fleet on-chain on Celo: each agent mints an ERC-8004 identity, is fueled by Celo stablecoins (USDC / USD₮ / USDm / USA₮ top-ups become agent "Gas"), and sells its latest market insight over x402 — anyone with USDC on Celo can ask ManekiAI or unlock an agent's reasoning for a few cents, no login, no exchange keys, settled by the Celo facilitator. Owners earn 70 % of what their agents sell; buyers can rate agents in the Reputation Registry. Primary track: Real World Adoption (+ Stablecoin Adoption via x402 settlement in USDC / USA₮ and stablecoin Gas top-ups); secondary: Judges' Favorite (ERC-8004 × x402 agent economy).
 
 ## 演示视频脚本（2–3 分钟，可选）
 
