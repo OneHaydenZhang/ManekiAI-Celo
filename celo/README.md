@@ -11,8 +11,10 @@ real P&L). This package is the Celo layer built for the **Celo "Agents at Work" 
 | `x402.py` | **x402 v2 seller** — `PAYMENT-REQUIRED` challenge (USDC and USA₮ accepted), facilitator `POST /verify` → content → `POST /settle` (api.x402.celo.org, EIP-3009 `transferWithAuthorization`, gas paid by the facilitator), a permanent payment ledger (`x402_payments`, payer+nonce unique), and a **70 % revenue share to the agent's owner** as Gas. |
 | `routes.py` | Public, login-free endpoints: `POST /api/x402/chat` (Ask ManekiAI · $0.02), `GET /api/x402/brief?symbol=` (shared 10-minute brief · $0.01), `GET /api/x402/agents/{code}/insight` (a live agent's latest decision · $0.05), free `GET /api/x402/config`, `GET /api/x402/catalog` and `GET /api/x402/activity` (public settlement / registration / deposit summary, 60 s cache). |
 | `web/arena.html` | **Agent Arena** (`/arena`) — anyone with USDC or USA₮ on Celo connects a wallet, asks the analyst or unlocks an agent's insight; the wallet signs, the facilitator settles, the page shows the Celoscan link. |
+| `web/guide.html` | **Hackathon guide** (`/hackathon`) — what the hackathon asks for, what we built, every on-chain proof with a link, the journeys by role (owner / buyer / depositor / operator) and live counters read from the public `/api/x402/*` endpoints. Linked from a strip on top of the Arena and the host app (`config.links.guide`; `CELO_GUIDE_ENABLED=0` hides both). |
 
 Live (preview host, plain HTTP — desktop browser wallets): http://34.68.151.4/arena ·
+**guide, journeys & proofs: http://34.68.151.4/hackathon** ·
 analyst card: http://34.68.151.4/api/agent-card/maneki-analyst · activity: http://34.68.151.4/api/x402/activity ·
 platform Analyst = ERC-8004 **#9837** on Celo ([registration tx](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f))
 
@@ -45,7 +47,7 @@ payer+nonce is refused before any work.
 
 | Asset | Contract (Celo 42220) | EIP-712 domain | Used for |
 |---|---|---|---|
-| USDC | `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C` | `USDC` / `2` | Gas top-ups, x402 (first `accepts[]` entry) |
+| USDC | `0xcebA9300f2b948710d2653dD7B07f33A8B32118C` | `USDC` / `2` | Gas top-ups, x402 (first `accepts[]` entry) |
 | USD₮ (USDT) | `0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e` | — | Gas top-ups |
 | USDm | registered lane token | — | Gas top-ups |
 | **USA₮** (Tether America USD) | `0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771` · 6 decimals | `Tether America USD` / `1` | Gas top-ups **and** x402 (second `accepts[]` entry) |
@@ -95,7 +97,7 @@ calls `receiveWithAuthorization` (`0xef55bec6`) — the buyer authorizes a plain
 * `db.py` — additive agent columns `celo_agent_id`, `celo_agent_tx`, `celo_registered_at`, `x402_sell`.
 * `handlers/routes.py` — create/edit hooks call `agentid.maybe_register_async`; `/api/agent-card/{code}` serves the v1 cards.
 * `handlers/admin_routes.py` — treasury publish, `/celo/status`, `/celo/register-platform`, `/celo/register-all`, `/x402/payments`.
-* `app.py` — mounts `/api/x402/*`, `/arena`, `/celo/*`.
+* `app.py` — mounts `/api/x402/*`, `/arena`, `/hackathon`, `/celo/*`.
 * `web/app.js` — "Get USDC on Celo" bridge card (LI.FI → Celo 42220), Celo Agent ID chip, the per-agent "sell insights" switch.
 
 ## Tests
@@ -134,7 +136,7 @@ timestamps here are therefore the real ones, not the time of the mirror run.
 * Celo `chainId 0xa4ec`; forno `eth_getLogs` cap = 5,000 blocks; `celo.drpc.org` fallback.
 * Identity Registry `0x8004A169…a432` on Celo — same address as on 0G (deterministic deployment).
 * Facilitator `/supported`: `{x402Version:2, scheme:"exact", network:"eip155:42220"}`.
-* USDC `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C`: `name()="USDC"`, `version()="2"`.
+* USDC `0xcebA9300f2b948710d2653dD7B07f33A8B32118C`: `name()="USDC"`, `version()="2"`.
 * USA₮ `0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771`: 6 decimals, EIP-712 domain `Tether America USD` / `1` (as configured in `/api/x402/config` → `assets.USAT`).
 * Preview host `http://34.68.151.4`: `/api/x402/config`, `/arena`, `/api/x402/activity` reachable; registration was cleanly skipped while the registrar held 0 CELO, then on 2026-09-13 the auto-pilot minted the platform Analyst (#9837) and all 6 live agents (#9838–#9843) within one 2-minute tick of the wallet being funded, 0 failures.
 * Facilitator `api.x402.celo.org` `/verify` answers a well-formed request with a structured `{"isValid":false,"invalidReason":…}` (an empty body gets a 502 — request-shape artefact, not an outage); facilitator signer `0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48`.

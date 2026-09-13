@@ -22,7 +22,8 @@
   h2{font-size:19px;margin:34px 0 10px;display:flex;align-items:center;gap:10px}
   h2 .n{display:inline-flex;width:26px;height:26px;border-radius:8px;background:#fcff52;color:#171a12;font-size:13px;font-weight:900;align-items:center;justify-content:center}
   .lede{color:var(--muted);line-height:1.65;margin:0 0 6px;max-width:900px}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px}
+  .envnote{margin:10px 0 0;padding:10px 14px;border-radius:12px;border:1px solid #e2b33c;background:rgba(226,179,60,.08);font-size:13px;line-height:1.6;max-width:1000px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(215px,100%),1fr));gap:10px}
   .card{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--card,#15181d)}
   .card h4{margin:0 0 6px;font-size:13.5px;color:var(--muted);font-weight:600}
   .card .big{font-size:22px;font-weight:900;line-height:1.1}
@@ -30,7 +31,7 @@
   .ok{color:#35b779}.bad{color:#ff7a7a}.warn{color:#e2b33c}
   .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;background:#666}
   .dot.ok{background:#35b779}.dot.bad{background:#ff7a7a}.dot.warn{background:#e2b33c}
-  .proof{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+  .proof{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px}
   .proof .card p{margin:6px 0 10px;font-size:13px;line-height:1.55;color:var(--muted)}
   .btns{display:flex;gap:8px;flex-wrap:wrap}
   .btn.sm{padding:6px 10px;font-size:12px}
@@ -44,14 +45,14 @@
   .role ol li{margin:4px 0}
   .role .watch{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--card2,#1b1f26);font-size:12.5px;line-height:1.6}
   .role .watch b{color:#fcff52}
-  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:10px}
   .rules .card li{margin:4px 0;font-size:13px;line-height:1.55}
   .rules .card ul{margin:6px 0 0;padding-left:18px}
   table{width:100%;border-collapse:collapse;font-size:12.5px}
   th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
   th{font-weight:600;color:var(--muted);white-space:nowrap}
   .wrap{overflow-x:auto}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 12px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:8px;margin:8px 0 12px}
   .kpi{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card2,#1b1f26)}
   .kpi .v{font-size:20px;font-weight:900}.kpi .k{font-size:11.5px;color:var(--muted)}
   .note{font-size:12.5px;color:var(--muted);line-height:1.6}
@@ -70,7 +71,7 @@
     <div class="brand"><span class="logo"></span>Maneki AI <span class="celo-tag">⚡ Celo · Agents at Work</span></div>
     <div class="nav">
       <span class="lang" id="langToggle">English</span>
-      <a class="btn ghost sm" href="/" data-t="navApp">主站</a>
+      <a class="btn ghost sm" href="/" id="navApp" data-t="navApp">主站</a>
       <a class="btn sm" href="/arena" data-t="navArena">打开 Arena</a>
       <a class="btn ghost sm" id="navRepo" href="https://github.com/OneHaydenZhang/ManekiAI-Celo" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
@@ -78,6 +79,7 @@
 
   <h1 data-t="h1">Celo「Agents at Work」黑客松 · ManekiAI 体验指南</h1>
   <p class="lede" data-t="lede">这一页给产品 / 运营 / 评审看：黑客松要什么、我们做了什么、每一项链上证明在哪里点开、以及一步一步怎么体验。所有数字都是从本服务器的公开接口实时读的。</p>
+  <div class="envnote" id="envNote" hidden></div>
   <div class="flow" id="flow"></div>
 
   <h2><span class="n">0</span><span data-t="s0">现在的状态（实时）</span></h2>
@@ -90,7 +92,7 @@
   <div class="proof" id="proof"></div>
 
   <h2><span class="n">3</span><span data-t="s3">体验动线（按角色，一步一步）</span></h2>
-  <p class="lede" data-t="s3lede">推荐顺序：A 主人开售 → B 买家购买 → C 主人看收益 → D 充值 → E 运营观测。每一步下面都写了"观测什么"。</p>
+  <p class="lede" data-t="s3lede">推荐顺序：A 主人开售 → B 买家购买 → C 主人看收益 → D 充值 → E 运营观测。每一步下面都写了「观测什么」。</p>
   <div class="steps" id="journeys"></div>
 
   <h2><span class="n">4</span><span data-t="s4">实时数据</span></h2>
@@ -100,6 +102,7 @@
   <div class="wrap" style="margin-top:14px"><table id="regs"></table></div>
 
   <h2><span class="n">5</span><span data-t="s5">报名 / 提交材料一览</span></h2>
+  <p class="note" id="subStatus"></p>
   <div class="wrap"><table id="submission"></table></div>
   <p class="note" data-t="foot" style="margin-top:22px"></p>
 </div>
@@ -114,40 +117,49 @@
     identity: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432', reputation: '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
     payTo: '0x26523f5cea5da5d9411749afefe741ba340f6566', registrar: '0xaf6fA147e8F85781196627765FcaFC1044F89308',
     facilitatorSigner: '0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48',
-    usdc: '0xcEBA9300f2b948710d2653dD7B07f33A8B32118C', usat: '0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771', usdt: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e',
+    usdc: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C', usat: '0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771',
+    usdt: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e', usdm: '0x765DE816845861e75A25fCA122bb6898B8B1282a',   // USDm (Mento Dollar, ex-cUSD), 18 dec
     analystId: 9837, analystTx: '0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f',
     repo: 'https://github.com/OneHaydenZhang/ManekiAI-Celo',
     scan: 'https://celoscan.io',
+    submittedDemo: 'http://34.68.151.4/arena',          // literally what went into the registration form
+    submittedGuide: 'http://34.68.151.4/hackathon',
   };
   const JUMPER = 'https://jumper.exchange/?toChain=42220&toToken=' + K.usdc;
+  const JUMPER_CELO = 'https://jumper.exchange/?toChain=42220&toToken=0x0000000000000000000000000000000000000000';
   const DUNE_SQL = `select date_trunc('day', evt_block_time) d,
-       count(distinct "from") wallets, count(*) txs, sum(value)/1e6 usd
+       count(distinct "from") wallets, count(*) txs,
+       sum(case when contract_address = ${K.usdm} then cast(value as double) / 1e18   -- USDm: 18 decimals
+                else cast(value as double) / 1e6 end) usd                              -- USDC / USD₮ / USA₮: 6 decimals
 from erc20_celo.evt_Transfer
 where "to" = ${K.payTo}
   and contract_address in (${K.usdc},   -- USDC
                            ${K.usdt},   -- USD₮ (USDT)
+                           ${K.usdm},   -- USDm (Mento Dollar, ex-cUSD)
                            ${K.usat})   -- USA₮ (Tether America USD)
 group by 1 order by 1`;
 
   const I18N = {
     zh: {
-      navApp: '主站', navArena: '打开 Arena', h1: 'Celo「Agents at Work」黑客松 · ManekiAI 体验指南',
+      navApp: '主站', navAppPreview: (h) => `主站（预览机 ${h}）`, navArena: '打开 Arena', h1: 'Celo「Agents at Work」黑客松 · ManekiAI 体验指南',
       lede: '这一页给产品 / 运营 / 评审看：黑客松要什么、我们做了什么、每一项链上证明在哪里点开、以及一步一步怎么体验。所有数字都是从本服务器的公开接口实时读的。',
+      envNote: (h) => `⚠ 本页、Arena 以及下面所有「主站 / Agent 中心」按钮都指向当前预览机 ${h}，不是 manekiai.io 生产站：生产站暂无 Arena / Celo 功能，两边的钱包账号、Agent 与燃料账本互不相通。动线 A / C / D 请在本机重新钱包登录，并使用本机的 Agent；D 步充入的 USDC 记到本机账本。所有购买与充值都是 Celo 主网真实 USDC（购买 $0.01–0.05 / 次）。`,
       s0: '现在的状态（实时）', s1: '黑客松要求速览', s2: '我们的产物与证明（点击即可打开）', s3: '体验动线（按角色，一步一步）',
       s3lede: '推荐顺序：A 主人开售 → B 买家购买 → C 主人看收益 → D 充值 → E 运营观测。每一步下面都写了「观测什么」。', s4: '实时数据', s5: '报名 / 提交材料一览',
       foot: '本页与 Arena 只读公开接口，不持有任何私钥。市场内容仅供参考，不构成投资建议。预览机为纯 HTTP：桌面浏览器插件钱包可用，MiniPay / 手机深链需 HTTPS。',
       // status
       stReg: 'ERC-8004 链上身份', stRegSub: (n) => `平台 Analyst + ${n} 个 Agent 已在 Celo 主网注册`, stRegNone: '尚未注册',
+      stLoading: '加载中…', stApiDown: '接口暂时不可用，显示的是静态登记事实',
       stPay: 'x402 支付', stPayOn: '已开启', stPayOff: '未开启', stPaySub: (s) => `结算方式：${s === 'facilitator' ? '官方 facilitator（代付 gas）' : s}`,
-      stSell: '在售 Agent', stSellSub: '出现在 Arena 目录里、可被购买的 Agent 数', stSellFix: '目录为空：先做动线 A（主人开售）',
-      stSales: '已结算购买', stSalesSub: (p, u) => `${p} 个独立付款钱包 · $${u.toFixed(2)} USDC`, stSalesNone: '还没有真实购买：做动线 B',
+      stSell: '在售 Agent', stSellSub: '主人已开售、出现在 Arena 目录里的 Agent 数（有决策的才能买）', stSellBuyable: (n) => `其中 ${n} 个可购买`, stSellFix: '目录为空：先做动线 A（主人开售）',
+      stSales: '已结算购买', stSalesSub: (p, u) => `${p} 个独立付款钱包 · $${u.toFixed(2)} USDC / USA₮`, stSalesNone: '还没有真实购买：做动线 B',
       stDep: 'Celo 稳定币充值', stDepSub: (s, u) => `${s} 个发送方 · $${u.toFixed(2)}`, stDepNone: '还没有真实充值：做动线 D',
-      stRepo: '公开仓库', stRepoOk: 'Public ✓', stRepoBad: '不可公开访问', stRepoUnk: '无法检测', stRepoSub: '评审只审这个仓库里赛期内的 commit',
+      stRepo: '公开仓库', stRepoOk: '公开 ✓', stRepoBad: '不可公开访问', stRepoUnk: '无法检测', stRepoUnkSub: '（当前网络访问不了 GitHub API，不代表仓库有问题；点链接直接打开核实）', stRepoSub: '评审只审这个仓库里赛期内的 commit',
       stDl: '距提交截止', stDlOver: '已截止', stDlSub: '2026-09-14 09:00 GMT（北京 17:00）',
       flow: ['持 Celo USDC 的钱包', '签一份 EIP-3009 授权（无 gas）', 'facilitator 上链结算', '拿到 Agent 洞察 + Celoscan 链接', 'Agent 主人分成 70%'],
       // rules
       r1h: '赛事与截止', r1: ['主办：Celo × Rise In，赛题「Agents at Work」', '提交截止：2026-09-14 09:00 GMT（北京 17:00），无延期', '奖池 $5,000：Value Moved $2,000 · Real World Adoption $1,750（内含 Stablecoin Adoption $750）· AskBots $500 · Judges’ Favorite $500 · cPay 反馈 $250'],
-      r2h: '怎么计分（重点）', r2: ['只算 Celo 主网上的真实交易，公开 Dune 榜单实时排名', '只算「独立签名者」：不是我们自己的钱包，也不是我们出资的钱包', '自转、铸造/销毁、协议内部交易不算；量以「独立签名者数」为门', 'Stablecoin Adoption 子赛道点名：cNGN、Ripio wFIAT、USA₮，或 x402 结算', '代码必须是赛期内写的；已有项目可参赛，但评审会审 commit 历史'],
+      r2h: '怎么计分（重点）', r2: ['只算 Celo 主网上的真实交易，公开 Dune 榜单实时排名', '只算「独立签名者」：不是我们自己的钱包，也不是我们出资的钱包', '自转、铸造/销毁、协议内部交易不算；交易量只计入来自「独立签名者」的部分', 'Stablecoin Adoption 子赛道点名：cNGN、Ripio wFIAT、USA₮，或 x402 结算', '代码必须是赛期内写的；已有项目可参赛，但评审会审 commit 历史', '评审要求有已有的真实分发渠道（MiniPay / Telegram / WhatsApp / 现有用户）——我们 = 站内现有用户 + X + 免登录公开 Arena'],
       r3h: '报名要交的东西', r3: ['公开 GitHub 仓库链接', 'ERC-8004 Agent ID', 'Agent 钱包地址', 'Telegram handle', '主赛道 + 其它赛道一句话说明'],
       r4h: '我们的定位', r4: ['主赛道：Real World Adoption（真实用户用稳定币买 Agent 的研究、给 Agent 充燃料）', '副：Stablecoin Adoption（USDC / USA₮ 的 x402 结算 + USDC / USD₮ / USDm / USA₮ 充值）', '副：Judges’ Favorite（ERC-8004 身份 × x402 分成 = 会赚钱的 Agent）'],
       // proofs
@@ -155,98 +167,113 @@ group by 1 order by 1`;
       p1b1: 'Analyst 注册交易 ↗', p1b2: 'Analyst 卡片（JSON）↗', p1b3: 'Identity Registry 合约 ↗', p1b4: '注册钱包的全部交易 ↗', p1list: '已注册 Agent：',
       p2h: 'x402 微支付结算', p2: '买家在 Arena 里签一份 EIP-3009 授权，Celo 官方 facilitator 广播 transferWithAuthorization 并代付 gas。每一笔结算都是 payTo 地址收到的一笔 USDC / USA₮ 转账，链上可查。',
       p2b1: '公开活动接口（JSON）↗', p2b2: 'payTo 地址的代币转账 ↗', p2b3: 'facilitator 签名者 ↗', p2b4: 'Arena 底部「链上活动」面板 ↗',
-      p3h: '稳定币充值（燃料）', p3: '用户在主站用 Celo 上的 USDC / USD₮ / USDm / USA₮ 给 Agent 充燃料，是一笔普通 ERC-20 转账到金库地址。评审用下面这条 Dune 查询就能复算「每天多少个独立钱包、多少美元」。',
+      p3h: '稳定币充值（燃料）', p3: '用户在主站用 Celo 上的 USDC / USD₮ / USDm / USA₮ 给 Agent 充燃料，是一笔普通 ERC-20 转账到金库地址。评审用下面这条 Dune 查询就能复算「每天多少个独立钱包、多少美元」。该地址同时收 x402 结算，所以查询结果 = 充值 + Arena 购买；本页「Celo 稳定币充值」只含充值。',
       p3b1: '金库地址 ↗', p3b2: '复制 Dune 查询', p3copied: '已复制',
-      p4h: '代码与提交历史', p4: '公开仓库只含黑客松期间新增的 Celo 层（celo/ 包、Arena 页、测试、提交文档），每个 commit 保留真实作者时间。',
+      p4h: '代码与提交历史', p4: '公开仓库只含黑客松期间新增的 Celo 层（celo/ 包、Arena 页、本指南、测试、提交文档），每个 commit 保留真实作者时间。',
       p4b1: '仓库 ↗', p4b2: 'commit 历史 ↗', p4b3: 'celo 层 README ↗',
       // journeys
-      jA: 'A · Agent 主人：把 Agent 变成「可售」', jApre: '需要：主站钱包登录（当前预览库的 6 个 Agent 已全部开售，这一步可以只看不做，或用你自己的 Agent 再走一遍）。',
-      jAs: ['打开主站 → 「进入应用」→ 钱包签名登录', '顶栏「Agent 中心」→ 某个 Agent 的「详情」→ 右上「编辑」', '向导里「④ 资金与风控上限」下方，打开开关「⚡ 在 Celo 竞技场出售洞察」', '点「保存并启动」（编辑模式只保存，Agent 不用重启）'],
-      jAw: '观测：本页「在售 Agent」计数 30 秒内 +1；Arena 目录出现这张卡；Agent 详情页出现芯片「⚡ 竞技场在售」和「Celo Agent ID #… ↗」。注意：Agent 至少要有 1 条决策，否则 Arena 上按钮是灰的「尚无决策」。',
+      jA: 'A · Agent 主人：把 Agent 变成「可售」',
+      jApre: '需要：用自己的钱包登录本预览机。目录里现有的在售 Agent 属于团队钱包（实时数量看上方「在售 Agent」卡），你登录后「Agent 中心」是空的，看不到它们。要亲手走 A / C 请先「+ 新建 Agent」：首次打开向导，钱包会先请求切换到 Arbitrum One，再弹 2 次 Hyperliquid 授权签名（API 钱包 + 佣金，离线签名、无 gas，照签即可）；这要求该钱包已在 Hyperliquid 入金过，否则会提示「创建 Agent 前需先完成佣金授权」——没有 Hyperliquid 账户就只看 A、直接去做 B。Agent 启动后立刻做第 1 次决策，随后即可在 Arena 目录被购买。主站默认英文，可在顶栏右侧切到中文，界面词才与下面步骤一致。',
+      jAs: ['打开主站 → 「进入应用」→ 钱包签名登录', '顶栏「Agent 中心」→「+ 新建 Agent」（已有 Agent 则点其「详情」→ 右上「编辑」）', '向导里「④ 资金与风控上限」下方，打开开关「⚡ 在 Celo 竞技场出售洞察」', '点「保存并启动」（编辑模式只保存，Agent 不用重启）'],
+      jAw: '观测：本页「在售 Agent」计数最多 60 秒内 +1（目录接口有 30 秒缓存，本页每 30 秒刷新一次）；Arena 目录出现这张卡；Agent 详情页出现芯片「⚡ 竞技场在售」和「Celo Agent ID #… ↗」。注意：Agent 至少要有 1 条决策，否则 Arena 上按钮是灰的「尚无决策」。',
       jAgo: '去 Agent 中心 →',
-      jB: 'B · 买家：在 Arena 花 USDC 买洞察（核心动线）', jBpre: '需要：桌面浏览器 + MetaMask / Rabby / OKX 插件；钱包在 Celo（链 42220）上有 ≥ 0.05 USDC。不需要 CELO。没有 USDC 就先点「用 Jumper 获取 USDC」。',
-      jBs: ['打开 Arena → 右上「连接钱包」', '三选一：Agent 卡上「解锁最新洞察 · $0.05 USDC」；或选标的后「提问 · 用 USDC 支付」（$0.02）；或「个股简报」（$0.01）', '钱包第一次会弹「切换到 Celo 网络」，同意', '钱包弹「签名请求」（Sign Typed Data），确认。60 秒内完成，超时要重签', '等几秒：内容出现，底部一行「✓ 已支付并在 Celo 结算 · 在 Celoscan 查看结算 ↗」'],
-      jBw: '观测：点开 Celoscan 链接看到一笔 USDC 转账（from 你的钱包 → to payTo，由 facilitator 广播）；Arena 底部「链上活动」立刻多一行；本页「已结算购买」+1；「你的购买记录」可免费再看。同一钱包 10 分钟内买多少次都可以，但同一个钱包连续 2 次付款失败会冷却 10 分钟。',
+      jB: 'B · 买家：在 Arena 花 USDC 买洞察（核心动线）',
+      jBpre: '需要：桌面浏览器 + MetaMask / Rabby / OKX 插件；钱包在 Celo（链 42220）上有 ≥ 0.05 USDC（或 USA₮）。不需要 CELO。两种都没有就先点「用 Jumper 获取 USDC」。整个 B 最多花 $0.08。',
+      jBs: ['打开 Arena → 右上「连接钱包」', '三选一：Agent 卡上「解锁最新洞察 · $0.05 USDC」；或选标的后「提问 · 用 USDC 支付」（$0.02）；或「个股简报」（$0.01）。买 Agent 洞察时优先选带绿色「运行中」标签的卡（目录会把它排在最前面）；灰色「空闲 / 已过时」的卡也能买、也会正常结算，但拿到的是该 Agent 停止前的最后一条决策，不会再更新', '钱包第一次会弹「切换到 Celo 网络」，同意', '钱包弹「签名请求」（Sign Typed Data），确认。60 秒内完成，超时会看到红字「签名已过期，请重试」，重签即可', '等几秒：内容出现，底部一行「✓ 已支付并在 Celo 结算 · 0.05 USDC · 在 Celoscan 查看结算 ↗」（中间金额随第 2 步选的产品为 0.05 / 0.02 / 0.01）'],
+      jBw: '观测：点开 Celoscan 链接看到一笔 USDC 转账（from 你的钱包 → to payTo，由 facilitator 广播；USDC 不够但 USA₮ 够时，Arena 会自动改用 USA₮ 付款，签名提示会写「USA₮ 授权」，Celoscan 上显示的是 USA₮ / Tether America USD 转账）；Arena 底部「链上活动」立刻多一行；本页「已结算购买」+1；「你的购买记录」可免费再看。购买次数不限（成功付款不计入任何限额）；但同一钱包 10 分钟内累计 2 次因买家原因的结算失败（如余额不足、签名无效，不要求连续）会被暂停最长 10 分钟；签名未通过验证的尝试另有 10 次 / 10 分钟的上限。',
       jBgo: '打开 Arena →', jBusdc: '用 Jumper 获取 USDC ↗',
       jC: 'C · Agent 主人：看到收益', jCpre: '需要：B 里买的是某个 Agent 的洞察（不是提问/简报），并且用主人的钱包登录主站。',
-      jCs: ['Agent 中心 → 该 Agent「详情」：头部芯片变成「⚡ 竞技场在售 · 1 次售出 · +35 燃料」', 'Agent 中心下方「⚡ Agent 燃料」→「充值与奖励」页签：多一行「奖励」+35', '顶栏铃铛（消息）：「… 在 Celo 上卖出一次洞察：+35 燃料」'],
+      jCs: ['Agent 中心 → 该 Agent「详情」：头部芯片变成「⚡ 竞技场在售 · 1 次售出 · +35 燃料」', 'Agent 中心页顶部的「⚡ Agent 燃料」卡 → 卡底部「充值与奖励」页签：多一行「奖励」+35', '顶栏铃铛（消息）：「… 在 Celo 上卖出一次洞察：+35 燃料」'],
       jCw: '观测：每笔 $0.05 售出，主人得 35 燃料（= 0.05 × 70% × 1000）。是记在积分账本里的燃料，不是链上转账；链上那 0.05 USDC 全部进 payTo。',
       jCgo: '去 Agent 中心 →',
-      jD: 'D · 用 Celo 稳定币给 Agent 充燃料', jDpre: '需要：主站钱包登录；同一个钱包在 Celo 上有 USDC（或 USD₮ / USDm / USA₮）+ 一点 CELO 付 gas（页面里没提示这点）。必须用登录的那个钱包转，从交易所直接提币到金库不会入账。',
+      jD: 'D · 用 Celo 稳定币给 Agent 充燃料',
+      jDpre: '需要：主站钱包登录（本预览机独立账号，manekiai.io 上的 Agent 不会出现在这里）；同一个钱包在 Celo 上有 USDC（或 USD₮ / USDm / USA₮），并且有 ≥ 0.05 CELO 付 gas（一笔 ERC-20 转账约 0.01–0.02 CELO；主站充值界面目前不会提醒这点，缺 CELO 时钱包会直接报 insufficient funds）。获取 CELO：点右侧「用 Jumper 获取 CELO」，或从交易所按 Celo 网络提 CELO。D 是五条动线里唯一需要 CELO 的一步。必须用登录的那个钱包转，从交易所直接提币到金库不会入账。',
       jDs: ['Agent 中心 → 「⚡ Agent 燃料」卡右侧充值区：链选「Celo」、币种选「USDC」', '点档位「+1,000」（或自定义）→ 弹窗「确认充值」', '钱包切到 Celo → 签一笔 ERC-20 转账（这一步付 CELO gas）', '等 12–60 秒自动到账；或点「已转账 · 刷新」'],
       jDw: '观测：燃料余额变大、右上 toast「+999 燃料」（预设 1,000 实际入账 999，是已知的差 1）；「充值与奖励」页签出现一行「充值」带 Celoscan 链接；本页「Celo 稳定币充值」+1；金库地址的代币转账页多一笔。',
-      jDgo: '去 Agent 中心 →',
-      jE: 'E · 运营 / 评审：观测数据', jEpre: '公开接口不需要登录；后台需要管理 token。',
+      jDgo: '去 Agent 中心 →', jDcelo: '用 Jumper 获取 CELO ↗',
+      jE: 'E · 运营 / 评审：观测数据', jEpre: '公开接口不需要登录；后台 /admin 需要管理密码（登录框里叫「管理密码」，由运营方持有；评审不需要后台，本页第 4 节 + 公开接口足够）。',
       jEs: ['本页第 4 节「实时数据」每 30 秒自动刷新', '公开活动接口 /api/x402/activity（JSON，60 秒缓存，排除运营钱包）', '后台 /admin →「燃料」页 →「⚡ Celo · Agents at Work」面板：注册钱包余额、Analyst ID、已注册 / 待注册、x402 状态与销售汇总；「Agent」页每行有 Celo# / ⚡Arena 芯片', '评审侧：Celoscan 上 payTo 地址的代币转账 = 全部结算 + 充值；Dune 查询见第 2 节'],
-      jEw: '注意：排行榜只算不是我们出资的独立钱包。团队自己的测试钱包用来验证流程没问题，但不会加分；把测试钱包加进运营方的排除名单，公开活动统计就不会被自测污染。',
+      jEw: '注意：排行榜只算不是我们出资的独立钱包。团队自己的测试钱包用来验证流程没问题，但不会加分。排除名单目前后台没有入口，只能由运维在服务器环境变量 X402_OPERATOR_WALLETS（逗号分隔的 0x 地址）里配置并重启服务生效——自测前先把你的钱包地址发给运维加进去，公开活动统计就不会被自测污染。',
       jEgo: '打开后台 →', jEact: '活动接口 ↗',
       // live
-      liveUpd: '更新于', liveFail: '活动数据暂时不可用', kSettled: '已结算购买', kPayers: '独立付款人', kReturning: '回头付款人', kUsd: 'USDC 成交额', kDeposits: 'Celo 充值', kSenders: '充值发送方', kRegs: '已注册 Agent',
+      liveUpd: '更新于', liveFail: '活动数据暂时不可用', kSettled: '已结算购买', kPayers: '独立付款人', kReturning: '回头付款人', kUsd: 'USDC / USA₮ 成交额', kDeposits: 'Celo 充值', kSenders: '充值发送方', kRegs: '已注册 Agent',
       thWhen: '时间', thProduct: '产品', thAmount: '金额', thPayer: '付款人', thAgent: 'Agent', thTx: '交易', recentH: '最近结算', recentNone: '暂无结算。做一次动线 B，这里就会出现第一行。',
+      prod: { insight: 'Agent 洞察', chat: '提问', brief: '个股简报' },
       regsH: '链上注册（ERC-8004）', thCode: 'Agent', thSymbol: '标的', thId: 'Agent ID', thRegTx: '注册交易',
+      regsNone: '尚无 Agent 完成链上注册。Agent 创建/保存后会由注册钱包自动登记（需有少量 CELO 付 gas），成功后 30 秒内出现在这里。',
       // submission
+      subStatus: '状态：报名表已于 2026-09-13 提交（下表即所填内容）；最终提交截止 2026-09-14 09:00 GMT，链上数据仍在累积。',
       subH: '字段', subV: '值', sub: [
-        ['Project', 'ManekiAI — AI trading agents that work for you, identified on Celo'],
-        ['Public GitHub', K.repo],
+        ['项目', 'ManekiAI — AI trading agents that work for you, identified on Celo'],
+        ['公开 GitHub 仓库', K.repo],
         ['ERC-8004 Agent ID', `#${K.analystId}（平台 Analyst · Identity Registry ${K.identity}）`],
         ['Agent 钱包地址', `payTo（收款）${K.payTo} · 注册钱包（付 gas）${K.registrar}`],
-        ['Primary track', 'Real World Adoption'],
+        ['主赛道', 'Real World Adoption'],
         ['其它赛道一句话', 'Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm/USA₮ on Celo + every Arena purchase is an x402 settlement in USDC; Judges’ Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners'],
-        ['Demo', location.origin + '/arena'],
-        ['Telegram handle', '（由负责人填写）'],
+        ['分发渠道', 'Existing audience (manekiai.io users, X) + the public login-free Arena for the Celo community'],
+        ['演示地址', `${K.submittedDemo}（报名表所填）· 指南 ${K.submittedGuide}`],
+        ['Telegram handle', '已随报名表提交（联系方式不在此公开）'],
       ],
       ago: (s) => (s < 60 ? '刚刚' : s < 3600 ? `${Math.floor(s / 60)} 分钟前` : s < 86400 ? `${Math.floor(s / 3600)} 小时前` : `${Math.floor(s / 86400)} 天前`),
       left: (h, m) => `${h} 小时 ${m} 分`,
     },
     en: {
-      navApp: 'App', navArena: 'Open the Arena', h1: 'Celo “Agents at Work” hackathon · ManekiAI guide',
+      navApp: 'App', navAppPreview: (h) => `App (preview host ${h})`, navArena: 'Open the Arena', h1: 'Celo “Agents at Work” hackathon · ManekiAI guide',
       lede: 'For product, ops and judges: what the hackathon asks for, what we built, where each on-chain proof lives, and how to try it step by step. Every number is read live from this server’s public endpoints.',
+      envNote: (h) => `⚠ This page, the Arena and every “App / Agents” button below point at the preview host ${h}, not manekiai.io: production has no Arena / Celo features yet, and wallet accounts, agents and Gas ledgers are not shared between the two. For journeys A / C / D sign in again here and use this host’s agents; a journey-D top-up credits this host’s ledger. All purchases and top-ups are real USDC on Celo mainnet ($0.01–0.05 per purchase).`,
       s0: 'Status right now (live)', s1: 'Hackathon requirements at a glance', s2: 'What we built and the proofs (click to open)', s3: 'Journeys (by role, step by step)',
       s3lede: 'Suggested order: A owner lists an agent → B buyer purchases → C owner sees earnings → D top-up → E operator watches. Each step says what to observe.', s4: 'Live data', s5: 'Registration / submission fields',
       foot: 'This page and the Arena only read public endpoints and hold no keys. Market content is for information only, not financial advice. The preview host is plain HTTP: desktop browser wallets work, MiniPay / mobile deep links need HTTPS.',
       stReg: 'ERC-8004 identity', stRegSub: (n) => `Platform Analyst + ${n} agents registered on Celo mainnet`, stRegNone: 'not registered yet',
+      stLoading: 'loading…', stApiDown: 'endpoints unavailable right now; static facts shown',
       stPay: 'x402 payments', stPayOn: 'enabled', stPayOff: 'disabled', stPaySub: (s) => `settlement: ${s === 'facilitator' ? 'official facilitator (pays the gas)' : s}`,
-      stSell: 'Agents for sale', stSellSub: 'agents listed in the Arena catalog and purchasable', stSellFix: 'Catalog empty: do journey A first',
-      stSales: 'Settled purchases', stSalesSub: (p, u) => `${p} distinct payer wallets · $${u.toFixed(2)} USDC`, stSalesNone: 'no real purchase yet: do journey B',
+      stSell: 'Agents for sale', stSellSub: 'agents opted in and listed in the Arena catalog (only those with ≥ 1 decision can be bought)', stSellBuyable: (n) => `${n} of them purchasable`, stSellFix: 'Catalog empty: do journey A first',
+      stSales: 'Settled purchases', stSalesSub: (p, u) => `${p} distinct payer wallets · $${u.toFixed(2)} USDC / USA₮`, stSalesNone: 'no real purchase yet: do journey B',
       stDep: 'Celo stablecoin top-ups', stDepSub: (s, u) => `${s} senders · $${u.toFixed(2)}`, stDepNone: 'no real top-up yet: do journey D',
-      stRepo: 'Public repository', stRepoOk: 'Public ✓', stRepoBad: 'not publicly reachable', stRepoUnk: 'could not check', stRepoSub: 'judges review the in-window commits of this repo',
+      stRepo: 'Public repository', stRepoOk: 'Public ✓', stRepoBad: 'not publicly reachable', stRepoUnk: 'could not check', stRepoUnkSub: '(GitHub API unreachable from your network — not a repo problem; open the link to verify)', stRepoSub: 'judges review the in-window commits of this repo',
       stDl: 'Time to submission deadline', stDlOver: 'closed', stDlSub: '2026-09-14 09:00 GMT',
-      flow: ['wallet holding USDC on Celo', 'signs one EIP-3009 authorization (no gas)', 'facilitator settles on-chain', 'gets the agent insight + Celoscan link', 'agent owner earns 70 %'],
+      flow: ['wallet holding USDC on Celo', 'signs one EIP-3009 authorization (no gas)', 'facilitator settles on-chain', 'gets the agent insight + Celoscan link', 'agent owner earns 70%'],
       r1h: 'Event & deadline', r1: ['Host: Celo × Rise In, theme “Agents at Work”', 'Submission deadline: 2026-09-14 09:00 GMT, no extensions', 'Prize pool $5,000: Value Moved $2,000 · Real World Adoption $1,750 (incl. Stablecoin Adoption $750) · AskBots $500 · Judges’ Favorite $500 · cPay feedback $250'],
-      r2h: 'How it is scored (the important part)', r2: ['Only real transactions on Celo mainnet count; a public Dune leaderboard ranks live', 'Only distinct signers count: wallets that are not ours and were not funded by us', 'Self-transfers, mint/burn and protocol-internal trades do not count; volume is gated on distinct signers', 'Stablecoin Adoption names cNGN, Ripio wFIAT, USA₮, or x402 settlement', 'Code must be written during the window; existing projects may enter, commit history is reviewed'],
+      r2h: 'How it is scored (the important part)', r2: ['Only real transactions on Celo mainnet count; a public Dune leaderboard ranks live', 'Only distinct signers count: wallets that are not ours and were not funded by us', 'Self-transfers, mint/burn and protocol-internal trades do not count; volume is gated on distinct signers', 'Stablecoin Adoption names cNGN, Ripio wFIAT, USA₮, or x402 settlement', 'Code must be written during the window; existing projects may enter, commit history is reviewed', 'Judges expect a distribution channel you already own (MiniPay / Telegram / WhatsApp / existing audience) — ours: existing manekiai.io users + X + the public login-free Arena'],
       r3h: 'What registration asks for', r3: ['Public GitHub repository URL', 'ERC-8004 Agent ID', 'Agent wallet address', 'Telegram handle', 'Primary track + one line per additional track'],
       r4h: 'Where we compete', r4: ['Primary: Real World Adoption (real users pay stablecoins for agent research and agent Gas)', 'Secondary: Stablecoin Adoption (x402 settlement in USDC / USA₮ + top-ups in USDC / USD₮ / USDm / USA₮)', 'Secondary: Judges’ Favorite (ERC-8004 identity × x402 revenue share = agents that earn)'],
       p1h: 'ERC-8004 on-chain identity', p1: 'Every agent and the platform “Analyst” hold an Agent ID in Celo’s Identity Registry, resolving to a public registration-v1 card. This is the ID the registration form asks for.',
       p1b1: 'Analyst registration tx ↗', p1b2: 'Analyst card (JSON) ↗', p1b3: 'Identity Registry contract ↗', p1b4: 'All txs of the registrar wallet ↗', p1list: 'Registered agents:',
       p2h: 'x402 micro-payment settlement', p2: 'A buyer signs one EIP-3009 authorization in the Arena; Celo’s official facilitator broadcasts transferWithAuthorization and pays the gas. Each settlement is one USDC / USA₮ transfer into the payTo address, visible on-chain.',
       p2b1: 'Public activity endpoint (JSON) ↗', p2b2: 'Token transfers of payTo ↗', p2b3: 'Facilitator signer ↗', p2b4: 'Arena “On-chain activity” panel ↗',
-      p3h: 'Stablecoin top-ups (Gas)', p3: 'Users fuel their agents with USDC / USD₮ / USDm / USA₮ on Celo — a plain ERC-20 transfer to the treasury. Judges can recompute “distinct wallets and USD per day” with the Dune query below.',
+      p3h: 'Stablecoin top-ups (Gas)', p3: 'Users fuel their agents with USDC / USD₮ / USDm / USA₮ on Celo — a plain ERC-20 transfer to the treasury. Judges can recompute “distinct wallets and USD per day” with the Dune query below. payTo also receives x402 settlements, so this query = top-ups + Arena purchases; the page counter counts top-ups only.',
       p3b1: 'Treasury address ↗', p3b2: 'Copy the Dune query', p3copied: 'copied',
-      p4h: 'Code & commit history', p4: 'The public repository holds only the Celo layer added during the hackathon (celo/ package, Arena page, tests, submission doc); every commit keeps its real author date.',
+      p4h: 'Code & commit history', p4: 'The public repository holds only the Celo layer added during the hackathon (celo/ package, Arena page, this guide, tests, submission doc); every commit keeps its real author date.',
       p4b1: 'Repository ↗', p4b2: 'Commit history ↗', p4b3: 'Celo layer README ↗',
-      jA: 'A · Agent owner: list an agent for sale', jApre: 'Needs: wallet login on the app (all 6 agents in this preview DB are already listed, so you can just look — or repeat it with your own agent).',
-      jAs: ['Open the app → “Launch App” → sign in with your wallet', 'Top nav “Agents” → an agent’s “Details” → “Edit” (top right)', 'Below “④ Capital & risk limits” switch on “⚡ Sell insights on the Celo Arena”', 'Click “Save & Start” (edit mode only saves; no restart needed)'],
-      jAw: 'Observe: “Agents for sale” on this page +1 within 30 s; the card appears in the Arena catalog; the agent detail page shows the chips “⚡ On the Arena” and “Celo Agent ID #… ↗”. The agent needs ≥ 1 decision, otherwise the Arena button is greyed “No decision yet”.',
+      jA: 'A · Agent owner: list an agent for sale',
+      jApre: 'Needs: sign in to this preview host with your own wallet. The agents already for sale belong to the team’s wallets (see the live “Agents for sale” card above) — your Agents page starts empty. To do A / C yourself, click “+ New Agent”: the first time the wizard opens, the wallet asks to switch to Arbitrum One and then shows 2 Hyperliquid authorization signatures (API wallet + commission; off-chain, no gas — just sign). This requires a wallet that has deposited on Hyperliquid before, otherwise creation is refused (“commission approval required”) — without a Hyperliquid account, just read A and go do B. A started agent makes its first decision right away and can then be bought in the Arena.',
+      jAs: ['Open the app → “Launch App” → sign in with your wallet', 'Top nav “Agents” → “+ New Agent” (for an existing agent: its “Details” → “Edit”, top right)', 'Below “④ Capital & risk limits” switch on “⚡ Sell insights on the Celo Arena”', 'Click “Save & Start” (edit mode only saves; no restart needed)'],
+      jAw: 'Observe: “Agents for sale” on this page +1 within 60 s at most (the catalog endpoint caches 30 s and this page refreshes every 30 s); the card appears in the Arena catalog; the agent detail page shows the chips “⚡ On the Arena” and “Celo Agent ID #… ↗”. The agent needs ≥ 1 decision, otherwise the Arena button is greyed “No decision yet”.',
       jAgo: 'Go to Agents →',
-      jB: 'B · Buyer: pay USDC for an insight on the Arena (core journey)', jBpre: 'Needs: desktop browser + MetaMask / Rabby / OKX extension; the wallet holds ≥ 0.05 USDC on Celo (chain 42220). No CELO needed. No USDC? Use “Get USDC with Jumper” first.',
-      jBs: ['Open the Arena → “Connect wallet” (top right)', 'Pick one: “Unlock latest insight · $0.05 USDC” on an agent card; or choose a symbol and “Ask · pay with USDC” ($0.02); or “Symbol brief” ($0.01)', 'First time the wallet asks to switch to the Celo network — approve', 'The wallet shows a “Signature request” (Sign Typed Data) — confirm within 60 s, or you will have to sign again', 'A few seconds later the content appears with “✓ Paid & settled on Celo · View settlement on Celoscan ↗”'],
-      jBw: 'Observe: the Celoscan link shows one USDC transfer (from your wallet → payTo, broadcast by the facilitator); the Arena “On-chain activity” panel gains a row at once; “Settled purchases” on this page +1; “Your purchases” lets you re-read for free. One wallet may buy as often as it likes within 10 minutes, but 2 consecutive failed payments cool that wallet down for 10 minutes.',
+      jB: 'B · Buyer: pay USDC for an insight on the Arena (core journey)',
+      jBpre: 'Needs: desktop browser + MetaMask / Rabby / OKX extension; the wallet holds ≥ 0.05 USDC (or USA₮) on Celo (chain 42220). No CELO needed. Neither? Use “Get USDC with Jumper” first. The whole of B costs at most $0.08.',
+      jBs: ['Open the Arena → “Connect wallet” (top right)', 'Pick one: “Unlock latest insight · $0.05 USDC” on an agent card; or choose a symbol and “Ask · pay with USDC” ($0.02); or “Symbol brief” ($0.01). For agent insights, prefer a card with the green “live” tag (the catalog lists it first); grey “idle / stale” cards can still be bought and settle normally, but you get the agent’s last decision before it stopped — it will not update', 'First time the wallet asks to switch to the Celo network — approve', 'The wallet shows a “Signature request” (Sign Typed Data) — confirm within 60 s; after that you see “The signature expired, please try again” and simply sign again', 'A few seconds later the content appears with “✓ Paid & settled on Celo · 0.05 USDC · View settlement on Celoscan ↗” (the amount in the middle is 0.05 / 0.02 / 0.01 depending on the product you picked in step 2)'],
+      jBw: 'Observe: the Celoscan link shows one USDC transfer (from your wallet → payTo, broadcast by the facilitator; if the wallet lacks USDC but holds enough USA₮, the Arena pays in USA₮ instead — the signing prompt says “USA₮ authorization” and Celoscan shows a USA₮ / Tether America USD transfer); the Arena “On-chain activity” panel gains a row at once; “Settled purchases” on this page +1; “Your purchases” lets you re-read for free. No limit on purchases (successful payments never count toward any cap); but 2 buyer-caused settlement failures from one wallet within 10 minutes (e.g. insufficient funds, invalid signature — they need not be consecutive) pause that wallet for up to 10 minutes; unverified signature attempts are separately capped at 10 per 10 minutes.',
       jBgo: 'Open the Arena →', jBusdc: 'Get USDC with Jumper ↗',
       jC: 'C · Agent owner: see the earnings', jCpre: 'Needs: journey B bought an agent insight (not Ask / brief), and the owner’s wallet is signed in.',
-      jCs: ['Agents → that agent’s “Details”: the chip now reads “⚡ On the Arena · 1 sold · +35 Gas”', 'Agents page, “⚡ Agent Gas” → “Top-ups & rewards” tab: a new “Reward” row, +35', 'Bell (Inbox): “… sold one insight on Celo: +35 Gas”'],
-      jCw: 'Observe: each $0.05 sale credits the owner 35 Gas (= 0.05 × 70 % × 1000). That is a ledger credit, not an on-chain transfer; the whole 0.05 USDC lands in payTo on-chain.',
+      jCs: ['Agents → that agent’s “Details”: the chip now reads “⚡ On the Arena · 1 sold · +35 Gas”', 'Agents page, the “⚡ Agent Gas” card at the top → “Top-ups & rewards” tab at the bottom of the card: a new “Reward” row, +35', 'Bell (Inbox): “… sold an insight on Celo: +35 Gas”'],
+      jCw: 'Observe: each $0.05 sale credits the owner 35 Gas (= 0.05 × 70% × 1000). That is a ledger credit, not an on-chain transfer; the whole 0.05 USDC lands in payTo on-chain.',
       jCgo: 'Go to Agents →',
-      jD: 'D · Top up agent Gas with Celo stablecoins', jDpre: 'Needs: app wallet login; the same wallet holds USDC (or USD₮ / USDm / USA₮) on Celo plus a little CELO for gas (the UI does not say so). Send from the signed-in wallet — an exchange withdrawal straight to the treasury is not credited.',
+      jD: 'D · Top up agent Gas with Celo stablecoins',
+      jDpre: 'Needs: app wallet login (this preview host has its own accounts — agents from manekiai.io do not appear here); the same wallet holds USDC (or USD₮ / USDm / USA₮) on Celo plus ≥ 0.05 CELO for gas (one ERC-20 transfer costs ≈ 0.01–0.02 CELO; the app’s top-up card does not warn about this — without CELO the wallet fails with “insufficient funds”). Get CELO: “Get CELO with Jumper” on the right, or withdraw CELO from an exchange on the Celo network. D is the only journey that needs CELO. Send from the signed-in wallet — an exchange withdrawal straight to the treasury is not credited.',
       jDs: ['Agents → the “⚡ Agent Gas” card, top-up area: chain “Celo”, token “USDC”', 'Click the “+1,000” preset (or a custom amount) → “Confirm top-up” dialog', 'The wallet switches to Celo → sign one ERC-20 transfer (this step pays CELO gas)', 'Wait 12–60 s for automatic credit, or click “I sent it · refresh”'],
       jDw: 'Observe: the Gas balance grows and a toast shows “+999 Gas” (the 1,000 preset credits 999 — a known off-by-one); the “Top-ups & rewards” tab gains a “Top-up” row with a Celoscan link; “Celo stablecoin top-ups” on this page +1; the treasury’s token-transfer page gains one transfer.',
-      jDgo: 'Go to Agents →',
-      jE: 'E · Operator / judge: watch the data', jEpre: 'Public endpoints need no login; the admin console needs the admin token.',
+      jDgo: 'Go to Agents →', jDcelo: 'Get CELO with Jumper ↗',
+      jE: 'E · Operator / judge: watch the data', jEpre: 'Public endpoints need no login; the admin console (/admin) asks for the admin password (held by the operator; judges do not need it — section 4 and the public endpoint cover everything).',
       jEs: ['Section 4 “Live data” on this page refreshes every 30 s', 'Public activity endpoint /api/x402/activity (JSON, 60 s cache, operator wallets excluded)', 'Admin /admin → “Points” page → “⚡ Celo · Agents at Work” panel: registrar balance, Analyst ID, registered / pending, x402 status and sales; the “Agents” page shows Celo# / ⚡Arena chips per row', 'Judge side: token transfers of the payTo address on Celoscan = all settlements + top-ups; Dune query in section 2'],
-      jEw: 'Note: the leaderboard counts only independent wallets not funded by us. The team’s own test wallets are fine for verifying the flow but do not score; adding them to the operator exclusion list keeps the public activity stats clean.',
+      jEw: 'Note: the leaderboard counts only independent wallets not funded by us. The team’s own test wallets are fine for verifying the flow but do not score. The exclusion list has no admin-console field yet — it is the server env X402_OPERATOR_WALLETS (comma-separated 0x addresses) plus a service restart — so send your wallet address to ops before self-testing to keep the public activity stats clean.',
       jEgo: 'Open admin →', jEact: 'Activity endpoint ↗',
-      liveUpd: 'updated', liveFail: 'Activity feed unavailable right now', kSettled: 'Settled purchases', kPayers: 'Distinct payers', kReturning: 'Returning payers', kUsd: 'USDC volume', kDeposits: 'Celo top-ups', kSenders: 'Top-up senders', kRegs: 'Agents registered',
+      liveUpd: 'updated', liveFail: 'Activity feed unavailable right now', kSettled: 'Settled purchases', kPayers: 'Distinct payers', kReturning: 'Returning payers', kUsd: 'USDC / USA₮ volume', kDeposits: 'Celo top-ups', kSenders: 'Top-up senders', kRegs: 'Agents registered',
       thWhen: 'When', thProduct: 'Product', thAmount: 'Amount', thPayer: 'Payer', thAgent: 'Agent', thTx: 'Tx', recentH: 'Most recent settlements', recentNone: 'No settlements yet. Run journey B once and the first row appears here.',
+      prod: { insight: 'Agent insight', chat: 'Ask', brief: 'Symbol brief' },
       regsH: 'On-chain registrations (ERC-8004)', thCode: 'Agent', thSymbol: 'Symbol', thId: 'Agent ID', thRegTx: 'Registration tx',
+      regsNone: 'No agent registered on-chain yet. Agents are registered automatically by the registrar wallet after create/save (it needs a little CELO for gas); rows appear here within 30 s.',
+      subStatus: 'Status: registration form submitted on 2026-09-13 (the values below are what was entered); final submission closes 2026-09-14 09:00 GMT, on-chain data keeps accruing.',
       subH: 'Field', subV: 'Value', sub: [
         ['Project', 'ManekiAI — AI trading agents that work for you, identified on Celo'],
         ['Public GitHub', K.repo],
@@ -254,30 +281,45 @@ group by 1 order by 1`;
         ['Agent wallet address', `payTo (receives) ${K.payTo} · registrar (pays gas) ${K.registrar}`],
         ['Primary track', 'Real World Adoption'],
         ['Additional tracks, one line', 'Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm/USA₮ on Celo + every Arena purchase is an x402 settlement in USDC; Judges’ Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners'],
-        ['Demo', location.origin + '/arena'],
-        ['Telegram handle', '(filled in by the team lead)'],
+        ['Distribution channel', 'Existing audience (manekiai.io users, X) + the public login-free Arena for the Celo community'],
+        ['Demo', `${K.submittedDemo} (as entered) · guide ${K.submittedGuide}`],
+        ['Telegram handle', 'submitted with the registration form (not published here)'],
       ],
       ago: (s) => (s < 60 ? 'just now' : s < 3600 ? `${Math.floor(s / 60)} min ago` : s < 86400 ? `${Math.floor(s / 3600)} h ago` : `${Math.floor(s / 86400)} d ago`),
       left: (h, m) => `${h} h ${m} min`,
     },
   };
   let LANG = (() => { try { return localStorage.getItem('arena_lang') || ((navigator.language || '').startsWith('zh') ? 'zh' : 'en'); } catch (_) { return 'zh'; } })();
+  // The host app keeps its own language key (default en). Seed it once so the
+  // labels quoted in the journeys match what the reader sees after clicking
+  // "Go to Agents"; never override a choice the reader already made there.
+  try { if (!localStorage.getItem('vectora-lang')) localStorage.setItem('vectora-lang', LANG); } catch (_) {}
   const t = (k) => (I18N[LANG] && I18N[LANG][k] != null ? I18N[LANG][k] : I18N.zh[k]);
-  let CFG = null, CAT = null, ACT = null, REPO = 'unknown';
+  let CFG = null, CAT = null, ACT = null, ENV = null, REPO = 'unknown', LOADED = false;
   const scanTx = (h) => `${K.scan}/tx/${h}`, scanAddr = (a) => `${K.scan}/address/${a}`;
   const short = (a) => (a && a.length > 12 ? a.slice(0, 6) + '…' + a.slice(-4) : a || '');
   const btn = (href, label, ghost) => `<a class="btn sm${ghost ? ' ghost' : ''}" href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
   const btnSame = (href, label, ghost) => `<a class="btn sm${ghost ? ' ghost' : ''}" href="${esc(href)}">${esc(label)}</a>`;
+  const isPreview = () => !!(ENV && ENV.env === 'paper');
 
   function renderStatic() {
     document.documentElement.lang = LANG;
     document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
     $('#langToggle').textContent = LANG === 'zh' ? 'English' : '中文';
+    renderEnv();
     $('#flow').innerHTML = t('flow').map((s, i) => (i ? '<i>→</i>' : '') + `<span>${esc(s)}</span>`).join('');
     $('#rules').innerHTML = ['r1', 'r2', 'r3', 'r4'].map((k) => `<div class="card"><h4>${esc(t(k + 'h'))}</h4><ul>${t(k).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('');
+    $('#subStatus').textContent = t('subStatus');
     $('#submission').innerHTML = `<tr><th>${esc(t('subH'))}</th><th>${esc(t('subV'))}</th></tr>` +
       t('sub').map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td class="mono">${esc(v)}</td></tr>`).join('');
     renderProof(); renderJourneys(); renderStatus(); renderLive();
+  }
+
+  function renderEnv() {
+    // Same signal the host app uses for its "preview box" strip (/api/version env=paper).
+    const note = $('#envNote'), nav = $('#navApp');
+    if (isPreview()) { note.hidden = false; note.textContent = t('envNote')(location.host); nav.textContent = t('navAppPreview')(location.host); }
+    else { note.hidden = true; nav.textContent = t('navApp'); }
   }
 
   function renderStatus() {
@@ -285,20 +327,28 @@ group by 1 order by 1`;
     const a = (CFG && CFG.agentid) || {};
     const regN = a.registered_agents != null ? +a.registered_agents : (ACT && ACT.registrations ? +ACT.registrations.count : null);
     const platform = (a.platform_agent && a.platform_agent.agentId) || (ACT && ACT.registrations && ACT.registrations.platform && ACT.registrations.platform.agentId) || null;
+    const apiDown = LOADED && !CFG && !ACT;
     const sell = CAT ? (CAT.agents || []).length : null;
+    const buyable = CAT ? (CAT.agents || []).filter((x) => x.purchasable !== false).length : null;
     const sm = (ACT && ACT.summary) || {};
     const dep = (ACT && ACT.deposits) || {};
     const now = Date.now(), leftMs = DEADLINE - now;
     const dl = leftMs > 0 ? t('left')(Math.floor(leftMs / 3600000), Math.floor((leftMs % 3600000) / 60000)) : t('stDlOver');
-    const card = (h, big, cls, sub) => `<div class="card"><h4>${esc(h)}</h4><div class="big ${cls}">${big}</div><div class="sub">${sub}</div></div>`;
+    const card = (h, big, sub) => `<div class="card"><h4>${esc(h)}</h4><div class="big">${big}</div><div class="sub">${sub}</div></div>`;
+    const loading = '…';
+    // Three states for every live card: loading / endpoints down (fall back to static facts) / real value.
+    const regBig = platform ? `<span class="dot ok"></span>#${esc(platform)}` : !LOADED ? loading : apiDown ? `<span class="dot warn"></span>#${K.analystId}` : `<span class="dot warn"></span>—`;
+    const regSub = platform ? esc(t('stRegSub')(regN == null ? '?' : regN)) : !LOADED ? esc(t('stLoading')) : apiDown ? esc(t('stApiDown')) : esc(t('stRegNone'));
     box.innerHTML =
-      card(t('stReg'), platform ? `<span class="dot ok"></span>#${esc(platform)}` : `<span class="dot warn"></span>—`, '', platform ? esc(t('stRegSub')(regN == null ? '?' : regN)) : esc(t('stRegNone'))) +
-      card(t('stPay'), CFG ? `<span class="dot ${CFG.enabled ? 'ok' : 'bad'}"></span>${esc(CFG.enabled ? t('stPayOn') : t('stPayOff'))}` : '…', '', CFG ? esc(t('stPaySub')(CFG.settler)) : '') +
-      card(t('stSell'), sell == null ? '…' : `<span class="dot ${sell > 0 ? 'ok' : 'bad'}"></span>${sell}`, '', sell === 0 ? `<span class="bad">${esc(t('stSellFix'))}</span>` : esc(t('stSellSub'))) +
-      card(t('stSales'), ACT ? `<span class="dot ${(+sm.settled || 0) > 0 ? 'ok' : 'warn'}"></span>${+sm.settled || 0}` : '…', '', ACT ? ((+sm.settled || 0) > 0 ? esc(t('stSalesSub')(+sm.payers || 0, +sm.usd || 0)) : `<span class="warn">${esc(t('stSalesNone'))}</span>`) : '') +
-      card(t('stDep'), ACT ? `<span class="dot ${(+dep.count || 0) > 0 ? 'ok' : 'warn'}"></span>${+dep.count || 0}` : '…', '', ACT ? ((+dep.count || 0) > 0 ? esc(t('stDepSub')(+dep.senders || 0, +dep.usd || 0)) : `<span class="warn">${esc(t('stDepNone'))}</span>`) : '') +
-      card(t('stRepo'), REPO === 'public' ? `<span class="dot ok"></span>${esc(t('stRepoOk'))}` : REPO === 'private' ? `<span class="dot bad"></span>${esc(t('stRepoBad'))}` : `<span class="dot"></span>${esc(t('stRepoUnk'))}`, '', `<a class="txlink" target="_blank" rel="noopener" href="${esc(repoUrl())}">${esc(repoUrl().replace('https://', ''))}</a> · ${esc(t('stRepoSub'))}`) +
-      card(t('stDl'), `<span class="dot ${leftMs > 0 ? (leftMs < 6 * 3600000 ? 'warn' : 'ok') : 'bad'}"></span>${esc(dl)}`, '', esc(t('stDlSub')));
+      card(t('stReg'), regBig, regSub) +
+      card(t('stPay'), CFG ? `<span class="dot ${CFG.enabled ? 'ok' : 'bad'}"></span>${esc(CFG.enabled ? t('stPayOn') : t('stPayOff'))}` : loading, CFG ? esc(t('stPaySub')(CFG.settler)) : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
+      card(t('stSell'), sell == null ? loading : `<span class="dot ${sell > 0 ? 'ok' : 'bad'}"></span>${sell}`,
+        sell == null ? esc(LOADED ? t('stApiDown') : t('stLoading')) : sell === 0 ? `<span class="bad">${esc(t('stSellFix'))}</span>` : esc(t('stSellSub')) + (buyable !== sell ? ` · ${esc(t('stSellBuyable')(buyable))}` : '')) +
+      card(t('stSales'), ACT ? `<span class="dot ${(+sm.settled || 0) > 0 ? 'ok' : 'warn'}"></span>${+sm.settled || 0}` : loading, ACT ? ((+sm.settled || 0) > 0 ? esc(t('stSalesSub')(+sm.payers || 0, +sm.usd || 0)) : `<span class="warn">${esc(t('stSalesNone'))}</span>`) : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
+      card(t('stDep'), ACT ? `<span class="dot ${(+dep.count || 0) > 0 ? 'ok' : 'warn'}"></span>${+dep.count || 0}` : loading, ACT ? ((+dep.count || 0) > 0 ? esc(t('stDepSub')(+dep.senders || 0, +dep.usd || 0)) : `<span class="warn">${esc(t('stDepNone'))}</span>`) : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
+      card(t('stRepo'), REPO === 'public' ? `<span class="dot ok"></span>${esc(t('stRepoOk'))}` : REPO === 'private' ? `<span class="dot bad"></span>${esc(t('stRepoBad'))}` : `<span class="dot"></span>${esc(t('stRepoUnk'))}`,
+        `<a class="txlink" target="_blank" rel="noopener" href="${esc(repoUrl())}">${esc(repoUrl().replace('https://', ''))}</a> · ${esc(t('stRepoSub'))}${REPO === 'unknown' && LOADED ? ' ' + esc(t('stRepoUnkSub')) : ''}`) +
+      card(t('stDl'), `<span class="dot ${leftMs > 0 ? (leftMs < 6 * 3600000 ? 'warn' : 'ok') : 'bad'}"></span>${esc(dl)}`, esc(t('stDlSub')));
   }
 
   const repoUrl = () => (CFG && CFG.links && CFG.links.repo) || K.repo;
@@ -331,41 +381,47 @@ group by 1 order by 1`;
       role('jA', btnSame('/#agent', t('jAgo'))) +
       role('jB', btnSame('/arena', t('jBgo')) + btn(JUMPER, t('jBusdc'), true)) +
       role('jC', btnSame('/#agent', t('jCgo'))) +
-      role('jD', btnSame('/#agent', t('jDgo'))) +
+      role('jD', btnSame('/#agent', t('jDgo')) + btn(JUMPER_CELO, t('jDcelo'), true)) +
       role('jE', btnSame('/admin', t('jEgo'), true) + btn(location.origin + '/api/x402/activity', t('jEact'), true));
   }
 
   function renderLive() {
     const meta = $('#liveMeta');
-    if (!ACT) { meta.textContent = t('liveFail'); $('#kpis').innerHTML = ''; $('#recent').innerHTML = ''; $('#regs').innerHTML = ''; return; }
+    if (!ACT) { meta.textContent = LOADED ? t('liveFail') : t('stLoading'); $('#kpis').innerHTML = ''; $('#recent').innerHTML = ''; $('#regs').innerHTML = ''; return; }
     const sm = ACT.summary || {}, dep = ACT.deposits || {}, regs = ACT.registrations || {};
     meta.textContent = `${t('liveUpd')} ${t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+ACT.generated_at || 0))))}`;
     const kpi = (k, v) => `<div class="kpi"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`;
     $('#kpis').innerHTML = kpi(t('kSettled'), +sm.settled || 0) + kpi(t('kPayers'), +sm.payers || 0) + kpi(t('kReturning'), +sm.returning_payers || 0) +
       kpi(t('kUsd'), '$' + (+sm.usd || 0).toFixed(2)) + kpi(t('kDeposits'), +dep.count || 0) + kpi(t('kSenders'), +dep.senders || 0) + kpi(t('kRegs'), +regs.count || 0);
     const rec = ACT.recent || [];
+    const prodLabel = (p) => ((t('prod') || {})[p]) || p || '—';
     $('#recent').innerHTML = `<tr><th colspan="6">${esc(t('recentH'))}</th></tr>` + (rec.length
       ? `<tr><th>${esc(t('thWhen'))}</th><th>${esc(t('thProduct'))}</th><th>${esc(t('thAmount'))}</th><th>${esc(t('thPayer'))}</th><th>${esc(t('thAgent'))}</th><th>${esc(t('thTx'))}</th></tr>` +
-        rec.map((r) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+r.ts || 0)))))}</td><td>${esc(r.product)}</td><td>$${(+r.amount_usd || 0).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td class="mono">${esc(r.payer || '')}</td><td>${esc(r.agent || r.agent_code || '—')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')
+        rec.map((r) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+r.ts || 0)))))}</td><td>${esc(prodLabel(r.product))}</td><td>$${(+r.amount_usd || 0).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td class="mono">${esc(r.payer_short || '—')}</td><td>${esc(r.agent_code || '—')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')
       : `<tr><td class="tiny">${esc(t('recentNone'))}</td></tr>`);
     const ra = regs.agents || [];
     $('#regs').innerHTML = `<tr><th colspan="4">${esc(t('regsH'))}${regs.platform ? ` · Analyst <a class="txlink" target="_blank" rel="noopener" href="${esc(regs.platform.explorer || scanTx(regs.platform.txhash))}">#${esc(regs.platform.agentId)} ↗</a>` : ''}</th></tr>` +
       (ra.length ? `<tr><th>${esc(t('thCode'))}</th><th>${esc(t('thSymbol'))}</th><th>${esc(t('thId'))}</th><th>${esc(t('thRegTx'))}</th></tr>` +
-        ra.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.symbol || '')}</td><td>#${esc(r.celo_agent_id)}</td><td><a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a></td></tr>`).join('') : '');
+        ra.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.symbol || '')}</td><td>#${esc(r.celo_agent_id)}</td><td><a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a></td></tr>`).join('')
+        : `<tr><td class="tiny" colspan="4">${esc(t('regsNone'))}</td></tr>`);
   }
 
   async function getJson(url) { try { const r = await fetch(url, { cache: 'no-store' }); return r.ok ? await r.json() : null; } catch (_) { return null; } }
   async function load(first) {
-    const [cfg, cat, act] = await Promise.all([first ? getJson('/api/x402/config') : Promise.resolve(CFG), getJson('/api/x402/catalog'), getJson('/api/x402/activity')]);
-    if (cfg) CFG = cfg; if (cat) CAT = cat; if (act) ACT = act;
+    const [cfg, cat, act, ver] = await Promise.all([
+      first ? getJson('/api/x402/config') : Promise.resolve(CFG), getJson('/api/x402/catalog'), getJson('/api/x402/activity'),
+      first ? getJson('/api/version') : Promise.resolve(ENV)]);
+    if (cfg) CFG = cfg; if (cat) CAT = cat; if (act) ACT = act; if (ver) ENV = ver;
+    LOADED = true;
     if (first) {
       if (CFG && CFG.links && CFG.links.repo) $('#navRepo').href = CFG.links.repo;
       checkRepo();
     }
-    renderStatus(); renderProof(); renderLive();
+    renderEnv(); renderStatus(); renderProof(); renderLive();
   }
   async function checkRepo() {
-    // GitHub's public API answers 200 for a public repo, 404 for private/missing.
+    // GitHub's public API answers 200 for a public repo, 404 for private/missing;
+    // anything else (403 rate limit, blocked network) is "unknown", not "private".
     const m = repoUrl().match(/github\.com\/([^/]+)\/([^/#?]+)/);
     if (!m) return;
     try {
@@ -374,7 +430,7 @@ group by 1 order by 1`;
     } catch (_) { REPO = 'unknown'; }
     renderStatus();
   }
-  $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); } catch (_) {} renderStatic(); };
+  $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); localStorage.setItem('vectora-lang', LANG); } catch (_) {} renderStatic(); };
   renderStatic();
   load(true);
   setInterval(() => load(false), 30000);

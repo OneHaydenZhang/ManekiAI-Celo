@@ -253,6 +253,9 @@
     },
   };
   let LANG = (() => { try { return localStorage.getItem('arena_lang') || ((navigator.language || '').startsWith('zh') ? 'zh' : 'en'); } catch (_) { return 'en'; } })();
+  // Seed the host app's language key once (it defaults to en) so "← App" lands
+  // in the same language; never override a choice already made there.
+  try { if (!localStorage.getItem('vectora-lang')) localStorage.setItem('vectora-lang', LANG); } catch (_) {}
   // 'manekiai.io' in the copy tables is a placeholder for "wherever this page
   // is actually served" — swapped for the real host so the instruction works
   // on preview boxes / local runs too, not just production.
@@ -265,7 +268,7 @@
     renderPurchases(); renderActivity(); renderMobileWallet();
     if (!$('#getUsdcBox').hidden) renderGetUsdc();
   }
-  $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); } catch (_) {} applyLang(); };
+  $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); localStorage.setItem('vectora-lang', LANG); } catch (_) {} applyLang(); };
 
   // ------------------------------------------------------------ state ----
   let CFG = null, CAT = null, ACT = null, ACT_FAILED = false, ACCOUNT = '';
