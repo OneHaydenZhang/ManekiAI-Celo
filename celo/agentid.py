@@ -209,7 +209,8 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
     if float(agent.get("deleted_at") or 0) > 0:
         return {"ok": False, "skipped": "agent deleted"}
     if int(agent.get("celo_agent_id") or 0) > 0:
-        return {"ok": True, "already": True, "agentId": int(agent["celo_agent_id"])}
+        return {"ok": True, "already": True, "agentId": int(agent["celo_agent_id"]),
+                "txhash": str(agent.get("celo_agent_tx") or "")}
     if _fail_count.get(agent_id, 0) >= MAX_CONSECUTIVE_FAILS:
         return {"ok": False, "skipped": "permanently failed — exceeded max retry attempts, "
                                         "admin must reset (POST /admin/celo/register-all "

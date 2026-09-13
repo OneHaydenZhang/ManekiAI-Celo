@@ -623,6 +623,30 @@ def test_reconcile_needs_the_exact_settlement_not_just_a_used_nonce(monkeypatch)
     assert x402.reconcile(f, req, {"success": False})["pending"] is True
 
 
+def test_verified_purchases_never_count_toward_the_attempt_cap(client, monkeypatch):
+    # Review 2026-09-13: the cap is for signature spam, not for a real buyer —
+    # one demo wallet must be able to buy more than 10 times in 10 minutes.
+    _mock_facilitator(monkeypatch)
+    _mock_llm(monkeypatch)
+    req = x402.requirements("chat", "u")
+    for i in range(12):
+        r = client.post("/api/x402/chat", json={"message": "hi"},
+                        headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + f"{i + 60:02d}" * 32))})
+        assert r.status_code == 200, (i, r.text)
+    assert not any(celo_routes._payer_attempts.values())        # every attempt was forgiven
+    # ...while a spammer with bad signatures is still capped at 10
+    celo_routes._payer_attempts.clear()
+    _mock_facilitator(monkeypatch, verify_ok=False)
+    for i in range(10):
+        r = client.post("/api/x402/chat", json={"message": "hi"},
+                        headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + f"{i + 80:02d}" * 32))})
+        assert r.status_code == 402
+    r = client.post("/api/x402/chat", json={"message": "hi"},
+                    headers={"PAYMENT-SIGNATURE": x402.b64e(_payload(req, nonce="0x" + "98" * 32))})
+    assert r.status_code == 429
+    celo_routes._payer_fails.clear(); celo_routes._payer_attempts.clear()
+
+
 def test_content_failures_never_strike_and_attempts_are_capped(client, monkeypatch):
     calls = _mock_facilitator(monkeypatch, verify_ok=False)
     req = x402.requirements("chat", "u")

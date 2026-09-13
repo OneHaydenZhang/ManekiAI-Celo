@@ -47,7 +47,10 @@ _MIN_VALID_S = 60                 # authorization must outlive verify + content 
 _FAIL_WINDOW_S, _FAIL_MAX = 600, 2
 _payer_fails: Dict[str, List[float]] = {}
 # Unverified attempts per payer address (bogus signatures cost a verifier
-# round trip): 10 per 10 min, then 429. Verified payments never count.
+# round trip): 10 per 10 min, then 429. Verified payments never count — the
+# attempt is recorded before the verifier call and forgiven right after a
+# valid verdict (see _attempt_forgive), so a real buyer can purchase as often
+# as they like while a signature-spammer is still capped.
 _ATTEMPT_WINDOW_S, _ATTEMPT_MAX = 600, 10
 _payer_attempts: Dict[str, List[float]] = {}
 _llm_sem = asyncio.Semaphore(3)
@@ -102,6 +105,15 @@ def _attempt_ok(payer: str) -> bool:
         for k in [k for k, v in _payer_attempts.items() if not v or now - v[-1] > _ATTEMPT_WINDOW_S]:
             _payer_attempts.pop(k, None)
     return True
+
+
+def _attempt_forgive(payer: str) -> None:
+    """The verifier accepted this payment: it was a real purchase, not a probe.
+    Drop the attempt that _attempt_ok just recorded so honest buyers never hit
+    the cap (a demo wallet buying 11 insights in 10 minutes must keep working)."""
+    q = _payer_attempts.get(payer)
+    if q:
+        q.pop()
 
 
 def _pending_response(info_or_product: Any, resource: str = "") -> JSONResponse:
@@ -245,6 +257,7 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
             # No strike here: nothing was generated, so nothing was wasted —
             # the per-payer attempt cap bounds verifier round trips instead.
             return _402(product, resource, f"payment invalid: {reason}"), {}
+        _attempt_forgive(f["payer"])
         try:
             pid = x402.begin(f["payer"], f["nonce"], product, req, resource, agent_id=agent_id,
                              meta={"ip": ip})
@@ -314,6 +327,7 @@ async def _deliver(info: Dict[str, Any], content: Dict[str, Any],
         # The hash goes to the ledger FIRST — from this instant the deposit
         # scanner knows this Transfer is a sale, not a top-up.
         x402.finish(pid, "settled", tx=tx, error="")
+        _activity_cache["at"] = 0.0        # the public activity feed shows the sale at once
         credits = 0.0
         if agent is not None:
             try:

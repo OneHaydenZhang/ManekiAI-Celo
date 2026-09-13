@@ -97,7 +97,8 @@ def test_register_any_model_agent_persists(monkeypatch):
     assert row["celo_registered_at"] > 0
     assert row["zerog_agent_id"] == 0           # the 0G columns are untouched
     # idempotent
-    assert ca.register_agent("ag_ce") == {"ok": True, "already": True, "agentId": 5150}
+    # idempotent — and the admin "Celo⛓" button shows this tx, so it comes back too
+    assert ca.register_agent("ag_ce") == {"ok": True, "already": True, "agentId": 5150, "txhash": "0xceloTx"}
 
 
 def test_register_skips_deleted_and_reports_revert(monkeypatch):

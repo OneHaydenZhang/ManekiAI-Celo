@@ -194,6 +194,9 @@
       errNonce: 'This payment authorization was already used — please try again.', errExpired: 'The signature expired, please try again.',
       errNotYet: 'The signature is not valid yet — check your device clock and try again.', errBusy: 'Payment service busy, nothing was charged, try again in a minute.',
       errSettle: 'Settlement on Celo did not go through — please try again.', errRate: 'Too many requests — please wait a moment and retry.',
+      errRateWallet: 'This wallet hit the safety limit — please try again in 10 minutes.',
+      busyCharged: 'Your payment settled on Celo but the content could not be generated right now — retry the same request in a moment, you will not be charged again.',
+      stillPending: 'Still confirming on Celo — your payment is safe. Come back in a minute and retry with the same wallet; you will not be charged twice.',
       errRejected: 'Signature cancelled in the wallet.', errGeneric: 'Something went wrong — please try again.', errChain: 'Please switch your wallet to the Celo network.',
       ref: 'ref',
     },
@@ -237,6 +240,9 @@
       errNonce: '这份支付授权已被使用——请重试。', errExpired: '签名已过期，请重试。',
       errNotYet: '签名尚未生效——请检查设备时间后重试。', errBusy: '支付服务繁忙，未扣费，请一分钟后重试。',
       errSettle: 'Celo 结算未完成——请重试。', errRate: '请求过于频繁——请稍候再试。',
+      errRateWallet: '这个钱包触发了安全上限——请 10 分钟后再试。',
+      busyCharged: '你的付款已在 Celo 结算，但内容暂时无法生成——稍后用同一钱包重试同一请求即可，不会二次扣费。',
+      stillPending: '仍在 Celo 上确认中——你的付款是安全的。请一分钟后用同一钱包重试，不会二次扣费。',
       errRejected: '已在钱包中取消签名。', errGeneric: '出了点问题——请重试。', errChain: '请把钱包切换到 Celo 网络。',
       ref: '编码',
     },
@@ -460,8 +466,12 @@
   }
   async function connect() {
     const p = provider();
-    if (!p) { renderMobileWallet(); throw new Error(t('noWallet')); }
-    const accts = await p.request({ method: 'eth_requestAccounts' });
+    // friendly=true so a buyer who clicks Ask/Unlock before connecting sees the
+    // real reason (no wallet / connection declined), not the generic error.
+    if (!p) { renderMobileWallet(); const err = new Error(t('noWallet')); err.friendly = true; throw err; }
+    let accts;
+    try { accts = await p.request({ method: 'eth_requestAccounts' }); }
+    catch (e) { const err = new Error(t('connectFail')); err.friendly = true; throw err; }
     setAccount((accts && accts[0]) || '');
     bindProviderEvents();
     setWalletMsg(ACCOUNT ? t('connected') + ' · ' + short(ACCOUNT) : '', 'ok');
@@ -552,6 +562,10 @@
       await new Promise((res) => setTimeout(res, wait * 1000));
       r = await fetch(url, Object.assign({}, opts, { headers }));
     }
+    // Still 202 after the retry budget: 202 is "ok" to fetch(), so without this
+    // the callers would render an empty answer and record a tx-less purchase.
+    // The payment is safe — a later retry with the same signature is served free.
+    if (r.status === 202) { const err = new Error(t('stillPending')); err.friendly = true; err.pending = true; throw err; }
     return r;
   }
   async function readJson(r) { try { return await r.json(); } catch (_) { return {}; } }
@@ -561,8 +575,11 @@
     d = d || {};
     const raw = String(d.error || '').toLowerCase();
     let key = 'errGeneric', funds = false;
-    if (status === 429) key = 'errRate';
-    else if (status === 503) key = 'busy';
+    // Wallet-level 429s (failed-payment cooldown / attempt cap) really mean
+    // "10 minutes", not "a moment"; a 503 after a settled payment means the
+    // buyer WAS charged and gets the content free on retry.
+    if (status === 429) key = raw.includes('10 minutes') ? 'errRateWallet' : 'errRate';
+    else if (status === 503) key = d.charged === true ? 'busyCharged' : 'busy';
     else if (raw.includes('insufficient_funds') || raw.includes('insufficient funds')) { key = 'errFunds'; funds = true; }
     else if (raw.includes('invalid_signature')) key = 'errSig';
     else if (raw.includes('nonce_already_used') || raw.includes('duplicate payment nonce')) key = 'errNonce';
@@ -610,7 +627,8 @@
       out.innerHTML = answerHtml(d);
       setMsg(m, '✓', 'ok'); refreshBalance();
       savePurchase({ ts: Math.floor(Date.now() / 1000), product: kind, symbol, round: 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
-    } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && e.noFunds) ? 'warn' : 'err'); }
+      loadActivity();
+    } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && (e.noFunds || e.pending)) ? 'warn' : 'err'); }
     finally { $('#btnAsk').disabled = $('#btnBrief').disabled = CFG.analyst_ready === false; }
   }
   $('#btnAsk').onclick = () => ask('chat');
@@ -641,7 +659,8 @@
       setMsg(m, '✓', 'ok'); refreshBalance();
       const dec = d.decision || {};
       savePurchase({ ts: Math.floor(Date.now() / 1000), product: 'insight', code, round: +dec.round || 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
-    } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && e.noFunds) ? 'warn' : 'err'); }
+      loadActivity();
+    } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && (e.noFunds || e.pending)) ? 'warn' : 'err'); }
     finally { if (btn) btn.disabled = false; }
   }
 
