@@ -8,23 +8,23 @@
 | 字段 | 值 | 状态 |
 |---|---|---|
 | Project | ManekiAI — AI trading agents that work for you, identified on Celo | ✓ |
-| Public GitHub | https://github.com/OneHaydenZhang/ManekiAI-Celo | 待创建/同步 |
-| ERC-8004 Agent ID（平台 Analyst） | `#TBD`（Celo Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`，注册 tx `TBD`） | 待注册钱包充 CELO 后铸造 |
+| Public GitHub | https://github.com/OneHaydenZhang/ManekiAI-Celo | 仓库只含黑客松新增代码（`celo/` 包 + Celo/x402 测试 + 本文档），不含宿主私有代码；**填表/评审时必须是 Public** |
+| ERC-8004 Agent ID（平台 Analyst） | `#9837`（Celo Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`，注册 tx [`0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f`](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f)） | ✓ 已铸造 |
 | Agent 钱包地址 | 收款/x402 payTo：`0x26523f5cea5da5d9411749afefe741ba340f6566`（只收款）；注册钱包（付 gas）：`0xaf6fA147e8F85781196627765FcaFC1044F89308` | ✓ |
 | Telegram handle | `@TBD`（用户填写） | 待填 |
 | Primary track | Real World Adoption | ✓ |
 | Secondary（一句话） | Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm on Celo + every Arena purchase is an x402 settlement in USDC; Judges' Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners | ✓ |
 | Distribution channel | Existing audience (manekiai.io users, X) + the public login-free Arena for the Celo community | ✓ |
-| Demo | https://manekiai.io/arena · https://manekiai.io/api/agent-card/maneki-analyst | 部署后生效 |
+| Demo | http://34.68.151.4/arena · http://34.68.151.4/api/agent-card/maneki-analyst · http://34.68.151.4/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
 
 ## 链上证据（部署后逐项填 · `scripts/fill_celo_submission.py --activity <url|file>` 可自动回填）
 
-- 平台 Analyst 注册 tx：`TBD`
-- 用户 Agent 注册 tx（前 5 个）：`TBD`
+- 平台 Analyst 注册 tx：[`0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f`](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f)（Agent ID #9837）
+- 用户 Agent 注册 tx（前 5 个）：A-NDDDMS·NVDA #9838 [`0x0e01dfaf4890de2912e9ee68f61cdab88a1b3720144b99238a965eaa19d5ff03`](https://celoscan.io/tx/0x0e01dfaf4890de2912e9ee68f61cdab88a1b3720144b99238a965eaa19d5ff03)；A-5MYM3T·NVDA #9839 [`0xc048ffc7187d557e4c3d89bffc40b91f7e7c60c5c8fbd2e8be92b3f370ac2b40`](https://celoscan.io/tx/0xc048ffc7187d557e4c3d89bffc40b91f7e7c60c5c8fbd2e8be92b3f370ac2b40)；A-5YG13T·SNDK #9840 [`0x98747168ad411c952ee9a8b1e224bdd965512f67eb0309396ff2088d33d6f287`](https://celoscan.io/tx/0x98747168ad411c952ee9a8b1e224bdd965512f67eb0309396ff2088d33d6f287)；A-8FWAZV·UNITREE #9841 [`0xe1137cd692de26a5567ecf888a90d907fba8e1124acd62dcf54d0e67ada81e81`](https://celoscan.io/tx/0xe1137cd692de26a5567ecf888a90d907fba8e1124acd62dcf54d0e67ada81e81)；A-5GHAFP·UNITREE #9842 [`0x7e10799775b3f49af15ea4132c8d6b66164ab383d7ac4ea369ffe9e6c76897a1`](https://celoscan.io/tx/0x7e10799775b3f49af15ea4132c8d6b66164ab383d7ac4ea369ffe9e6c76897a1)
 - 首笔 Celo 稳定币充值 tx：`TBD`
 - 首笔 x402 结算 tx（facilitator 签名者 `0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48`）：`TBD`
-- 公开活动端点（免登录、60 s 缓存，结算笔数/付款人/注册/充值汇总 + 最近结算 tx）：生产 https://manekiai.io/api/x402/activity · 预览机 http://34.68.151.4/api/x402/activity
-- Agent ID 铸造主机：所有 ERC-8004 注册都由注册钱包 `0xaf6fA147e8F85781196627765FcaFC1044F89308` 签名付 gas；该私钥同时配在预览机（GCP manekiaipeper，`MANEKI_PUBLIC_BASE=http://34.68.151.4`）与实盘（Azure manekiaicore1，`https://manekiai.io`），**谁先跑谁铸**——预览期铸出的 ID 其 agentURI 指向 34.68.151.4，正式提交以实盘部署后铸出的 ID 为准（两套 ID 都在同一 Identity Registry，可从注册钱包在 Celoscan 的交易列表回查）。
+- 公开活动端点（免登录、60 s 缓存，结算笔数/付款人/注册/充值汇总 + 最近结算 tx）：http://34.68.151.4/api/x402/activity
+- Agent ID 铸造：所有 ERC-8004 注册都由注册钱包 `0xaf6fA147e8F85781196627765FcaFC1044F89308` 签名付 gas（可在 Celoscan 该地址的交易列表回查全部铸造）；agentURI 指向 `http://34.68.151.4/api/agent-card/{code}`。如后续更换公共域名，用 `setAgentURI` 重定向（admin「URI 重定向」），ID 不变、不重铸。
 - Dune 查询（distinct 钱包 / 日；USDC + USD₮ + USA₮）：
 
 ```sql

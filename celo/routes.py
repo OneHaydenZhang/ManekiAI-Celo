@@ -208,12 +208,19 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
                             "asset": x402.asset_symbol(req["asset"]) or "USDC",
                             "amount_usd": int(req["amount"]) / (10 ** decimals),
                             "valid_before": int(f["valid_before"])}
-    # Same signature again? Serve what it already paid for.
+    # Same signature again? Serve what it already paid for. (payer, nonce)
+    # alone are NOT proof of anything once a payment settles — they become
+    # public on-chain the instant the tx mines (standard ERC20/
+    # AuthorizationUsed event topics) — so this recovery path still requires
+    # a signature that actually recovers to `payer` for these exact fields,
+    # same as a fresh payment would need. No network round trip.
     existing = await asyncio.to_thread(x402.get_payment, f["payer"], f["nonce"])
     if existing:
         if existing["status"] == "settle_pending":
             existing = await asyncio.to_thread(x402.finalize_one, existing)
         if existing["status"] == "settled" and not existing.get("meta", {}).get("delivered"):
+            if not await asyncio.to_thread(x402.signature_matches_payer, payload, req):
+                return _402(product, resource, "payment invalid: signature does not match payer"), {}
             info.update({"pid": int(existing["id"]), "already_settled": True, "tx": existing.get("tx") or ""})
             return None, info
         if existing["status"] == "settle_pending":
@@ -266,12 +273,15 @@ async def _llm_slot(info: Dict[str, Any]) -> Optional[JSONResponse]:
 def _content_failed(info: Dict[str, Any], reason: str) -> JSONResponse:
     # Our failure, not the buyer's: no strike. An already-settled row keeps
     # its status (the retry will get the content once we recover).
-    if not info.get("already_settled"):
+    already_settled = bool(info.get("already_settled"))
+    if not already_settled:
         x402.finish(info["pid"], "content_failed", error=reason)
     oplog.error("x402.content", reason, params={"product": info["product"]}, status=503)
-    return JSONResponse(status_code=503, content={
-        "error": "The analyst is busy right now — nothing was charged, please retry shortly.",
-        "charged": False})
+    msg = ("Payment already settled but content could not be regenerated — please "
+           "retry the same request shortly, you will not be charged again."
+           if already_settled else
+           "The analyst is busy right now — nothing was charged, please retry shortly.")
+    return JSONResponse(status_code=503, content={"error": msg, "charged": already_settled})
 
 
 async def _deliver(info: Dict[str, Any], content: Dict[str, Any],

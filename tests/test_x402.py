@@ -69,6 +69,35 @@ def _payload(req, payer=PAYER, nonce="0x" + "ab" * 32, value=None, to=None, vers
                                           "nonce": nonce}}}
 
 
+_REAL_KEY = "0x" + "22" * 32  # fixed test key — only used where a REAL EIP-712
+                              # signature must recover (x402.signature_matches_payer)
+
+
+def _real_signed_payload(req, nonce="0x" + "ab" * 32, key_hex=_REAL_KEY):
+    """A payload whose signature genuinely recovers to its `from` address, for
+    exercising the already-settled redelivery path (x402.signature_matches_payer
+    does a real ecrecover — a placeholder signature like _payload()'s default
+    cannot pass it)."""
+    from eth_account import Account
+    from eth_account.messages import encode_typed_data
+    acct = Account.from_key(key_hex)
+    extra = req.get("extra") or {}
+    value = int(str(req["amount"]))
+    valid_before = int(time.time()) + 600
+    domain = {"name": str(extra.get("name") or ""), "version": str(extra.get("version") or ""),
+              "chainId": x402.CHAIN_ID, "verifyingContract": req["asset"]}
+    message = {"from": acct.address, "to": req["payTo"], "value": value,
+               "validAfter": 0, "validBefore": valid_before, "nonce": nonce}
+    signable = encode_typed_data(domain_data=domain, message_types=x402._EIP3009_TYPES, message_data=message)
+    sig = Account.sign_message(signable, private_key=acct.key).signature.hex()
+    if not sig.startswith("0x"):
+        sig = "0x" + sig
+    payload = _payload(req, payer=acct.address, nonce=nonce, value=str(value), to=req["payTo"])
+    payload["payload"]["signature"] = sig
+    payload["payload"]["authorization"]["validBefore"] = str(valid_before)
+    return payload, acct.address
+
+
 def _mock_facilitator(monkeypatch, verify_ok=True, settle_ok=True, tx="0xsettled"):
     calls = {"verify": 0, "settle": 0}
 
@@ -527,7 +556,9 @@ def test_lost_reply_parks_row_and_same_signature_retry_is_free(client, monkeypat
     from auto_service.celo import wallet
     agent = _sell_agent("ag_pend")
     code = agent_model.agent_code("ag_pend")
-    monkeypatch.setattr(x402, "facilitator_verify", lambda p, r: {"isValid": True, "payer": PAYER})
+    req = x402.requirements("insight", "u")
+    payload, payer = _real_signed_payload(req)
+    monkeypatch.setattr(x402, "facilitator_verify", lambda p, r: {"isValid": True, "payer": payer})
     settles = {"n": 0}
 
     def settle(p, r):
@@ -539,8 +570,7 @@ def test_lost_reply_parks_row_and_same_signature_retry_is_free(client, monkeypat
     monkeypatch.setattr(wallet, "authorization_state", lambda a, p, n, rpc_fn=None: chain["used"])
     monkeypatch.setattr(wallet, "find_settlement_tx",
                         lambda a, p, to, n, mv, rpc_fn=None, blocks=900: "0xlate" if chain["used"] else "")
-    req = x402.requirements("insight", "u")
-    hdr = {"PAYMENT-SIGNATURE": x402.b64e(_payload(req))}
+    hdr = {"PAYMENT-SIGNATURE": x402.b64e(payload)}
     r = client.get(f"/api/x402/agents/{code}/insight", headers=hdr)
     assert r.status_code == 202 and r.json()["status"] == "settle_pending"
     row = x402.recent()[0]
@@ -561,7 +591,14 @@ def test_lost_reply_parks_row_and_same_signature_retry_is_free(client, monkeypat
     assert r3.status_code == 200 and r3.json()["decision"]["action"] == "open_long"
     assert r3.json()["payment"]["tx"] == "0xlate" and settles["n"] == 1
     assert points_model.balance(OWNER) == 35.0
-    assert x402.get_payment(PAYER, "0x" + "ab" * 32)["meta"]["delivered"] is True
+    assert x402.get_payment(payer, "0x" + "ab" * 32)["meta"]["delivered"] is True
+    # a forged retry with the SAME (payer, nonce) but no real signature must
+    # still be refused — this is exactly the auth-bypass the check closes.
+    forged = _payload(req, payer=payer, nonce="0x" + "ab" * 32)
+    forged["payload"]["signature"] = "0x" + "11" * 65
+    r4 = client.get(f"/api/x402/agents/{code}/insight",
+                    headers={"PAYMENT-SIGNATURE": x402.b64e(forged)})
+    assert r4.status_code == 402
     # a delivered payment cannot be replayed
     assert client.get(f"/api/x402/agents/{code}/insight", headers=hdr).status_code == 402
 

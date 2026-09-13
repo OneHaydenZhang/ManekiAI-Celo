@@ -40,6 +40,20 @@ def key() -> str:
             or os.environ.get("ZEROG_REGISTRAR_KEY", "").strip())
 
 
+def sending_enabled() -> bool:
+    """False only when this host is explicitly told not to broadcast from the
+    registrar key (CELO_REGISTRAR_ENABLED=0/false/off). Default true.
+
+    Exists because the SAME registrar key can be configured on more than one
+    host (e.g. a preview box and, later, production) — `_send_lock` below only
+    serializes sends WITHIN one process, so two hosts broadcasting at once
+    could both read the same 'pending' nonce and race. There is no shared
+    nonce store to lock across hosts, so the safe default is: designate one
+    host as the sender and set this to '0' everywhere else before ever running
+    this branch on a second host concurrently."""
+    return os.environ.get("CELO_REGISTRAR_ENABLED", "1").strip().lower() not in ("0", "false", "off", "no")
+
+
 def address() -> str:
     k = key()
     if len(k) < 32:
@@ -288,6 +302,8 @@ def send_and_wait(to: str, data: str, *, rpc_fn: Optional[RpcFn] = None, value: 
     Raises RuntimeError on revert / receipt timeout; returns
     {txhash, receipt, gas_used}.
     """
+    if not sending_enabled():
+        raise RuntimeError("registrar sending disabled on this host (CELO_REGISTRAR_ENABLED=0)")
     from eth_account import Account
     from eth_utils import to_checksum_address
     call = rpc_fn or rpc

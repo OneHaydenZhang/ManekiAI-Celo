@@ -64,11 +64,27 @@ GAS_LIMIT_FALLBACK = 400_000
 MIN_REGISTRAR_CELO = wallet.MIN_CELO
 RETRY_BACKOFF_S = 600
 PENDING_MAX_AGE_S = 3600        # a persisted-but-unmined tx older than this may be re-sent
+# A durably-reverting registration (bad URI, permanent contract-side reject)
+# would otherwise be retried forever by the 2-minute autopilot, broadcasting
+# (and burning real gas on) a doomed tx every RETRY_BACKOFF_S. Stop for real
+# after this many consecutive failures; an admin can clear the counter
+# (POST /admin/celo/register-all {"reset_failed": true}) to force more tries.
+MAX_CONSECUTIVE_FAILS = 8
 
 _inflight_lock = threading.Lock()
 _inflight: set = set()
 _bal_cache = wallet._bal_cache  # shared with the wallet (tests reset it here)
 _last_fail: Dict[str, float] = {}
+_fail_count: Dict[str, int] = {}
+
+
+def reset_fail_counts() -> int:
+    """Admin escape hatch: clear every agent's consecutive-failure count so
+    the next autopilot pass / admin batch retries them again."""
+    n = len(_fail_count)
+    _fail_count.clear()
+    _last_fail.clear()
+    return n
 
 
 # ------------------------------------------------------------- config -----
@@ -194,6 +210,10 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
         return {"ok": False, "skipped": "agent deleted"}
     if int(agent.get("celo_agent_id") or 0) > 0:
         return {"ok": True, "already": True, "agentId": int(agent["celo_agent_id"])}
+    if _fail_count.get(agent_id, 0) >= MAX_CONSECUTIVE_FAILS:
+        return {"ok": False, "skipped": "permanently failed — exceeded max retry attempts, "
+                                        "admin must reset (POST /admin/celo/register-all "
+                                        "{\"reset_failed\": true})"}
     with _inflight_lock:
         if agent_id in _inflight:
             return {"ok": False, "skipped": "in flight"}
@@ -221,6 +241,7 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
                             address=agent.get("address") or "", params={"agent_id": agent_id})
                 if not str(st.get("reason") or "").startswith("dropped"):
                     _last_fail[agent_id] = time.time()          # reverted: retry after the backoff
+                    _fail_count[agent_id] = _fail_count.get(agent_id, 0) + 1
                     return {"ok": False, "error": f"pending tx cleared: {st.get('reason')}"}
                 # dropped by the node: nothing is in flight — send again now
         if r is None:
@@ -244,9 +265,11 @@ def register_agent(agent_id: str) -> Dict[str, Any]:
                          "txhash": r["txhash"][:18], "uri": uri})
         print(f"[vectora-live] celo: minted {code} Agent ID #{r['agentId']} tx {r['txhash']}")
         _last_fail.pop(agent_id, None)
+        _fail_count.pop(agent_id, None)
         return {"ok": True, "agentId": r["agentId"], "txhash": r["txhash"], "uri": uri}
     except Exception as e:
         _last_fail[agent_id] = time.time()
+        _fail_count[agent_id] = _fail_count.get(agent_id, 0) + 1
         oplog.error("agent.celo_register", repr(e)[:400], address=agent.get("address") or "",
                     params={"agent_id": agent_id})
         return {"ok": False, "error": str(e)[:200]}

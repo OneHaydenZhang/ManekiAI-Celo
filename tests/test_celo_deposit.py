@@ -197,6 +197,9 @@ def test_celo_stablecoin_deposit_leg(monkeypatch):
 
 
 def test_background_sweep_credits_registered_login_user(monkeypatch):
+    # An unscoped sweep (only=None) needs the CELO gate open — see
+    # deposits._sweep_gate_ok (2026-09-13, closes the admin-rescan bypass).
+    monkeypatch.setenv("DEPOSIT_SWEEP_ENABLED", "1")
     db.execute("INSERT OR REPLACE INTO users(address, created_at) VALUES(?,?)", (ME, time.time()))
     _wire_chain(monkeypatch, txs=[
         {"txhash": "0xbg1", "sender_eth": ME, "amount": 5.0, "token": "USDC"},
@@ -206,3 +209,16 @@ def test_background_sweep_credits_registered_login_user(monkeypatch):
     assert r["credited"] == 1
     assert points_model.balance(ME) == pytest.approx(5 * 1.01 * 1000)
     assert points_model.balance(OTHER) == 0.0
+
+
+def test_unscoped_sweep_skips_celo_when_gate_closed(monkeypatch):
+    """The admin's manual rescan button calls scan_once() with no `only` —
+    without DEPOSIT_SWEEP_ENABLED, that must NOT touch Celo (the 2026-09-11
+    mis-credit incident this gate exists to prevent)."""
+    monkeypatch.delenv("DEPOSIT_SWEEP_ENABLED", raising=False)
+    db.execute("INSERT OR REPLACE INTO users(address, created_at) VALUES(?,?)", (ME, time.time()))
+    _wire_chain(monkeypatch, txs=[{"txhash": "0xgated", "sender_eth": ME, "amount": 5.0, "token": "USDC"}])
+    assert deposits.scan_once()["credited"] == 0
+    assert points_model.balance(ME) == 0.0
+    # an explicit, scoped request is exempt from the gate (a deliberate admin action)
+    assert deposits.scan_once(only={"CELO"})["credited"] == 1

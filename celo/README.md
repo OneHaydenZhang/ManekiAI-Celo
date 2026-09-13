@@ -12,8 +12,9 @@ real P&L). This package is the Celo layer built for the **Celo "Agents at Work" 
 | `routes.py` | Public, login-free endpoints: `POST /api/x402/chat` (Ask ManekiAI · $0.02), `GET /api/x402/brief?symbol=` (shared 10-minute brief · $0.01), `GET /api/x402/agents/{code}/insight` (a live agent's latest decision · $0.05), free `GET /api/x402/config`, `GET /api/x402/catalog` and `GET /api/x402/activity` (public settlement / registration / deposit summary, 60 s cache). |
 | `web/arena.html` | **Agent Arena** (`/arena`) — anyone with USDC or USA₮ on Celo connects a wallet, asks the analyst or unlocks an agent's insight; the wallet signs, the facilitator settles, the page shows the Celoscan link. |
 
-Live: https://manekiai.io/arena · analyst card: https://manekiai.io/api/agent-card/maneki-analyst ·
-activity: https://manekiai.io/api/x402/activity
+Live (preview host, plain HTTP — desktop browser wallets): http://34.68.151.4/arena ·
+analyst card: http://34.68.151.4/api/agent-card/maneki-analyst · activity: http://34.68.151.4/api/x402/activity ·
+platform Analyst = ERC-8004 **#9837** on Celo ([registration tx](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f))
 
 ## Why this is "agents at work"
 
@@ -73,7 +74,7 @@ calls `receiveWithAuthorization` (`0xef55bec6`) — the buyer authorizes a plain
 | Action | Gas | CELO | Who pays |
 |---|---|---|---|
 | ERC-8004 `register(agentURI)` | ≈180k | ≈0.037 CELO | our registrar wallet (`CELO_REGISTRAR_KEY`) |
-| x402 settlement via facilitator (`transferWithAuthorization`) | ≈85k | ≈0.017 CELO | the facilitator — billed as ≈$0.001 facilitator credit per settlement once the free credits are used |
+| x402 settlement via facilitator (`transferWithAuthorization`) | ≈85k | ≈0.017 CELO | the facilitator — billed as facilitator credit per settlement once the free credits are used (≈$0.004 observed 2026-09; the official docs still quote $0.001) |
 | x402 self-settlement | ≈85k | ≈0.017 CELO | our registrar wallet |
 | Buyer (Arena) | 0 | 0 | signs only, never broadcasts |
 
@@ -117,7 +118,9 @@ Everything in this repository was written after the last pre-hackathon host comm
 | 2026-09-11 01:27 | `44dd477` | docs: Celo Agents-at-Work plan / submission draft + TEST_VERSIONS 2.74 + public-repo sync script |
 | 2026-09-11 11:16 | `6f2edc7` | fix(celo): review fixes — unfunded-registrar guard + edit-hook backoff, register-all runs in background, owner share keyed on nonce when settle returns no tx |
 | 2026-09-11 11:20 | `6d00dfa` | docs: 2026-09-10/11 iteration notes + TEST_VERSIONS 2.74 correction (production rolled back, preview host deployed) |
-| 2026-09-11 → | … | USA₮ as second x402 asset, self-settlement fallback, `/api/x402/activity`, Arena error copy, public-repo replay + git hook (this and later commits) |
+| 2026-09-11 | `e2e4907` `c2a7ceb` `b8bc3e1` (merged `07b57a8`) | registration auto-pilot (registrar funded → every live agent + the Analyst mint themselves), USA₮ as second x402 asset, self-settlement fallback (`X402_SETTLER=self`, off by default), `/api/x402/activity`, Arena flow rework (balance pre-check, Get-USDC box, error copy, activity panel), public-repo replay + git hook |
+| 2026-09-11 | `282911b` | review fixes: settlement lifecycle closed (`settle_pending` + on-chain finalizer + same-signature retry is free), exact reconciliation on `AuthorizationUsed(payer, nonce)`, hash-first ledger, fault-attributed cooldown, registrar RBF / revert handling, Cloudflare-gated IP trust, deposit-sweep switch |
+| 2026-09-13 | `e39d5d3` `fa12274` | registration tx evidence filled (Analyst #9837 + 6 agents); paid-content redelivery now requires the EIP-3009 signature to recover to the payer (local EIP-712 ecrecover), sweep gate applied to unscoped admin rescans, registrar send switch (`CELO_REGISTRAR_ENABLED`) + consecutive-failure cap, Arena links follow the current host |
 
 **Public-repo history = host history replayed.** This repository is a filtered mirror of the private
 host repo: `scripts/publish_celo_public.sh --replay` walks every host commit since `36acfac` that
@@ -133,7 +136,8 @@ timestamps here are therefore the real ones, not the time of the mirror run.
 * Facilitator `/supported`: `{x402Version:2, scheme:"exact", network:"eip155:42220"}`.
 * USDC `0xcEBA9300f2b948710d2653dD7B07f33A8B32118C`: `name()="USDC"`, `version()="2"`.
 * USA₮ `0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771`: 6 decimals, EIP-712 domain `Tether America USD` / `1` (as configured in `/api/x402/config` → `assets.USAT`).
-* Preview host (GCP, `http://34.68.151.4`): `/api/x402/config` and `/arena` reachable; registration cleanly skipped while the registrar holds 0 CELO.
+* Preview host `http://34.68.151.4`: `/api/x402/config`, `/arena`, `/api/x402/activity` reachable; registration was cleanly skipped while the registrar held 0 CELO, then on 2026-09-13 the auto-pilot minted the platform Analyst (#9837) and all 6 live agents (#9838–#9843) within one 2-minute tick of the wallet being funded, 0 failures.
+* Facilitator `api.x402.celo.org` `/verify` answers a well-formed request with a structured `{"isValid":false,"invalidReason":…}` (an empty body gets a 502 — request-shape artefact, not an outage); facilitator signer `0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48`.
 
 ## Safety
 

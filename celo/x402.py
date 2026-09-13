@@ -278,6 +278,46 @@ def payload_fields(payload: Dict[str, Any]) -> Dict[str, str]:
             "valid_before": str(auth.get("validBefore") or "")}
 
 
+_EIP3009_TYPES = {"TransferWithAuthorization": [
+    {"name": "from", "type": "address"}, {"name": "to", "type": "address"},
+    {"name": "value", "type": "uint256"}, {"name": "validAfter", "type": "uint256"},
+    {"name": "validBefore", "type": "uint256"}, {"name": "nonce", "type": "bytes32"}]}
+
+
+def signature_matches_payer(payload: Dict[str, Any], req: Dict[str, Any]) -> bool:
+    """Local EIP-712 check that `payload.payload.signature` really recovers to the
+    claimed `from` address for THIS exact authorization (asset domain + amount +
+    to + validity window + nonce). No network round trip.
+
+    This exists ONLY for the "already settled, redeliver" recovery path in
+    routes.py: once a payment settles on-chain, (payer, nonce) alone are public
+    (standard ERC20/AuthorizationUsed event topics) and are NOT proof that the
+    caller is the original buyer — a resubmitted request must still show a
+    signature that actually recovers to the payer for the stored fields, not
+    just matching hex strings. The fresh-payment path already gets this for
+    free from the facilitator's/self-settle's own verify(); this covers the
+    retry path, which used to skip verification entirely."""
+    try:
+        from eth_account import Account
+        from eth_account.messages import encode_typed_data
+        auth = ((payload.get("payload") or {}).get("authorization") or {})
+        sig = str((payload.get("payload") or {}).get("signature") or "")
+        claimed_from = str(auth.get("from") or "")
+        extra = req.get("extra") or {}
+        domain = {"name": str(extra.get("name") or ""), "version": str(extra.get("version") or ""),
+                  "chainId": CHAIN_ID, "verifyingContract": req["asset"]}
+        message = {"from": claimed_from, "to": str(auth.get("to") or ""),
+                   "value": int(str(auth.get("value") or "0")),
+                   "validAfter": int(str(auth.get("validAfter") or "0")),
+                   "validBefore": int(str(auth.get("validBefore") or "0")),
+                   "nonce": str(auth.get("nonce") or "")}
+        signable = encode_typed_data(domain_data=domain, message_types=_EIP3009_TYPES, message_data=message)
+        recovered = Account.recover_message(signable, signature=sig)
+        return bool(claimed_from) and recovered.lower() == claimed_from.lower()
+    except Exception:
+        return False
+
+
 # ------------------------------------------------------------ facilitator --
 
 def _headers() -> Dict[str, str]:
