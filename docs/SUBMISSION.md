@@ -1,13 +1,13 @@
 # Celo「Agents at Work」提交材料（草稿 · 随进度更新）
 
 > 截止 2026-09-14 09:00 GMT（北京 17:00）。赛事页 https://www.risein.com/celo/celo-agents-at-work-hackathon
-> 方案：`docs/hackathon/CELO_AGENTS_AT_WORK_方案.md` · 代码：`auto_service/celo/`（公开仓库 ManekiAI-Celo 同步）
+> 方案：`docs/celo/CELO_AGENTS_AT_WORK_方案.md` · 代码：`auto_service/celo/`（公开仓库 ManekiAI-Celo 同步）
 
 ## 报名表字段
 
 | 字段 | 值 | 状态 |
 |---|---|---|
-| Project | ManekiAI — AI trading agents that work for you, identified on Celo | ✓ |
+| Project | ManekiAI — ask an on-chain analyst, or pay an agent to watch your market for you (identified on Celo) | ✓（2026-09-19 按 v2 双入口更新）|
 | Public GitHub | https://github.com/OneHaydenZhang/ManekiAI-Celo | ✓ Public（2026-09-13 切回）。仓库只含黑客松新增代码（`celo/` 包 + Celo/x402 测试 + 本文档），不含宿主私有代码 |
 | ERC-8004 Agent ID（平台 Analyst） | `#9837`（Celo Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`，注册 tx [`0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f`](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f)） | ✓ 已铸造 |
 | Agent 钱包地址 | 收款/x402 payTo：`0x26523f5cea5da5d9411749afefe741ba340f6566`（只收款）；注册钱包（付 gas）：`0xaf6fA147e8F85781196627765FcaFC1044F89308` | ✓ |
@@ -15,7 +15,21 @@
 | Primary track | Real World Adoption | ✓ |
 | Secondary（一句话） | Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm/USA₮ on Celo + every Arena purchase is an x402 settlement in USDC; Judges' Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners | ✓（报名表所填，与 /hackathon 第 5 节一致） |
 | Distribution channel | Existing audience (manekiai.io users, X) + the public login-free Arena for the Celo community | ✓ |
-| Demo | **指南/证明/动线：http://34.68.151.4/hackathon** · Arena http://34.68.151.4/arena · http://34.68.151.4/api/agent-card/maneki-analyst · http://34.68.151.4/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
+| Demo | **指南/证明/动线：http://34.68.151.4/hackathon** · Arena（双入口）http://34.68.151.4/arena · http://34.68.151.4/api/agent-card/maneki-analyst · http://34.68.151.4/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
+
+## 2026-09-19 产品调整（v2 · 双入口）
+
+Arena 从「买平台已有 Agent 的洞察」改为**两个明确入口**，报名材料里的产品描述按这版为准：
+
+| 入口 | 买什么 | 价格 |
+|---|---|---|
+| 付费咨询 | 向平台 Analyst 问一个市场问题 / 看一份个股简报 | $0.02 / $0.01 一次 |
+| **创建 Agent** | 按自己的需求配置一个只读研究 Agent（市场 + 关注重点 + 运行时长 + 检查频率），它按节奏持续检查并交付报告 | 按检查次数：监控 $0.02/次、研究 $0.04/次；1–96 次 → **单笔 $0.02–$3.84**，一次付清 |
+
+- 链上身份不变：仍沿用平台 Analyst **#9837**，用户创建的任务用内部编号，**不会为每个任务铸新的 ERC-8004 ID**。
+- 「买某个 Agent 的洞察」（$0.05）已从 Arena 前端下线；端点保留，历史购买仍可回看。
+- 订单 ↔ 支付凭证 ↔ 执行记录 ↔ 结果全部关联（`x402_tasks` / `x402_task_runs` 指向 `x402_payments` 的那一行），公开汇总在 `/api/x402/activity` 的 `tasks` 字段（匿名：笔数 / 付款钱包数 / 金额 / 已交付报告数），后台 `/admin` 可逐单核对。
+- 对计分的影响：单笔金额从 $0.01–0.05 抬到最高 $3.84（Value Moved），且付费动机变成「买自己要的结果」（Real World Adoption）；结算仍是 Celo 上 USDC / USA₮ 的 x402（Stablecoin Adoption 口径不变）。
 
 ## 链上证据（部署后逐项填 · `scripts/fill_celo_submission.py --activity <url|file>` 可自动回填）
 
