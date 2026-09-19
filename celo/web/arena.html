@@ -85,7 +85,7 @@
         <div class="question-fields"><label class="field market-field"><span data-t="marketLabel">关注市场</span><select class="select" id="askSymbol"><option>NVDA</option></select></label><label class="field"><span data-t="questionLabel">你的问题</span><textarea class="textarea" id="askMsg" maxlength="600" placeholder="例如：NVDA 今天有哪些需要注意的风险？"></textarea></label></div>
         <div class="suggestions" id="suggestions" aria-label="Question ideas"></div>
         <p class="msg warn" role="status" id="enabledMsg" hidden></p><p class="msg warn" role="status" id="analystMsg" hidden></p>
-        <div class="composer-actions"><button type="button" class="btn primary" id="btnAsk" disabled data-t="askBtn">付费获取分析</button><button type="button" class="text-btn" id="btnBrief" disabled data-t="briefBtn">只看快速简报</button></div>
+        <div class="composer-actions"><button type="button" class="btn primary" id="btnAsk" disabled data-t="askBtn">付费获取分析</button><button type="button" class="text-btn" id="btnBrief" disabled data-t="briefBtn">只看快速简报</button><button type="button" class="text-btn" id="btnAskCelo" hidden></button></div>
         <p class="payment-note" data-t="paymentNote">按次付费 · Celo 上的 USDC / USA₮ · 无订阅</p>
         <div class="msg" id="askMsgLine" role="status" aria-live="polite"></div><div id="askAnswer" aria-live="polite"></div>
         <div id="loadError" class="gbox" hidden><p data-t="loadFailed">咨询服务暂时无法加载，你的问题会保留。</p><button type="button" class="text-btn" id="retryLoad" data-t="retryLoad">重新加载</button></div>
@@ -107,7 +107,7 @@
         <dl class="summary-lines"><div><dt data-t="taskLabelShort">任务</dt><dd id="summaryTask"></dd></div><div><dt data-t="durationLabel">运行时长</dt><dd id="summaryDuration"></dd></div><div><dt data-t="frequencyLabel">检查频率</dt><dd id="summaryFrequency"></dd></div><div><dt data-t="executionLabel">执行范围</dt><dd data-t="researchOnly">分析与监控</dd></div></dl>
         <ul class="get-list"><li data-t="get1">一份书面报告——跟上次相比有什么变化</li><li data-t="get2">当下值得盯的价位与信号</li><li data-t="get3">风险，以及要不要你现在关注</li></ul>
         <div id="quoteIdle"><p class="quote-instruction" data-t="quoteHint">配置好任务，再查看费用明细。</p><p class="tiny" data-t="noTrading">此流程不授权真实交易。</p></div>
-        <div id="quoteReview" hidden tabindex="-1"><span class="overline" data-t="quoteReal">运行费用</span><div class="quote-total"><strong id="quoteTotal">—</strong><span>USDC</span></div><p id="quoteBreakdown" class="tiny"></p><p class="quote-disclosure" id="quoteDisclosure" data-t="noRefund">一次付清整段运行；提前停止不退款。</p><button type="button" class="btn primary" id="btnAgentLaunch" data-t="payStart">支付并启动</button><p class="tiny" data-t="budgetNote">按本次配置运行，到期停止，不自动续费。</p></div>
+        <div id="quoteReview" hidden tabindex="-1"><span class="overline" data-t="quoteReal">运行费用</span><div class="quote-total"><strong id="quoteTotal">—</strong><span>USDC</span></div><p id="quoteBreakdown" class="tiny"></p><p class="quote-disclosure" id="quoteDisclosure" data-t="noRefund">一次付清整段运行；提前停止不退款。</p><button type="button" class="btn primary" id="btnAgentLaunch" data-t="payStart">支付并启动</button><button type="button" class="btn ghost sm" id="btnLaunchCelo" hidden style="margin-top:8px"></button><p class="tiny" data-t="budgetNote">按本次配置运行，到期停止，不自动续费。</p></div>
         <div class="summary-bottom"><span data-t="draftFirst">先配置</span><span aria-hidden="true">→</span><span data-t="thenReview">确认费用</span><span aria-hidden="true">→</span><span data-t="thenRun">开始运行</span></div>
       </aside>
     </section>
@@ -314,6 +314,14 @@
     "st_awaiting_payment": "Awaiting payment",
     "everyMin": "every {n} min",
     "receipt": "Payment",
+    "payCelo": "Pay in CELO",
+    "celoQuoting": "Locking the CELO price…",
+    "celoSign": "Confirm the transfer of {n} CELO in your wallet…",
+    "celoWait": "Waiting for the transfer on Celo…",
+    "celoDelivering": "Paid — preparing your result…",
+    "celoShort": "That wallet does not hold {n} CELO.",
+    "celoPending": "The transfer went out ({tx}…) but the result has not come back yet. Reopen this page in a minute — you will not be charged twice.",
+    "celoNote": "Pays by sending CELO to us; you cover the gas. USDC is one signature and no gas.",
     "swapHd": "Swap CELO → USDC, right here",
     "swapWhy": "CELO itself cannot pay: its token supports no signed authorization, so the facilitator can never take it. Swap a little into USDC and the pay button works. Best price of four Uniswap pools on Celo; your CELO covers the gas.",
     "swapBtn": "Swap to USDC",
@@ -532,6 +540,14 @@
     "st_awaiting_payment": "等待支付确认",
     "everyMin": "每 {n} 分钟",
     "receipt": "支付凭证",
+    "payCelo": "用 CELO 支付",
+    "celoQuoting": "正在锁定 CELO 价格…",
+    "celoSign": "请在钱包里确认转出 {n} CELO…",
+    "celoWait": "等待 Celo 上确认…",
+    "celoDelivering": "已付款——正在生成你的结果…",
+    "celoShort": "这个钱包里没有 {n} CELO。",
+    "celoPending": "转账已发出（{tx}…），但结果还没回来。过一分钟重开这个页面即可，不会重复扣费。",
+    "celoNote": "用 CELO 支付 = 直接转给我们，gas 由你付；USDC 则是签一次名、不花 gas。",
     "swapHd": "在这里把 CELO 换成 USDC",
     "swapWhy": "CELO 本身付不了款：它的代币不支持签名授权，facilitator 收不了。换一点成 USDC，付款按钮就能用了。价格取 Celo 上四个 Uniswap 池中最优的一个；手续费用你手上的 CELO 付。",
     "swapBtn": "换成 USDC",
@@ -660,6 +676,12 @@
     $('#askPrice').textContent = amount('chat') + ' / ' + t('pricePerAnswer');
     $('#btnAsk').textContent = t('askBtn') + ' · ' + amount('chat');
     $('#btnBrief').textContent = t('briefBtn') + ' · ' + amount('brief');
+    const cb = $('#btnAskCelo');
+    if (cb) {
+      const on = celoPayOn() && Number.isFinite(Number((p.chat || {}).usd));
+      cb.hidden = !on;
+      if (on) { cb.textContent = celoLabel(p.chat.usd); cb.title = t('celoNote'); }
+    }
     const a = CFG.agentid || {}, pa = a.platform_agent;
     $('#idsLine').innerHTML = pa ? `${t('celoId')} #${esc(pa.agentId)} <a class="txlink" target="_blank" rel="noopener" href="${esc((a.explorer_tx || 'https://celoscan.io/tx/') + pa.txhash)}">↗</a>` : '';
   }
@@ -715,6 +737,67 @@
       <div><a class="btn primary sm" href="https://metamask.app.link/dapp/${esc(target)}" rel="noopener">${t('openMetaMask')} →</a></div>
       <div class="tiny">${t('miniPayNote')}</div>`;
   }
+  // ------------------------------------------------------------ pay in CELO --
+  // The other way to pay: send CELO straight to us. No signature scheme is
+  // involved (CELO supports none) and no facilitator — we are the recipient,
+  // so we just watch for the transfer. It has to go through the token contract:
+  // a native send emits no log and nothing could ever see it.
+  const CELO_PAY = () => (CFG && CFG.celo_pay) || {};
+  const celoPayOn = () => !!(CELO_PAY().enabled && +CELO_PAY().rate_usd > 0);
+  function celoFor(usd) {
+    const rate = +CELO_PAY().rate_usd || 0;
+    if (!rate) return 0;
+    return (+usd / rate) * (1 + (+CELO_PAY().buffer_bps || 200) / 10000);
+  }
+  const celoLabel = (usd) => t('payCelo') + ' · ≈' + celoFor(usd).toFixed(2) + ' CELO';
+
+  async function payInCelo(product, payload, onStatus) {
+    if (!ACCOUNT) await connect();
+    if (!ACCOUNT) throw Object.assign(new Error(t('connectFail')), {friendly: true});
+    await ensureChain();
+    onStatus && onStatus(t('celoQuoting'));
+    const r = await fetch('/api/x402/celo/orders', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ product, payer: ACCOUNT }, payload)) });
+    const order = await readJson(r);
+    if (!r.ok) throw Object.assign(new Error(order.detail || order.error || t('errGeneric')), {friendly: true});
+    const wei = BigInt(order.celo_wei || '0');
+    const bal = await nativeBalance(ACCOUNT);
+    if (bal < wei) throw Object.assign(new Error(t('celoShort').replace('{n}', (Number(wei) / 1e18).toFixed(3))),
+                                       {friendly: true, noFunds: true});
+    onStatus && onStatus(t('celoSign').replace('{n}', (Number(wei) / 1e18).toFixed(3)));
+    const hash = await sendTx(order.token_contract, '0xa9059cbb' + b32a(order.pay_to) + b32(wei));
+    onStatus && onStatus(t('celoWait'));
+    await waitReceipt(hash);
+    const base = '/api/x402/celo/orders/' + encodeURIComponent(order.order_id);
+    const q = '?token=' + encodeURIComponent(order.token);
+    // Hand the hash over (the node may still be catching up, so retry a few
+    // times), then poll until the result is ready. Both are idempotent: the
+    // order is already paid, so nothing can charge twice.
+    for (let i = 0; i < 4; i++) {
+      const res = await fetch(base + '/tx' + q, { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tx: hash }) })
+        .catch(() => null);
+      const d = res ? await readJson(res) : null;
+      if (res && res.ok && d) {
+        if (d.status === 'delivered') return d.result || {};
+        onStatus && onStatus(t('celoDelivering'));
+        break;
+      }
+      await new Promise((r2) => setTimeout(r2, 3000));
+    }
+    for (let i = 0; i < 20; i++) {
+      const poll = await fetch(base + q).catch(() => null);
+      const pd = poll ? await readJson(poll) : null;
+      if (poll && poll.ok && pd && pd.status === 'delivered') return pd.result || {};
+      onStatus && onStatus(t('celoDelivering'));
+      await new Promise((r2) => setTimeout(r2, 3000));
+    }
+    const err = new Error(t('celoPending').replace('{tx}', hash.slice(0, 12)));
+    err.friendly = true; err.pending = true;
+    throw err;
+  }
+
   // ------------------------------------------------------ swap CELO → USDC --
   // Holding native CELO is the most common "I have money but cannot pay" state:
   // the CELO token implements neither EIP-3009 nor EIP-2612, so it can never be
@@ -1037,7 +1120,7 @@
         ${idea.side ? `<div class="tiny">${LANG === 'zh' ? '倾向' : 'Stance'}: <b>${esc(idea.side)}</b>${idea.confidence != null ? ` · ${t('conf')} ${(+idea.confidence * 100).toFixed(0)}%` : ''}${idea.mark ? ` · mark $${esc(idea.mark)}` : ''}</div>` : ''}
         ${gen}${payLine(d.payment)}<div class="disclaimer">${t('nfa')}</div></div>`;
   }
-  async function ask(kind) {
+  async function ask(kind, viaCelo) {
     const m = $('#askMsgLine'), out = $('#askAnswer');
     const symbol = $('#askSymbol').value, message = ($('#askMsg').value || '').trim();
     if (kind === 'chat' && !message) { setMsg(m, t('needMsg'), 'warn'); return; }
@@ -1046,11 +1129,17 @@
     $('#btnAsk').disabled = $('#btnBrief').disabled = true;
     try {
       setMsg(m, '…');
-      const r = kind === 'chat'
-        ? await payFetch('/api/x402/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, symbol }) }, (s) => setMsg(m, s))
-        : await payFetch('/api/x402/brief?symbol=' + encodeURIComponent(symbol), { method: 'GET' }, (s) => setMsg(m, s));
-      const d = await readJson(r);
-      if (!r.ok) { showError(m, r.status, d); return; }
+      let d;
+      if (viaCelo) {
+        d = await payInCelo(kind, { message, symbol }, (st) => setMsg(m, st));
+        if (!d || !(d.reply || d.brief)) { setMsg(m, t('errGeneric'), 'err'); return; }
+      } else {
+        const r = kind === 'chat'
+          ? await payFetch('/api/x402/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, symbol }) }, (s) => setMsg(m, s))
+          : await payFetch('/api/x402/brief?symbol=' + encodeURIComponent(symbol), { method: 'GET' }, (s) => setMsg(m, s));
+        d = await readJson(r);
+        if (!r.ok) { showError(m, r.status, d); return; }
+      }
       if (d.product == null) d.product = kind;
       out.innerHTML = answerHtml(d)
         + `<div style="margin-top:10px"><button type="button" class="text-btn" id="btnMakeTask">${t('toAgent')}</button></div>`;
@@ -1075,6 +1164,7 @@
   }
   $('#btnAsk').onclick = () => ask('chat');
   $('#btnBrief').onclick = () => ask('brief');
+  $('#btnAskCelo').onclick = () => ask('chat', true);
 
   // ---------------------------------------------------------- insight ----
   function insightHtml(d) {
@@ -1183,6 +1273,12 @@
     const on = !!d.enabled;
     $('#btnAgentLaunch').textContent = on ? t('payStart') + ' · ' + money(d.total_usd) : t('tasksOff');
     $('#btnAgentLaunch').disabled = !on;
+    const lb = $('#btnLaunchCelo');
+    if (lb) {
+      const celoOk = on && celoPayOn();
+      lb.hidden = !celoOk;
+      if (celoOk) { lb.textContent = celoLabel(d.total_usd); lb.title = t('celoNote'); }
+    }
     $('#quoteReview').hidden = false; $('#quoteIdle').hidden = true;
   }
   $('#agentForm').addEventListener('input', () => updateSummary());
@@ -1218,7 +1314,7 @@
     if (!persistTask('draft')) return;
     setMsg($('#draftMsg'),t('draftSaved'),'ok'); setHistory('agents');
   };
-  async function launchTask() {
+  async function launchTask(viaCelo) {
     const v = taskValues(), error = validateTask(v);
     if (error) { setMsg($('#agentError'), error, 'err'); return; }
     if (!quoteSnapshot || JSON.stringify(v) !== JSON.stringify(quoteSnapshot)) { renderQuote(); return; }
@@ -1226,18 +1322,25 @@
     const btn = $('#btnAgentLaunch'), m = $('#draftMsg');
     btn.disabled = true; setMsg(m, t('launching'));
     try {
-      const r = await payFetch('/api/x402/tasks', {method: 'POST',
-        headers: {'Content-Type': 'application/json'}, body: JSON.stringify(taskBody(v))},
-        (st) => setMsg(m, st));
-      const d = await readJson(r);
-      if (!r.ok || !d.task) {
+      let d;
+      if (viaCelo) {
+        d = await payInCelo(v.task === 'research' ? 'task_research' : 'task_monitor',
+                            taskBody(v), (st) => setMsg(m, st));
+      } else {
+        const r = await payFetch('/api/x402/tasks', {method: 'POST',
+          headers: {'Content-Type': 'application/json'}, body: JSON.stringify(taskBody(v))},
+          (st) => setMsg(m, st));
+        d = await readJson(r);
+        if (!r.ok || !d.task) {
         // 400/409 are our own buyer-safe sentences (bad configuration, too many
         // runs already) — show them verbatim; anything else goes through the
         // shared payment-error mapping.
-        const own = (r.status === 400 || r.status === 409) ? (d.detail || d.error || '') : '';
-        if (own) setMsg(m, own, 'err'); else showError(m, r.status, d);
-        return;
+          const own = (r.status === 400 || r.status === 409) ? (d.detail || d.error || '') : '';
+          if (own) setMsg(m, own, 'err'); else showError(m, r.status, d);
+          return;
+        }
       }
+      if (!d || !d.task) { setMsg(m, t('errGeneric'), 'err'); return; }
       saveTaskRef({task_id: d.task.task_id, token: d.token || '', ts: Date.now()});
       TASK_STATE[d.task.task_id] = Object.assign({runs: []}, d.task);
       quoteSnapshot = null; $('#quoteReview').hidden = true; $('#quoteIdle').hidden = false;
@@ -1248,9 +1351,10 @@
     } catch (e) {
       setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), 'err');
       if (e && e.noFunds) renderGetUsdc();
-    } finally { btn.disabled = false; }
+    } finally { btn.disabled = false; $('#btnLaunchCelo').disabled = false; }
   }
-  $('#btnAgentLaunch').onclick = launchTask;
+  $('#btnAgentLaunch').onclick = () => launchTask(false);
+  $('#btnLaunchCelo').onclick = () => launchTask(true);
 
   function editDraft(row) {
     editingId = row.id;

@@ -28,7 +28,7 @@ from .. import db
 from ..admin_auth import client_ip
 from ..models import agent_model, config_model, trade_model
 from ..services import agent_service, chat_service, oplog, pricing
-from . import x402, agentid, tasks
+from . import x402, agentid, tasks, native_pay
 
 router = APIRouter(prefix="/api/x402")
 
@@ -391,6 +391,7 @@ async def x402_config() -> Dict[str, Any]:
         "goal_max": tasks.GOAL_MAX,
         "refundable": False,
     }
+    cfg["celo_pay"] = await asyncio.to_thread(native_pay.public_config)
     return cfg
 
 
@@ -847,3 +848,160 @@ async def task_recover(request: Request):
     except tasks.Invalid as e:
         raise HTTPException(400, str(e))
     return {"tasks": rows, "count": len(rows)}
+
+# ------------------------------------------------------- paid in CELO --
+# Same two products, paid by transferring CELO to our own address instead of
+# signing a USDC authorization. No facilitator is involved — we are the
+# recipient — and the price comes from the same Uniswap pools the swap box
+# uses. The transfer must go through the token contract: a native send emits
+# no log and could never be detected (see celo/native_pay.py).
+
+def _celo_price_usd(product: str, payload: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
+    """Dollar price of one order — the SAME numbers the USDC lane charges."""
+    if product in ("task_monitor", "task_research"):
+        q = tasks.quote_from_body(payload)
+        if q["product"] != product:
+            raise tasks.Invalid("task type does not match the product")
+        return float(q["total_usd"]), q
+    if product == "chat":
+        msg = str(payload.get("message") or "").strip()
+        if not msg:
+            raise tasks.Invalid("message required")
+        if len(msg) > _MSG_MAX:
+            raise tasks.Invalid(f"message must be ≤ {_MSG_MAX} characters")
+        return float(x402.price_usd("chat")), payload
+    if product == "brief":
+        sym = _bare(str(payload.get("symbol") or ""))
+        if sym not in set(_tracked_symbols()):
+            raise tasks.Invalid("unknown symbol")
+        return float(x402.price_usd("brief")), payload
+    raise tasks.Invalid("unknown product")
+
+
+def _celo_guard() -> None:
+    if not native_pay.enabled():
+        raise HTTPException(503, "paying in CELO is not enabled on this server")
+
+
+@router.post("/celo/quote")
+async def celo_quote(request: Request):
+    """FREE: what this order costs in CELO right now, at the on-chain rate."""
+    _celo_guard()
+    body = await _json(request)
+    product = str(body.get("product") or "")
+    try:
+        usd, _ = await asyncio.to_thread(_celo_price_usd, product, body)
+        wei, rate, fee = await asyncio.to_thread(native_pay.celo_for_usd, usd)
+    except (tasks.Invalid, native_pay.Invalid) as e:
+        raise HTTPException(400, str(e))
+    return {"product": product, "amount_usd": usd, "celo_wei": str(wei),
+            "celo": round(wei / 10 ** 18, 6), "rate_usd": rate, "fee_tier": fee,
+            "pay_to": native_pay.pay_to(), "token_contract": native_pay.CELO_TOKEN,
+            "quote_ttl_s": native_pay.QUOTE_TTL_S}
+
+
+@router.post("/celo/orders")
+async def celo_order_create(request: Request):
+    """FREE: lock a CELO amount for this order. Nothing is charged until the
+    buyer's transfer lands."""
+    _celo_guard()
+    body = await _json(request)
+    product = str(body.get("product") or "")
+    payer = str(body.get("payer") or "")
+    try:
+        usd, _ = await asyncio.to_thread(_celo_price_usd, product, body)
+        row, token = await asyncio.to_thread(native_pay.create, product, payer, usd, body)
+    except (tasks.Invalid, native_pay.Invalid) as e:
+        raise HTTPException(400, str(e))
+    return {**native_pay.view(row), "token": token}
+
+
+def _celo_order_or_403(order_id: str, token: str) -> Dict[str, Any]:
+    row = native_pay.by_id(order_id)
+    if not row:
+        raise HTTPException(404, "order not found")
+    if not native_pay.token_ok(row, token):
+        raise HTTPException(403, "this order needs the token it was created with")
+    return row
+
+
+async def _celo_deliver(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Run the thing that was paid for. Idempotent: a delivered order returns
+    its stored result, and a failure keeps the order 'paid' so a retry can
+    still deliver what the buyer already paid for."""
+    if row["status"] == "delivered":
+        return native_pay.result_of(row)
+    if row["status"] != "paid":
+        return {}
+    product, payload = row["product"], native_pay.payload_of(row)
+    try:
+        if product in ("task_monitor", "task_research"):
+            q = await asyncio.to_thread(tasks.quote_from_body, payload)
+            trow, ttoken = await asyncio.to_thread(
+                tasks.create, q, row["payer"], "celo:" + row["order_id"], 0,
+                float(row["amount_usd"]))
+            trow = await asyncio.to_thread(tasks.activate, trow["task_id"], row.get("tx") or "")
+            result = {"product": product, "task": tasks.view(trow, with_runs=False),
+                      "token": ttoken}
+        elif product == "chat":
+            c = _analyst_config()
+            data = await asyncio.to_thread(chat_service._run_chat, c, [],
+                                           str(payload.get("message") or ""),
+                                           _full_symbol(str(payload.get("symbol") or "")), False)
+            if not data.pop("_billable", False):
+                raise RuntimeError("model busy / no answer")
+            structured = {"on_topic": data.get("on_topic", True), "headline": data.get("headline", ""),
+                          "points": data.get("points") or [], "analysis": data.get("analysis"),
+                          "note": data.get("note")}
+            result = {"product": "chat", "symbol": _bare(str(payload.get("symbol") or "")),
+                      "reply": chat_service._flatten(structured), "structured": structured,
+                      "idea": {k: data.get(k) for k in ("has_trade_idea", "side", "confidence",
+                                                        "rationale", "mark") if data.get(k) is not None},
+                      "ts": time.time()}
+        else:
+            content = await asyncio.to_thread(_brief_sync, str(payload.get("symbol") or ""))
+            if content is None:
+                raise RuntimeError("model busy / no brief")
+            result = content
+    except Exception as e:                      # paid but undelivered — keep it claimable
+        await asyncio.to_thread(native_pay.store_error, row["order_id"], repr(e)[:200])
+        oplog.error("celo_pay.deliver", repr(e)[:200], params={"order": row["order_id"]})
+        return {}
+    result["payment"] = {"tx": row.get("tx") or "", "asset": "CELO",
+                         "explorer": (x402.CHAIN["explorer_tx"] + row["tx"]) if row.get("tx") else "",
+                         "amount_usd": float(row["amount_usd"]),
+                         "celo": round(int(row.get("paid_wei") or 0) / 10 ** 18, 6),
+                         "network": x402.NETWORK, "settler": "direct"}
+    await asyncio.to_thread(native_pay.store_result, row["order_id"], result)
+    return result
+
+
+@router.post("/celo/orders/{order_id}/tx")
+async def celo_order_tx(order_id: str, request: Request, token: str = ""):
+    """The buyer hands us their transfer hash; we verify it and deliver."""
+    _celo_guard()
+    body = await _json(request)
+    row = await asyncio.to_thread(_celo_order_or_403, order_id,
+                                  (token or request.headers.get("x-order-token") or ""))
+    try:
+        row = await asyncio.to_thread(native_pay.attach_tx, row, str(body.get("tx") or ""))
+    except native_pay.Invalid as e:
+        raise HTTPException(400, str(e))
+    result = await _celo_deliver(row)
+    fresh = native_pay.by_id(order_id) or row
+    return {**native_pay.view(fresh), "result": result}
+
+
+@router.get("/celo/orders/{order_id}")
+async def celo_order_get(order_id: str, request: Request, token: str = ""):
+    """Poll: if the buyer never sent us the hash, look for their transfer."""
+    _celo_guard()
+    row = await asyncio.to_thread(_celo_order_or_403, order_id,
+                                  (token or request.headers.get("x-order-token") or ""))
+    if row["status"] == "awaiting":
+        found = await asyncio.to_thread(native_pay.find_payment, row)
+        if found:
+            row = found
+    result = await _celo_deliver(row) if row["status"] in ("paid", "delivered") else {}
+    fresh = native_pay.by_id(order_id) or row
+    return {**native_pay.view(fresh), "result": result}
