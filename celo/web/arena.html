@@ -159,6 +159,7 @@
     "connectFail": "Could not connect the wallet — please try again.",
     "needFunds": "Not enough USDC on Celo for this purchase — nothing was signed or charged.",
     "getUsdcHd": "Get USDC on Celo",
+    "getUsdc0": "Already hold CELO? Swap it for USDC on Celo itself — CELO cannot pay directly (its token supports no signed authorization) →",
     "getUsdc1": "Bridge or swap from any chain with Jumper (LI.FI) — prefilled to USDC on Celo →",
     "getUsdc2": "Withdraw USDC or USDT to the Celo network from an exchange (Binance, OKX, Bybit, Coinbase…).",
     "getUsdc3": "Check your wallet’s Celo balance; opening MiniPay does not add funds.",
@@ -360,6 +361,7 @@
     "connectFail": "钱包连接失败——请重试。",
     "needFunds": "你在 Celo 上的 USDC 不足以完成本次购买——未签名、未扣费。",
     "getUsdcHd": "获取 Celo 上的 USDC",
+    "getUsdc0": "已经有 CELO？在 Celo 链上直接换成 USDC——CELO 本身不能直接付款（它的代币不支持签名授权）→",
     "getUsdc1": "用 Jumper（LI.FI）从任意链跨链/兑换——已预填为 Celo USDC →",
     "getUsdc2": "从交易所（Binance、OKX、Bybit、Coinbase…）把 USDC 或 USDT 提现到 Celo 网络。",
     "getUsdc3": "先检查钱包中的 Celo 代币余额，打开 MiniPay 不会自动获得资金。",
@@ -557,6 +559,10 @@
   const addrLink = (a) => a ? `<a class="txlink" target="_blank" rel="noopener" href="https://celoscan.io/address/${esc(a)}">${esc(a)}</a>` : '';
   const USDC_ADDR = '0xcebA9300f2b948710d2653dD7B07f33A8B32118C';
   const JUMPER = 'https://jumper.exchange/?toChain=42220&toToken=' + USDC_ADDR;
+  // Already holding native CELO: a same-chain swap is the shortest path to a
+  // payable balance (CELO itself cannot pay — its token implements neither
+  // EIP-3009 nor EIP-2612, so it cannot be signed over to the facilitator).
+  const SWAP_CELO = 'https://app.uniswap.org/swap?chain=celo&inputCurrency=ETH&outputCurrency=' + USDC_ADDR;
   // Relative to wherever THIS page is actually served (preview box, prod,
   // local run) — a hardcoded production domain would 404 on every other host.
   const APP_BRIDGE = location.origin + '/#settings';
@@ -676,6 +682,7 @@
     const box = $('#getUsdcBox'); if (!box) return;
     box.hidden = false;
     box.innerHTML = `<div class="row" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div class="hd">${t('getUsdcHd')}</div><span class="lang" id="getUsdcClose">${t('close')}</span></div>
+      <div>· <a href="${SWAP_CELO}" target="_blank" rel="noopener">${t('getUsdc0')}</a></div>
       <div>· <a href="${JUMPER}" target="_blank" rel="noopener">${t('getUsdc1')}</a></div>
       <div>· ${t('getUsdc2')}</div>
       <div>· ${t('getUsdc3')}</div>
