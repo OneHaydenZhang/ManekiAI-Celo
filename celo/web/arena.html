@@ -52,6 +52,11 @@
 .get-list li:before{content:'·';position:absolute;left:3px;color:var(--accent2)}
 .share-box{margin-top:10px;font-size:11.5px;color:var(--soft);line-height:1.8;overflow-wrap:anywhere}
 .share-box a{color:var(--accent2)}
+.swap{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin:10px 0 14px;background:var(--card)}
+.swap-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+.swap-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px}
+.swap-row .input{width:120px}
+.btn.sm{padding:8px 14px;font-size:13px}
 </style>
 </head>
 <body class="js">
@@ -159,7 +164,6 @@
     "connectFail": "Could not connect the wallet — please try again.",
     "needFunds": "Not enough USDC on Celo for this purchase — nothing was signed or charged.",
     "getUsdcHd": "Get USDC on Celo",
-    "getUsdc0": "Already hold CELO? Swap it for USDC on Celo itself — CELO cannot pay directly (its token supports no signed authorization) →",
     "getUsdc1": "Bridge or swap from any chain with Jumper (LI.FI) — prefilled to USDC on Celo →",
     "getUsdc2": "Withdraw USDC or USDT to the Celo network from an exchange (Binance, OKX, Bybit, Coinbase…).",
     "getUsdc3": "Check your wallet’s Celo balance; opening MiniPay does not add funds.",
@@ -310,6 +314,23 @@
     "st_awaiting_payment": "Awaiting payment",
     "everyMin": "every {n} min",
     "receipt": "Payment",
+    "swapHd": "Swap CELO → USDC, right here",
+    "swapWhy": "CELO itself cannot pay: its token supports no signed authorization, so the facilitator can never take it. Swap a little into USDC and the pay button works. Best price of four Uniswap pools on Celo; your CELO covers the gas.",
+    "swapBtn": "Swap to USDC",
+    "swapMax": "Max {n}",
+    "swapPool": "pool",
+    "swapQuoting": "Checking the pools…",
+    "swapNoQuote": "No pool can price that amount right now.",
+    "swapTooSmall": "Too small to be worth the gas — try 0.5 CELO or more.",
+    "swapTwoTx": "Two wallet prompts: approve, then swap.",
+    "swapKeepGas": "Leave at least 0.2 CELO in the wallet for gas.",
+    "swapApprove": "Approve the exact amount in your wallet…",
+    "swapApproving": "Approval confirming on Celo…",
+    "swapApproveFail": "The approval did not go through — nothing was swapped.",
+    "swapConfirm": "Confirm the swap — you receive at least {n} USDC.",
+    "swapSending": "Swapping on Celo…",
+    "swapFail": "The swap did not go through. Nothing left your wallet except gas.",
+    "swapDone": "Done — {n} USDC is in your wallet.",
     "shareOn": "Publish this report",
     "shareOff": "Unpublish",
     "shareHint": "Anyone with the link can read the assignment and the reports. Your wallet address is not shown.",
@@ -361,7 +382,6 @@
     "connectFail": "钱包连接失败——请重试。",
     "needFunds": "你在 Celo 上的 USDC 不足以完成本次购买——未签名、未扣费。",
     "getUsdcHd": "获取 Celo 上的 USDC",
-    "getUsdc0": "已经有 CELO？在 Celo 链上直接换成 USDC——CELO 本身不能直接付款（它的代币不支持签名授权）→",
     "getUsdc1": "用 Jumper（LI.FI）从任意链跨链/兑换——已预填为 Celo USDC →",
     "getUsdc2": "从交易所（Binance、OKX、Bybit、Coinbase…）把 USDC 或 USDT 提现到 Celo 网络。",
     "getUsdc3": "先检查钱包中的 Celo 代币余额，打开 MiniPay 不会自动获得资金。",
@@ -512,6 +532,23 @@
     "st_awaiting_payment": "等待支付确认",
     "everyMin": "每 {n} 分钟",
     "receipt": "支付凭证",
+    "swapHd": "在这里把 CELO 换成 USDC",
+    "swapWhy": "CELO 本身付不了款：它的代币不支持签名授权，facilitator 收不了。换一点成 USDC，付款按钮就能用了。价格取 Celo 上四个 Uniswap 池中最优的一个；手续费用你手上的 CELO 付。",
+    "swapBtn": "换成 USDC",
+    "swapMax": "最多 {n}",
+    "swapPool": "池",
+    "swapQuoting": "正在比价…",
+    "swapNoQuote": "这个数量暂时没有池子能报价。",
+    "swapTooSmall": "太少了，不够抵 gas——建议 0.5 CELO 起。",
+    "swapTwoTx": "会弹两次钱包：先授权，再兑换。",
+    "swapKeepGas": "钱包里至少留 0.2 CELO 付 gas。",
+    "swapApprove": "请在钱包里授权（金额与本次兑换相同）…",
+    "swapApproving": "授权确认中…",
+    "swapApproveFail": "授权没成功，没有发生兑换。",
+    "swapConfirm": "确认兑换——你至少会收到 {n} USDC。",
+    "swapSending": "正在 Celo 上兑换…",
+    "swapFail": "兑换没成功。除了 gas，你的钱没有离开钱包。",
+    "swapDone": "完成——{n} USDC 已到账。",
     "shareOn": "公开这份报告",
     "shareOff": "取消公开",
     "shareHint": "拿到链接的人都能看到任务与报告；不会显示你的钱包地址。",
@@ -678,16 +715,168 @@
       <div><a class="btn primary sm" href="https://metamask.app.link/dapp/${esc(target)}" rel="noopener">${t('openMetaMask')} →</a></div>
       <div class="tiny">${t('miniPayNote')}</div>`;
   }
+  // ------------------------------------------------------ swap CELO → USDC --
+  // Holding native CELO is the most common "I have money but cannot pay" state:
+  // the CELO token implements neither EIP-3009 nor EIP-2612, so it can never be
+  // signed over to the facilitator. Rather than send people to a DEX, the swap
+  // happens here: quote all four Uniswap v3 fee tiers (their prices differ a
+  // lot — the thin ones quote ~20% worse), approve exactly what is being sold,
+  // then swap through the router's multicall so the trade also carries a
+  // deadline. Every number the wallet signs comes from a fresh quote.
+  const SWAP = {
+    router: '0x5615CDAb10dc425a742d643d949a7F474C01abc4',   // Uniswap SwapRouter02 on Celo
+    quoter: '0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8',   // QuoterV2
+    celo: '0x471EcE3750Da237f93B8E339c536989b8978a438',     // CELO's own ERC-20 interface
+    fees: [100, 500, 3000, 10000],
+    slipBps: 150n,                       // 1.5% — the tight pool moves little, but be safe
+    gasKeep: 200000000000000000n,        // keep 0.2 CELO for gas
+    minIn: 50000000000000000n,           // below 0.05 CELO a quote is not worth signing
+  };
+  const b32 = (n) => BigInt(n).toString(16).padStart(64, '0');
+  const b32a = (a) => String(a).toLowerCase().replace('0x', '').padStart(64, '0');
+  const wei = (celo) => BigInt(Math.round(Number(celo) * 1e6)) * 1000000000000n;   // 6dp is plenty
+  const fmt = (v, dec, digits) => (Number(v) / Math.pow(10, dec)).toFixed(digits);
+  let SWAPPING = false, swapQuote = null, quoteSeqSwap = 0;
+
+  async function rpc(method, params) {
+    const r = await fetch(CFG.chain.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    const d = await r.json();
+    if (d && d.error) throw new Error(d.error.message || 'rpc error');
+    return d && d.result;
+  }
+  async function nativeBalance(acct) {
+    try { return BigInt(await rpc('eth_getBalance', [acct, 'latest']) || '0x0'); } catch (_) { return 0n; }
+  }
+  async function quoteSwap(amountIn) {
+    // QuoterV2.quoteExactInputSingle((tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96))
+    const tries = await Promise.all(SWAP.fees.map(async (fee) => {
+      const data = '0xc6a5026a' + b32a(SWAP.celo) + b32a(USDC_ADDR) + b32(amountIn) + b32(fee) + b32(0);
+      try {
+        const res = await rpc('eth_call', [{ to: SWAP.quoter, data }, 'latest']);
+        return { fee, out: BigInt('0x' + String(res).slice(2, 66)) };
+      } catch (_) { return { fee, out: 0n }; }
+    }));
+    return tries.reduce((a, b) => (b.out > a.out ? b : a), { fee: 0, out: 0n });
+  }
+  async function waitReceipt(hash, tries = 60) {
+    for (let i = 0; i < tries; i++) {
+      await new Promise((r) => setTimeout(r, 2500));
+      const rc = await rpc('eth_getTransactionReceipt', [hash]).catch(() => null);
+      if (rc) return rc;
+    }
+    return null;
+  }
+  async function sendTx(to, data) {
+    return provider().request({ method: 'eth_sendTransaction', params: [{ from: ACCOUNT, to, data }] });
+  }
+  function swapCalldata(amountIn, minOut, fee) {
+    const inner = '04e45aaf' + b32a(SWAP.celo) + b32a(USDC_ADDR) + b32(fee) + b32a(ACCOUNT)
+                + b32(amountIn) + b32(minOut) + b32(0);
+    const nbytes = inner.length / 2;
+    const padded = inner + '0'.repeat(((32 - (nbytes % 32)) % 32) * 2);
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
+    // multicall(uint256 deadline, bytes[] data) — the deadline the router enforces
+    return '0x5ae401dc' + b32(deadline) + b32(64) + b32(1) + b32(32) + b32(nbytes) + padded;
+  }
+  async function renderSwapQuote() {
+    const box = $('#swapOut'); if (!box) return;
+    const mine = ++quoteSeqSwap;
+    const amt = Number($('#swapIn').value || 0);
+    swapQuote = null;
+    $('#btnSwap').disabled = true;
+    if (!(amt > 0)) { box.textContent = ''; return; }
+    const inWei = wei(amt);
+    if (inWei < SWAP.minIn) { box.textContent = t('swapTooSmall'); return; }
+    box.textContent = t('swapQuoting');
+    const q = await quoteSwap(inWei).catch(() => ({ fee: 0, out: 0n }));
+    if (mine !== quoteSeqSwap) return;
+    if (!q.out) { box.textContent = t('swapNoQuote'); return; }
+    swapQuote = { inWei, fee: q.fee, out: q.out };
+    box.textContent = '≈ ' + fmt(q.out, 6, 4) + ' USDC · ' + (q.fee / 10000).toFixed(2) + '% ' + t('swapPool');
+    $('#btnSwap').disabled = SWAPPING;
+  }
+  async function doSwap() {
+    if (SWAPPING || !swapQuote) return;
+    const msg = $('#swapMsg'), btn = $('#btnSwap');
+    try {
+      if (!ACCOUNT) await connect();
+      if (!ACCOUNT) return;
+      await ensureChain();
+      SWAPPING = true; btn.disabled = true;
+      const inWei = swapQuote.inWei;
+      const bal = await nativeBalance(ACCOUNT);
+      if (bal < inWei + SWAP.gasKeep) { setMsg(msg, t('swapKeepGas'), 'warn'); return; }
+      // 1) allowance — approve exactly what is being sold, never unlimited
+      const allowData = '0xdd62ed3e' + b32a(ACCOUNT) + b32a(SWAP.router);
+      const cur = BigInt(await rpc('eth_call', [{ to: SWAP.celo, data: allowData }, 'latest']) || '0x0');
+      if (cur < inWei) {
+        setMsg(msg, t('swapApprove'));
+        const ah = await sendTx(SWAP.celo, '0x095ea7b3' + b32a(SWAP.router) + b32(inWei));
+        setMsg(msg, t('swapApproving'));
+        const ar = await waitReceipt(ah);
+        if (!ar || BigInt(ar.status || '0x0') !== 1n) { setMsg(msg, t('swapApproveFail'), 'err'); return; }
+      }
+      // 2) re-quote right before signing — the wallet must sign today's price
+      const fresh = await quoteSwap(inWei);
+      if (!fresh.out) { setMsg(msg, t('swapNoQuote'), 'err'); return; }
+      const minOut = fresh.out * (10000n - SWAP.slipBps) / 10000n;
+      setMsg(msg, t('swapConfirm').replace('{n}', fmt(minOut, 6, 4)));
+      const hash = await sendTx(SWAP.router, swapCalldata(inWei, minOut, fresh.fee));
+      setMsg(msg, t('swapSending'));
+      const rc = await waitReceipt(hash);
+      const link = `<a class="txlink" target="_blank" rel="noopener" href="${esc(CFG.chain.explorer_tx + hash)}">${t('viewTx')} ↗</a>`;
+      if (!rc || BigInt(rc.status || '0x0') !== 1n) {
+        msg.innerHTML = `<span class="err">${t('swapFail')}</span> ${link}`; return;
+      }
+      msg.innerHTML = `<span style="color:var(--accent2)">${t('swapDone').replace('{n}', fmt(fresh.out, 6, 4))}</span> ${link}`;
+      msg.className = 'msg';
+      await refreshBalance();
+      renderSwapBalance();
+    } catch (e) {
+      const we = walletError(e);
+      setMsg(msg, (we && we.message) || t('errGeneric'), 'err');
+    } finally { SWAPPING = false; $('#btnSwap').disabled = !swapQuote; }
+  }
+  async function renderSwapBalance() {
+    const el = $('#swapBal'); if (!el || !ACCOUNT) return;
+    const bal = await nativeBalance(ACCOUNT);
+    el.textContent = fmt(bal, 18, 4) + ' CELO';
+    const usable = bal > SWAP.gasKeep ? bal - SWAP.gasKeep : 0n;
+    const max = $('#swapMax');
+    if (max) {
+      max.hidden = usable < SWAP.minIn;
+      max.dataset.amt = (Number(usable) / 1e18).toFixed(4);
+      max.textContent = t('swapMax').replace('{n}', max.dataset.amt);
+    }
+  }
+
   function renderGetUsdc() {
     const box = $('#getUsdcBox'); if (!box) return;
     box.hidden = false;
     box.innerHTML = `<div class="row" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div class="hd">${t('getUsdcHd')}</div><span class="lang" id="getUsdcClose">${t('close')}</span></div>
-      <div>· <a href="${SWAP_CELO}" target="_blank" rel="noopener">${t('getUsdc0')}</a></div>
+      <div class="swap">
+        <div class="swap-top"><b>${t('swapHd')}</b><span class="tiny" id="swapBal">—</span></div>
+        <p class="tiny">${t('swapWhy')}</p>
+        <div class="swap-row">
+          <input class="input" id="swapIn" inputmode="decimal" placeholder="0.0" aria-label="CELO">
+          <span class="tiny">CELO</span>
+          <button type="button" class="text-btn" id="swapMax" hidden></button>
+        </div>
+        <div class="tiny" id="swapOut"></div>
+        <div class="swap-row"><button type="button" class="btn primary sm" id="btnSwap" disabled>${t('swapBtn')}</button>
+          <span class="tiny">${t('swapTwoTx')}</span></div>
+        <div class="msg" id="swapMsg" role="status" aria-live="polite"></div>
+      </div>
       <div>· <a href="${JUMPER}" target="_blank" rel="noopener">${t('getUsdc1')}</a></div>
       <div>· ${t('getUsdc2')}</div>
       <div>· ${t('getUsdc3')}</div>
       <div>· <a href="${APP_BRIDGE}" target="_blank" rel="noopener">${t('getUsdc4')}</a></div>`;
     $('#getUsdcClose').onclick = () => { box.hidden = true; };
+    $('#swapIn').oninput = () => { clearTimeout(renderSwapQuote._t); renderSwapQuote._t = setTimeout(renderSwapQuote, 350); };
+    $('#swapMax').onclick = () => { $('#swapIn').value = $('#swapMax').dataset.amt || ''; renderSwapQuote(); };
+    $('#btnSwap').onclick = doSwap;
+    renderSwapBalance();
     try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
   }
   function setAccount(addr) {

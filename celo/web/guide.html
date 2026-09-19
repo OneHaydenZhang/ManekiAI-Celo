@@ -127,10 +127,6 @@
   };
   const JUMPER = 'https://jumper.exchange/?toChain=42220&toToken=' + K.usdc;
   const JUMPER_CELO = 'https://jumper.exchange/?toChain=42220&toToken=0x0000000000000000000000000000000000000000';
-  // Holding native CELO is the most common "I have money but cannot pay" case:
-  // CELO's token implements neither EIP-3009 nor EIP-2612, so it can never be
-  // signed over to the facilitator. A same-chain swap fixes it in one click.
-  const SWAP_CELO = 'https://app.uniswap.org/swap?chain=celo&inputCurrency=ETH&outputCurrency=' + K.usdc;
   const DUNE_SQL = `select date_trunc('day', evt_block_time) d,
        count(distinct "from") wallets, count(*) txs,
        sum(case when contract_address = ${K.usdm} then cast(value as double) / 1e18   -- USDm: 18 decimals
@@ -179,15 +175,15 @@ group by 1 order by 1`;
       p5none: '还没有买家公开报告。做一次动线 B，跑完第一份报告后点「公开这份报告」，这里就会出现第一条。', p5b: '打开这份报告 ↗',
       // journeys
       jA: 'A · 任何人：花 $0.02 问一次（最短的一条）',
-      jApre: '需要：桌面浏览器 + MetaMask / Rabby / OKX 插件；钱包在 Celo（链 42220）上有 ≥ 0.02 USDC（或 USA₮）。不需要 CELO，不需要登录，也不需要 Hyperliquid 账户。没有 USDC 就先点「用 Jumper 获取 USDC」。只有 CELO 也不行——CELO 代币不支持签名授权（既无 EIP-3009 也无 EIP-2612），付不了款；点「有 CELO？换成 USDC」在 Celo 链上换一点即可，gas 就用你手上的 CELO 付。整条 A 花 $0.02。',
+      jApre: '需要：桌面浏览器 + MetaMask / Rabby / OKX 插件；钱包在 Celo（链 42220）上有 ≥ 0.02 USDC（或 USA₮）。不需要 CELO，不需要登录，也不需要 Hyperliquid 账户。没有 USDC 就先点「用 Jumper 获取 USDC」。只有 CELO 也不行——CELO 代币不支持签名授权（既无 EIP-3009 也无 EIP-2612），付不了款；Arena 的「获取 USDC」卡片里内置了兑换：填一个 CELO 数量 → 它在 Celo 上四个 Uniswap 池里比价 → 钱包弹两次（授权 + 兑换）→ USDC 直接到你钱包，gas 用你手上的 CELO 付，全程不离开页面。整条 A 花 $0.02。',
       jAs: ['打开 Arena → 右上「连接钱包」', '停在「付费咨询」页签，选一个市场（如 NVDA），写下你的问题', '点「付费获取分析 · $0.02」→ 钱包弹出 EIP-3009 授权（离线签名，不花 gas）', '等 10–60 秒：答案出现，下面带一行付款凭证'],
       jAw: '观测：答案下方「✓ 已支付 · 0.02 USDC · 查看交易 ↗」点开是 Celoscan 上一笔真实的 USDC 转账（from 你的钱包 → to payTo，由 facilitator 广播并代付 gas）；本页第 0 节「已结算购买」+1、第 4 节「最近结算」多一行。想更便宜可以点「只看快速简报」（$0.01，同一标的 10 分钟内共享一份）。',
-      jAgo: '打开 Arena →', jAusdc: '用 Jumper 获取 USDC ↗', jAswap: '有 CELO？换成 USDC ↗',
+      jAgo: '打开 Arena →', jAusdc: '用 Jumper 获取 USDC ↗', jAswap: '有 CELO？在 Arena 里直接换 →',
       jB: 'B · 任何人：配置并付费运行一个 Agent（核心动线）',
-      jBpre: '需要：同上（钱包 + Celo 上的 USDC）。费用取决于你配置的检查次数：最便宜 $0.02（1 小时 / 每 60 分钟 = 1 次检查），最贵 $3.84（24 小时 / 每 15 分钟 = 96 次）。建议第一次选「1 小时 + 每 60 分钟」，花 $0.02 就能看完整条链路。这条动线不授权任何真实交易，Agent 只读行情、写报告。只有 CELO 的话先在 Celo 链上换成 USDC（见按钮），CELO 本身不能直接付款。',
+      jBpre: '需要：同上（钱包 + Celo 上的 USDC）。费用取决于你配置的检查次数：最便宜 $0.02（1 小时 / 每 60 分钟 = 1 次检查），最贵 $3.84（24 小时 / 每 15 分钟 = 96 次）。建议第一次选「1 小时 + 每 60 分钟」，花 $0.02 就能看完整条链路。这条动线不授权任何真实交易，Agent 只读行情、写报告。只有 CELO 的话，在 Arena 的「获取 USDC」卡片里当场换一点即可，CELO 本身不能直接付款。',
       jBs: ['Arena → 切到「创建 Agent」页签', '选任务类型（持续监控 / 跟踪研究）、市场、运行时长、以及「更多设置」里的检查频率', '在「你的关注重点」里写清楚要它盯什么、给你什么结果（最多 600 字）', '点「查看运行费用」：右侧给出「N 次检查 × 单价 = 总价」，并写明一次付清、提前停止不退款', '点「支付并启动 · $X」→ 钱包签一次 EIP-3009 授权 → 页面跳到「我的记录 · 我的 Agent」'],
       jBw: '观测：任务卡出现「运行中」和进度条，第 1 份报告通常 1 分钟内送达（执行器每 60 秒扫一次到期任务）；卡片底部「支付凭证 ↗」是 Celoscan 上那一笔 USDC；本页第 0 节「付费运行的 Agent」+1、第 4 节「最近结算」的产品列显示「Agent 运行 · 持续监控 / 跟踪研究」。',
-      jBgo: '打开 Arena →', jBusdc: '用 Jumper 获取 USDC ↗', jBswap: '有 CELO？换成 USDC ↗',
+      jBgo: '打开 Arena →', jBusdc: '用 Jumper 获取 USDC ↗', jBswap: '有 CELO？在 Arena 里直接换 →',
       jC: 'C · 回来看结果 / 换设备找回 / 提前停止',
       jCpre: '需要：做过一次 B。运行凭证（任务号 + 访问令牌）保存在你付款时用的那个浏览器里；换设备或清了缓存，用付款的钱包签一次名就能找回。',
       jCs: ['Arena →「我的记录」→「我的 Agent」页签：每张卡显示进度、最新报告、支付凭证', '报告多于 1 份时点「全部报告」展开历史（按检查序号倒序）', '换设备 / 清缓存：点「用钱包找回」→ 钱包弹出一条纯文本签名（不是交易、不花 gas）→ 任务回到列表', '想提前结束：点「停止」→ 弹窗写明「剩余未执行的部分不退款」→ 确认后状态变「已停止」'],
@@ -255,15 +251,15 @@ group by 1 order by 1`;
       p5h: 'Delivered work (published by its buyer)', p5: 'A paid run delivers one written report per check. Reports are private to the buyer by default; from "My agents" the buyer can publish one as a read-only link. Those are listed below, so a judge can open a real delivery and check what a paid agent actually produced. The payer address is never shown.',
       p5none: 'No buyer has published a report yet. Do journey B, wait for the first report and press "Publish this report" — the first one shows up here.', p5b: 'Open this report ↗',
       jA: 'A · Anyone: pay $0.02 and ask (the shortest path)',
-      jApre: 'Needs: a desktop browser with MetaMask / Rabby / OKX, and at least 0.02 USDC (or USA₮) on Celo (chain 42220). No CELO, no login, no Hyperliquid account. No USDC yet? Use the Jumper button. Holding only CELO is not enough — the CELO token supports no signed authorization (neither EIP-3009 nor EIP-2612), so it cannot pay; swap a little into USDC on Celo itself (button below) and let the CELO you already hold cover that swap gas. The whole journey costs $0.02.',
+      jApre: 'Needs: a desktop browser with MetaMask / Rabby / OKX, and at least 0.02 USDC (or USA₮) on Celo (chain 42220). No CELO, no login, no Hyperliquid account. No USDC yet? Use the Jumper button. Holding only CELO is not enough — the CELO token supports no signed authorization (neither EIP-3009 nor EIP-2612), so it cannot pay; the Arena’s “Get USDC” box swaps it for you: type a CELO amount, it prices all four Uniswap pools on Celo, your wallet prompts twice (approve, then swap) and the USDC lands in your wallet — gas paid from the CELO you already hold, without leaving the page. The whole journey costs $0.02.',
       jAs: ['Open the Arena → “Connect wallet” (top right)', 'Stay on the “Paid consultation” tab, pick a market (e.g. NVDA) and type your question', 'Click “Pay for analysis · $0.02” → the wallet shows one EIP-3009 authorization (off-chain signature, no gas)', 'Wait 10–60 s: the answer appears with a payment receipt under it'],
       jAw: 'Observe: the receipt “✓ Paid · 0.02 USDC · View tx ↗” opens a real USDC transfer on Celoscan (from your wallet → payTo, broadcast and gas-paid by the facilitator); section 0 “Settled purchases” +1 and a new row in section 4. Cheaper option: “Quick brief only” ($0.01, shared per symbol for 10 minutes).',
-      jAgo: 'Open the Arena →', jAusdc: 'Get USDC with Jumper ↗', jAswap: 'Hold CELO? Swap to USDC ↗',
+      jAgo: 'Open the Arena →', jAusdc: 'Get USDC with Jumper ↗', jAswap: 'Hold CELO? Swap it in the Arena →',
       jB: 'B · Anyone: configure and pay an agent to run (the core journey)',
-      jBpre: 'Needs: the same wallet + USDC on Celo. The price follows the number of checks you configure: from $0.02 (1 hour, every 60 min = 1 check) up to $3.84 (24 hours, every 15 min = 96 checks). For a first run pick “1 hour + every 60 minutes” — $0.02 shows the whole path. This journey authorizes no trading at all: the agent only reads the market and writes reports. If you hold only CELO, swap some into USDC on Celo first (button) — CELO itself cannot pay.',
+      jBpre: 'Needs: the same wallet + USDC on Celo. The price follows the number of checks you configure: from $0.02 (1 hour, every 60 min = 1 check) up to $3.84 (24 hours, every 15 min = 96 checks). For a first run pick “1 hour + every 60 minutes” — $0.02 shows the whole path. This journey authorizes no trading at all: the agent only reads the market and writes reports. If you hold only CELO, swap some in the Arena’s “Get USDC” box first — CELO itself cannot pay.',
       jBs: ['Arena → switch to the “Create agent” tab', 'Pick the task (monitoring / research), the market, how long it runs, and — under “More settings” — how often it checks', 'Write what it should watch and what you need back in “What to focus on” (600 characters max)', 'Click “Review running cost”: the panel shows “N checks × unit price = total” and states that one payment covers the whole run with no refund if you stop early', 'Click “Pay & start · $X” → sign one EIP-3009 authorization → the page jumps to “My records · My agents”'],
       jBw: 'Observe: the run card shows “Running” with a progress bar and the first report usually lands within a minute (the runner sweeps due checks every 60 s); “Payment ↗” on the card is that USDC transfer on Celoscan; section 0 “Paid agent runs” +1 and section 4 shows the product as “Agent run · monitoring / research”.',
-      jBgo: 'Open the Arena →', jBusdc: 'Get USDC with Jumper ↗', jBswap: 'Hold CELO? Swap to USDC ↗',
+      jBgo: 'Open the Arena →', jBusdc: 'Get USDC with Jumper ↗', jBswap: 'Hold CELO? Swap it in the Arena →',
       jC: 'C · Come back for the results, restore on another device, or stop early',
       jCpre: 'Needs: one finished journey B. The run receipt (task id + access token) lives in the browser you paid from; on another device — or after clearing site data — sign once with the wallet that paid to get it back.',
       jCs: ['Arena → “My records” → “My agents”: each card shows progress, the latest report and the payment receipt', 'More than one report? Click “All reports” to expand the history (newest check first)', 'New device / cleared cache: click “Restore with my wallet” → the wallet shows a plain-text signature (not a transaction, no gas) → the runs come back', 'Want it to end now: click “Stop” → the dialog states that the part which has not run is not refunded → confirm and the state becomes “Stopped”'],
@@ -399,8 +395,8 @@ group by 1 order by 1`;
         <p class="pre">${esc(t(k + 'pre'))}</p><ol>${t(k + 's').map((s) => `<li>${esc(s)}</li>`).join('')}</ol>
         <div class="watch">👁 ${esc(t(k + 'w'))}</div></div>`;
     $('#journeys').innerHTML =
-      role('jA', btnSame('/arena', t('jAgo')) + btn(SWAP_CELO, t('jAswap'), true) + btn(JUMPER, t('jAusdc'), true)) +
-      role('jB', btnSame('/arena', t('jBgo')) + btn(SWAP_CELO, t('jBswap'), true) + btn(JUMPER, t('jBusdc'), true)) +
+      role('jA', btnSame('/arena', t('jAgo')) + btnSame('/arena', t('jAswap')) + btn(JUMPER, t('jAusdc'), true)) +
+      role('jB', btnSame('/arena', t('jBgo')) + btnSame('/arena', t('jBswap')) + btn(JUMPER, t('jBusdc'), true)) +
       role('jC', btnSame('/arena#records', t('jCgo'))) +
       role('jD', btnSame('/#agent', t('jDgo')) + btn(JUMPER_CELO, t('jDcelo'), true)) +
       role('jE', btnSame('/admin', t('jEgo'), true) + btn(location.origin + '/api/x402/activity', t('jEact'), true));
