@@ -46,7 +46,12 @@
 .bar>i{display:block;height:100%;background:var(--accent2)}
 .report{border-top:1px solid var(--line2);padding-top:10px;margin-top:10px;font-size:12.5px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
 .report .seq{color:var(--soft);font-size:11px}
-.task-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+.task-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.get-list{list-style:none;margin:10px 0 16px;padding:0;font-size:12px;color:var(--muted);line-height:1.9}
+.get-list li{position:relative;padding-left:14px}
+.get-list li:before{content:'·';position:absolute;left:3px;color:var(--accent2)}
+.share-box{margin-top:10px;font-size:11.5px;color:var(--soft);line-height:1.8;overflow-wrap:anywhere}
+.share-box a{color:var(--accent2)}
 </style>
 </head>
 <body class="js">
@@ -93,7 +98,9 @@
         <div id="agentError" class="msg err" role="alert"></div>
         <div class="composer-actions"><button type="submit" class="btn primary" id="btnQuote" data-t="quoteButton">查看运行费用</button><button type="button" class="text-btn" id="btnSaveDraft" data-t="saveDraft">保存草稿</button></div><p class="payment-note" data-t="creationNote">保存草稿免费；启动前确认运行范围与费用。</p><p class="msg" id="draftMsg" role="status"></p>
       </form>
-      <aside class="run-summary" aria-labelledby="runSummaryTitle"><div class="deliver-top"><span class="overline" data-t="yourAgent">你的 Agent</span><span class="small-label" data-t="designPreview">流程预览</span></div><h3 id="runSummaryTitle">NVDA 观察助手</h3><p id="summaryGoal" class="summary-goal"></p><dl class="summary-lines"><div><dt data-t="taskLabelShort">任务</dt><dd id="summaryTask"></dd></div><div><dt data-t="durationLabel">运行时长</dt><dd id="summaryDuration"></dd></div><div><dt data-t="frequencyLabel">检查频率</dt><dd id="summaryFrequency"></dd></div><div><dt data-t="executionLabel">执行范围</dt><dd data-t="researchOnly">分析与监控</dd></div></dl>
+      <aside class="run-summary" aria-labelledby="runSummaryTitle"><div class="deliver-top"><span class="overline" data-t="yourAgent">你的 Agent</span><span class="small-label" data-t="designPreview">流程预览</span></div><h3 id="runSummaryTitle">NVDA 观察助手</h3><p id="summaryGoal" class="summary-goal"></p><p class="overline" style="margin-top:16px" data-t="getTitle">每次检查，你会收到</p>
+        <dl class="summary-lines"><div><dt data-t="taskLabelShort">任务</dt><dd id="summaryTask"></dd></div><div><dt data-t="durationLabel">运行时长</dt><dd id="summaryDuration"></dd></div><div><dt data-t="frequencyLabel">检查频率</dt><dd id="summaryFrequency"></dd></div><div><dt data-t="executionLabel">执行范围</dt><dd data-t="researchOnly">分析与监控</dd></div></dl>
+        <ul class="get-list"><li data-t="get1">一份书面报告——跟上次相比有什么变化</li><li data-t="get2">当下值得盯的价位与信号</li><li data-t="get3">风险，以及要不要你现在关注</li></ul>
         <div id="quoteIdle"><p class="quote-instruction" data-t="quoteHint">配置好任务，再查看费用明细。</p><p class="tiny" data-t="noTrading">此流程不授权真实交易。</p></div>
         <div id="quoteReview" hidden tabindex="-1"><span class="overline" data-t="quoteReal">运行费用</span><div class="quote-total"><strong id="quoteTotal">—</strong><span>USDC</span></div><p id="quoteBreakdown" class="tiny"></p><p class="quote-disclosure" id="quoteDisclosure" data-t="noRefund">一次付清整段运行；提前停止不退款。</p><button type="button" class="btn primary" id="btnAgentLaunch" data-t="payStart">支付并启动</button><p class="tiny" data-t="budgetNote">按本次配置运行，到期停止，不自动续费。</p></div>
         <div class="summary-bottom"><span data-t="draftFirst">先配置</span><span aria-hidden="true">→</span><span data-t="thenReview">确认费用</span><span aria-hidden="true">→</span><span data-t="thenRun">开始运行</span></div>
@@ -301,7 +308,19 @@
     "st_failed": "Stopped early",
     "st_awaiting_payment": "Awaiting payment",
     "everyMin": "every {n} min",
-    "receipt": "Payment"
+    "receipt": "Payment",
+    "shareOn": "Publish this report",
+    "shareOff": "Unpublish",
+    "shareHint": "Anyone with the link can read the assignment and the reports. Your wallet address is not shown.",
+    "shareLink": "Public link",
+    "shareCopy": "Copy",
+    "shareCopied": "Copied",
+    "shareWait": "Wait for the first report before publishing.",
+    "getTitle": "EVERY CHECK, YOU GET",
+    "get1": "A written report — what changed since the last check",
+    "get2": "The levels and signals worth watching right now",
+    "get3": "The risk, and whether it needs you",
+    "toAgent": "Have an agent watch this for me →"
   },
   "zh": {
     "connect": "连接钱包",
@@ -490,7 +509,19 @@
     "st_failed": "提前结束",
     "st_awaiting_payment": "等待支付确认",
     "everyMin": "每 {n} 分钟",
-    "receipt": "支付凭证"
+    "receipt": "支付凭证",
+    "shareOn": "公开这份报告",
+    "shareOff": "取消公开",
+    "shareHint": "拿到链接的人都能看到任务与报告；不会显示你的钱包地址。",
+    "shareLink": "公开链接",
+    "shareCopy": "复制",
+    "shareCopied": "已复制",
+    "shareWait": "等第一份报告到了再公开。",
+    "getTitle": "每次检查，你会收到",
+    "get1": "一份书面报告——跟上次相比有什么变化",
+    "get2": "当下值得盯的价位与信号",
+    "get3": "风险，以及要不要你现在关注",
+    "toAgent": "让 Agent 持续盯这个 →"
   }
 };
   let LANG = (() => { try { return localStorage.getItem('arena_lang') || ((navigator.language || '').startsWith('zh') ? 'zh' : 'en'); } catch (_) { return 'en'; } })();
@@ -825,7 +856,22 @@
       const d = await readJson(r);
       if (!r.ok) { showError(m, r.status, d); return; }
       if (d.product == null) d.product = kind;
-      out.innerHTML = answerHtml(d);
+      out.innerHTML = answerHtml(d)
+        + `<div style="margin-top:10px"><button type="button" class="text-btn" id="btnMakeTask">${t('toAgent')}</button></div>`;
+      // "The consultation answers today; the agent keeps watching." Carries the
+      // market and the question straight into the create form.
+      const askedSymbol = symbol, askedText = message;
+      $('#btnMakeTask').onclick = () => {
+        setService('create');
+        if ([...($('#agentSymbol').options || [])].some((o) => o.value === askedSymbol)) $('#agentSymbol').value = askedSymbol;
+        if (!$('#agentGoal').value) {
+          $('#agentGoal').value = askedText
+            || (LANG === 'zh' ? `持续跟踪 ${askedSymbol} 的变化与风险` : `Keep watching ${askedSymbol} for changes and risk`);
+        }
+        updateSummary();
+        $('#workspace').scrollIntoView({block: 'start', behavior: 'auto'});
+        $('#agentGoal').focus({preventScroll: true});
+      };
       setMsg(m, '✓', 'ok'); refreshBalance();
       savePurchase({ ts: Math.floor(Date.now() / 1000), product: kind, symbol, round: 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
     } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && (e.noFunds || e.pending)) ? 'warn' : 'err'); }
@@ -1116,8 +1162,12 @@
       <div class="task-actions">
         ${runs.length > 1 ? `<button type="button" class="text-btn" data-task-action="toggle">${open ? t('hideReports') : t('allReports')} (${runs.length})</button>` : ''}
         ${!finished ? `<button type="button" class="text-btn" data-task-action="stop">${t('stopTask')}</button>` : ''}
+        ${done ? `<button type="button" class="text-btn" data-task-action="share">${d.shared ? t('shareOff') : t('shareOn')}</button>` : ''}
         ${d.payment && d.payment.tx ? `<a class="text-btn" target="_blank" rel="noopener" href="${esc(d.payment.explorer)}">${t('receipt')} ↗</a>` : ''}
-      </div></article>`;
+      </div>
+      ${d.shared && d.share_url ? `<div class="share-box">${t('shareLink')}: <a href="${esc(d.share_url)}" target="_blank" rel="noopener">${esc(d.share_url)}</a>
+        <button type="button" class="text-btn" data-task-action="copy">${t('shareCopy')}</button><br>${t('shareHint')}</div>` : ''}
+      </article>`;
   }
   function renderAgentsPanel() {
     const box = $('#draftList'); if (!box) return;
@@ -1135,11 +1185,30 @@
     box.querySelectorAll('[data-task-action]').forEach((b) => {
       b.onclick = () => {
         const host = b.closest('[data-task]'); if (!host) return;
-        if (b.dataset.taskAction === 'toggle') { OPEN_REPORTS[host.dataset.task] = !OPEN_REPORTS[host.dataset.task]; renderAgentsPanel(); }
-        else stopTask(host.dataset.task);
+        const id = host.dataset.task, act = b.dataset.taskAction;
+        if (act === 'toggle') { OPEN_REPORTS[id] = !OPEN_REPORTS[id]; renderAgentsPanel(); }
+        else if (act === 'share') shareTask(id);
+        else if (act === 'copy') {
+          const d = TASK_STATE[id] || {};
+          try { navigator.clipboard.writeText(d.share_url || '').then(() => { b.textContent = t('shareCopied'); }); } catch (_) {}
+        } else stopTask(id);
       };
     });
     renderDrafts();
+  }
+  async function shareTask(id) {
+    const ref = taskRefs(ACCOUNT).find((x) => x.task_id === id); if (!ref) return;
+    const cur = TASK_STATE[id] || {}, m = $('#recordsMsg');
+    if (!cur.shared && !(+cur.checks_done || 0)) { setMsg(m, t('shareWait'), 'warn'); return; }
+    try {
+      const r = await fetch('/api/x402/tasks/' + encodeURIComponent(id) + '/share?token='
+                            + encodeURIComponent(ref.token || ''), {method: 'POST',
+        headers: {'Content-Type': 'application/json'}, body: JSON.stringify({shared: !cur.shared})});
+      const d = await readJson(r);
+      if (!r.ok) { setMsg(m, d.detail || d.error || t('errGeneric'), 'err'); return; }
+      setMsg(m, '');
+      await fetchTask(ref); renderAgentsPanel();
+    } catch (_) { setMsg(m, t('errGeneric'), 'err'); }
   }
   async function stopTask(id) {
     const ref = taskRefs(ACCOUNT).find((x) => x.task_id === id); if (!ref) return;

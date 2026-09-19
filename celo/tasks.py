@@ -180,6 +180,19 @@ def ensure_schema() -> None:
         error     TEXT NOT NULL DEFAULT ''
     )""")
     db.execute("CREATE INDEX IF NOT EXISTS idx_x402_task_runs ON x402_task_runs(task_id, seq)")
+    # Additive columns for tables that already exist (constitution §3: additive
+    # and self-healing). A column another process added between the check and
+    # the ALTER is benign.
+    existing = {r["name"] for r in db.query_all("PRAGMA table_info(x402_tasks)")}
+    for name, decl in (("shared", "INTEGER NOT NULL DEFAULT 0"),
+                       ("share_id", "TEXT NOT NULL DEFAULT ''"),
+                       ("shared_at", "REAL NOT NULL DEFAULT 0")):
+        if name not in existing:
+            try:
+                db.execute(f"ALTER TABLE x402_tasks ADD COLUMN {name} {decl}")
+            except Exception:
+                pass
+    db.execute("CREATE INDEX IF NOT EXISTS idx_x402_tasks_share ON x402_tasks(share_id)")
     _schema_ready = True
 
 
@@ -316,6 +329,8 @@ def view(row: Dict[str, Any], with_runs: bool = True) -> Dict[str, Any]:
         "next_run_at": float(row.get("next_run_at") or 0),
         "ended_at": float(row.get("ended_at") or 0),
         "payer_short": (row.get("payer") or "")[:6] + "…" + (row.get("payer") or "")[-4:],
+        "shared": bool(int(row.get("shared") or 0)),
+        "share_url": share_url(row),
         "payment": {"tx": row.get("tx") or "",
                     "explorer": (x402.CHAIN["explorer_tx"] + row["tx"]) if row.get("tx") else "",
                     "asset": "USDC", "network": x402.NETWORK},
@@ -333,10 +348,19 @@ def summary() -> Dict[str, Any]:
         "SELECT COUNT(*) n, COUNT(DISTINCT payer) payers, COALESCE(SUM(amount_usd),0) usd, "
         "COALESCE(SUM(checks_done),0) reports FROM x402_tasks WHERE status<>'awaiting_payment'") or {}
     running = db.query_one("SELECT COUNT(*) n FROM x402_tasks WHERE status='running'") or {}
+    # "Came back on another day and paid again" — a real user action. Days a
+    # task spent running on its own are deliberately NOT counted (per the
+    # product note: auto-running for days is not the same as returning).
+    ret = db.query_one(
+        "SELECT COUNT(*) c FROM (SELECT payer, COUNT(DISTINCT date(created_at,'unixepoch')) d "
+        "FROM x402_tasks WHERE status<>'awaiting_payment' GROUP BY payer HAVING d>=2)") or {}
+    shared = db.query_one("SELECT COUNT(*) n FROM x402_tasks WHERE shared=1") or {}
     return {"tasks": int(row.get("n") or 0), "payers": int(row.get("payers") or 0),
             "usd": round(float(row.get("usd") or 0), 4),
             "reports": int(row.get("reports") or 0),
-            "running": int(running.get("n") or 0)}
+            "running": int(running.get("n") or 0),
+            "returning_payers": int(ret.get("c") or 0),
+            "shared": int(shared.get("n") or 0)}
 
 
 def admin_recent(limit: int = 20) -> List[Dict[str, Any]]:
@@ -352,6 +376,62 @@ def admin_recent(limit: int = 20) -> List[Dict[str, Any]]:
              "usd": round(float(r["amount_usd"] or 0), 4),
              "tx": r.get("tx") or "", "created_at": float(r.get("created_at") or 0),
              "goal": (r.get("goal") or "")[:120]} for r in rows]
+
+
+def set_shared(task_id: str, shared: bool) -> Optional[Dict[str, Any]]:
+    """Buyer opt-in: publish this run's reports at a read-only link, or take it
+    back down. Sharing is OFF by default and only the buyer (who holds the
+    access token) can turn it on — the goal text is their own words, so it is
+    never public unless they say so."""
+    row = by_id(task_id)
+    if not row:
+        return None
+    if shared:
+        sid = (row.get("share_id") or "") or ("r_" + secrets.token_urlsafe(9).replace("-", "").replace("_", "")[:12])
+        db.execute("UPDATE x402_tasks SET shared=1, share_id=?, shared_at=? WHERE task_id=?",
+                   (sid, time.time(), task_id))
+    else:
+        # Keep the id so re-sharing reuses the same link (and an old link that
+        # was sent to someone simply stops working while it is off).
+        db.execute("UPDATE x402_tasks SET shared=0 WHERE task_id=?", (task_id,))
+    return by_id(task_id)
+
+
+def share_url(row: Dict[str, Any]) -> str:
+    sid = (row or {}).get("share_id") or ""
+    return f"{x402.public_base()}/r/{sid}" if sid and int(row.get("shared") or 0) else ""
+
+
+def by_share_id(share_id: str) -> Optional[Dict[str, Any]]:
+    ensure_schema()
+    sid = str(share_id or "").strip()
+    if not sid:
+        return None
+    return db.query_one("SELECT * FROM x402_tasks WHERE share_id=? AND shared=1", (sid,))
+
+
+def public_view(row: Dict[str, Any]) -> Dict[str, Any]:
+    """What a shared link shows: the assignment, every delivered report and the
+    on-chain receipt — never the token, never the full payer address."""
+    d = view(row, with_runs=True)
+    d.pop("payer", None)
+    d["shared"] = True
+    d["share_url"] = share_url(row)
+    d["shared_at"] = float(row.get("shared_at") or 0)
+    return d
+
+
+def shared_recent(limit: int = 20) -> List[Dict[str, Any]]:
+    """Public delivery samples — what a judge or a new buyer can open without
+    owning a task. Only runs their buyer published."""
+    ensure_schema()
+    rows = db.query_all("SELECT * FROM x402_tasks WHERE shared=1 AND share_id<>'' "
+                        "ORDER BY shared_at DESC LIMIT ?", (int(limit),))
+    return [{"share_id": r["share_id"], "url": share_url(r), "task": r["task_type"],
+             "symbol": r["symbol"], "name": r.get("name") or "",
+             "reports": int(r["checks_done"]), "status": r["status"],
+             "usd": round(float(r["amount_usd"] or 0), 4),
+             "tx": r.get("tx") or "", "shared_at": float(r.get("shared_at") or 0)} for r in rows]
 
 
 # --------------------------------------------------------------- recovery --

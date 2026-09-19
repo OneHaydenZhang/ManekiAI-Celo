@@ -404,6 +404,7 @@ async def x402_activity() -> Dict[str, Any]:
     val = await asyncio.to_thread(x402.activity)
     try:
         val["tasks"] = await asyncio.to_thread(tasks.summary)
+        val["tasks"]["samples"] = await asyncio.to_thread(tasks.shared_recent, 5)
     except Exception as e:
         oplog.error("x402.activity_tasks", repr(e)[:200])
     _activity_cache["val"], _activity_cache["at"] = val, now
@@ -782,6 +783,40 @@ async def task_challenge(address: str = ""):
     issued = int(time.time())
     return {"address": address, "issued_at": issued,
             "message": tasks.recovery_message(address, issued), "ttl_s": tasks.RECOVER_TTL_S}
+
+
+@router.get("/tasks/shared")
+async def task_shared_list():
+    """FREE, public: delivery samples their buyers chose to publish. This is how
+    anyone (a judge, a prospective buyer) can check that a paid run actually
+    produced something, without owning a task."""
+    rows = await asyncio.to_thread(tasks.shared_recent, 20)
+    return {"count": len(rows), "samples": rows}
+
+
+@router.get("/tasks/shared/{share_id}")
+async def task_shared_get(share_id: str):
+    """FREE, public: one published run — the assignment, every delivered report
+    and the settlement tx. Never the access token or the payer address."""
+    row = await asyncio.to_thread(tasks.by_share_id, share_id)
+    if not row:
+        raise HTTPException(404, "this report is not published (or was unpublished)")
+    return await asyncio.to_thread(tasks.public_view, row)
+
+
+@router.post("/tasks/{task_id}/share")
+async def task_share(task_id: str, request: Request, token: str = ""):
+    """Token-gated: the BUYER decides whether their run is public. Off by
+    default — the assignment is their own words."""
+    body = await _json(request)
+    row = await asyncio.to_thread(_task_or_403, task_id, _task_token(request, token))
+    want = bool(body.get("shared", True))
+    if want and int(row.get("checks_done") or 0) < 1:
+        raise HTTPException(409, "nothing to publish yet — wait for the first report")
+    out = await asyncio.to_thread(tasks.set_shared, row["task_id"], want)
+    return {"shared": bool(int((out or {}).get("shared") or 0)),
+            "share_url": tasks.share_url(out or row),
+            "task": tasks.view(out or row, with_runs=False)}
 
 
 @router.get("/tasks/{task_id}")

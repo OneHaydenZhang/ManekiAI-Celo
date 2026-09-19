@@ -171,6 +171,8 @@ group by 1 order by 1`;
       p3b1: '金库地址 ↗', p3b2: '复制 Dune 查询', p3copied: '已复制',
       p4h: '代码与提交历史', p4: '公开仓库只含黑客松期间新增的 Celo 层（celo/ 包、Arena 页、本指南、测试、提交文档），每个 commit 保留真实作者时间。',
       p4b1: '仓库 ↗', p4b2: 'commit 历史 ↗', p4b3: 'celo 层 README ↗',
+      p5h: '交付样本（买家自愿公开）', p5: '买家付费运行的 Agent 会按节奏交付书面报告。报告默认只有买家本人能看；买家可以在「我的 Agent」里点「公开这份报告」生成只读链接——下面列出的就是已公开的那些，评委点开即可核验「真的交付了什么」，页面不显示付款人地址。',
+      p5none: '还没有买家公开报告。做一次动线 B，跑完第一份报告后点「公开这份报告」，这里就会出现第一条。', p5b: '打开这份报告 ↗',
       // journeys
       jA: 'A · 任何人：花 $0.02 问一次（最短的一条）',
       jApre: '需要：桌面浏览器 + MetaMask / Rabby / OKX 插件；钱包在 Celo（链 42220）上有 ≥ 0.02 USDC（或 USA₮）。不需要 CELO，不需要登录，也不需要 Hyperliquid 账户。没有 USDC 就先点「用 Jumper 获取 USDC」。整条 A 花 $0.02。',
@@ -246,6 +248,8 @@ group by 1 order by 1`;
       p3b1: 'Treasury address ↗', p3b2: 'Copy the Dune query', p3copied: 'copied',
       p4h: 'Code & commit history', p4: 'The public repository holds only the Celo layer added during the hackathon (celo/ package, Arena page, this guide, tests, submission doc); every commit keeps its real author date.',
       p4b1: 'Repository ↗', p4b2: 'Commit history ↗', p4b3: 'Celo layer README ↗',
+      p5h: 'Delivered work (published by its buyer)', p5: 'A paid run delivers one written report per check. Reports are private to the buyer by default; from "My agents" the buyer can publish one as a read-only link. Those are listed below, so a judge can open a real delivery and check what a paid agent actually produced. The payer address is never shown.',
+      p5none: 'No buyer has published a report yet. Do journey B, wait for the first report and press "Publish this report" — the first one shows up here.', p5b: 'Open this report ↗',
       jA: 'A · Anyone: pay $0.02 and ask (the shortest path)',
       jApre: 'Needs: a desktop browser with MetaMask / Rabby / OKX, and at least 0.02 USDC (or USA₮) on Celo (chain 42220). No CELO, no login, no Hyperliquid account. No USDC yet? Use the Jumper button. The whole journey costs $0.02.',
       jAs: ['Open the Arena → “Connect wallet” (top right)', 'Stay on the “Paid consultation” tab, pick a market (e.g. NVDA) and type your question', 'Click “Pay for analysis · $0.02” → the wallet shows one EIP-3009 authorization (off-chain signature, no gas)', 'Wait 10–60 s: the answer appears with a payment receipt under it'],
@@ -348,6 +352,7 @@ group by 1 order by 1`;
         ACT ? ((+tk.tasks || 0) > 0
                 ? esc(t('stTasksSub')(+tk.payers || 0, +tk.usd || 0, +tk.reports || 0))
                   + ((+tk.running || 0) ? ` · ${esc(t('stTasksRunning')(+tk.running))}` : '')
+                  + ((+tk.returning_payers || 0) ? ` · ${esc(t('stTasksRet')(+tk.returning_payers))}` : '')
                 : `<span class="warn">${esc(t('stTasksNone'))}</span>`)
             : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
       card(t('stSales'), ACT ? `<span class="dot ${(+sm.settled || 0) > 0 ? 'ok' : 'warn'}"></span>${+sm.settled || 0}` : loading, ACT ? ((+sm.settled || 0) > 0 ? esc(t('stSalesSub')(+sm.payers || 0, +sm.usd || 0)) : `<span class="warn">${esc(t('stSalesNone'))}</span>`) : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
@@ -359,6 +364,7 @@ group by 1 order by 1`;
 
   const repoUrl = () => (CFG && CFG.links && CFG.links.repo) || K.repo;
   function renderProof() {
+    const samples = ((ACT && ACT.tasks && ACT.tasks.samples) || []);
     const regs = (ACT && ACT.registrations && ACT.registrations.agents) || [];
     const analystCard = (CFG && CFG.links && CFG.links.analyst_card) || (location.origin + '/api/agent-card/maneki-analyst');
     const platformTx = (ACT && ACT.registrations && ACT.registrations.platform && ACT.registrations.platform.txhash) || K.analystTx;
@@ -375,7 +381,12 @@ group by 1 order by 1`;
         <div class="btns">${btn(scanAddr(payTo) + '#tokentxns', t('p3b1'))}<button class="btn sm ghost" id="copySql" type="button">${esc(t('p3b2'))}</button></div>
         <pre class="sql">${esc(DUNE_SQL)}</pre></div>
       <div class="card"><h4>${esc(t('p4h'))}</h4><p>${esc(t('p4'))}</p>
-        <div class="btns">${btn(repoUrl(), t('p4b1'))}${btn(repoUrl().replace(/\/$/, '') + '/commits/main', t('p4b2'), true)}${btn(repoUrl().replace(/\/$/, '') + '#readme', t('p4b3'), true)}</div></div>`;
+        <div class="btns">${btn(repoUrl(), t('p4b1'))}${btn(repoUrl().replace(/\/$/, '') + '/commits/main', t('p4b2'), true)}${btn(repoUrl().replace(/\/$/, '') + '#readme', t('p4b3'), true)}</div></div>
+      <div class="card"><h4>${esc(t('p5h'))}</h4><p>${esc(t('p5'))}</p>
+        ${samples.length
+          ? `<div class="btns">${samples.map((x) => btnSame('/r/' + encodeURIComponent(x.share_id),
+              `${x.symbol} · ${x.reports} ${LANG === 'zh' ? '份报告' : 'reports'} · $${(+x.usd).toFixed(2)}`, true)).join('')}</div>`
+          : `<p class="note">${esc(t('p5none'))}</p>`}</div>`;
     $('#copySql').onclick = () => { try { navigator.clipboard.writeText(DUNE_SQL).then(() => { $('#copySql').textContent = t('p3copied'); }); } catch (_) {} };
   }
 
