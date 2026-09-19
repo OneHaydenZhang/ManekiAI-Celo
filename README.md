@@ -127,7 +127,7 @@ Everything in this repository was written after the last pre-hackathon host comm
 
 **Public-repo history = host history replayed.** This repository is a filtered mirror of the private
 host repo: `scripts/publish_celo_public.sh --replay` walks every host commit since `36acfac` that
-touches `auto_service/celo`, the Celo/x402 tests or `docs/hackathon`, checks those paths out at that
+touches `auto_service/celo`, the Celo/x402 tests or `docs/celo`, checks those paths out at that
 commit and commits them here with the **original author date and subject**, suffixed `(host <hash>)`.
 Day-to-day commits arrive through a `post-commit` hook (`sync: <subject> (host <hash>)`). Commit
 timestamps here are therefore the real ones, not the time of the mirror run.

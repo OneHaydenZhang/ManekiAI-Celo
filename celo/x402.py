@@ -85,6 +85,11 @@ PRODUCTS: Dict[str, Dict[str, Any]] = {
     "chat":    {"usd": 0.02, "description": "Ask ManekiAI — one market question answered by the platform analyst (same data + model the trading agents use)"},
     "brief":   {"usd": 0.01, "description": "ManekiAI symbol brief — trend, levels, risk and stance for one US-stock perp (shared, refreshed every 10 min)"},
     "insight": {"usd": 0.05, "description": "Latest decision insight of one live ManekiAI trading agent — action, confidence, reasoning and market read"},
+    # Research-task lane (celo/tasks.py): priced PER CHECK, and one order pays
+    # for the whole run up front — so these two products are the only ones
+    # whose charged amount is computed per request (see `amount_usd` below).
+    "task_monitor": {"usd": 0.02, "description": "ManekiAI monitoring agent — one scheduled check on the market you choose, delivered as a written report (priced per check; a run is paid in full up front)"},
+    "task_research": {"usd": 0.04, "description": "ManekiAI research agent — one scheduled research check on the question you set, delivered as a written report (priced per check; a run is paid in full up front)"},
 }
 _PRICE_BOUNDS = (0.001, 10.0)
 OWNER_SHARE_DEFAULT = 0.70
@@ -208,13 +213,21 @@ def b64d(s: str) -> Any:
     return json.loads(base64.b64decode(s + pad).decode())
 
 
-def requirements(product: str, resource_url: str, asset: str = "USDC") -> Dict[str, Any]:
-    """One `accepts` entry for `product` in `asset` (USDC by default)."""
+def requirements(product: str, resource_url: str, asset: str = "USDC",
+                 amount_usd: Optional[float] = None) -> Dict[str, Any]:
+    """One `accepts` entry for `product` in `asset` (USDC by default).
+
+    `amount_usd` overrides the product's list price for the products that are
+    quoted per request (a research task = unit × checks). The caller MUST
+    recompute it from the request body on every hop — never from anything the
+    client sends — so the 402 challenge and the later signature check price
+    the same order identically."""
     a = ASSETS[asset]
+    usd = price_usd(product) if amount_usd is None else float(amount_usd)
     return {
         "scheme": "exact",
         "network": NETWORK,
-        "amount": atomic(price_usd(product), a["decimals"]),
+        "amount": atomic(usd, a["decimals"]),
         "asset": a["address"],
         "payTo": pay_to(),
         "maxTimeoutSeconds": MAX_TIMEOUT_S,
@@ -222,9 +235,10 @@ def requirements(product: str, resource_url: str, asset: str = "USDC") -> Dict[s
     }
 
 
-def accepts(product: str, resource_url: str) -> List[Dict[str, Any]]:
+def accepts(product: str, resource_url: str,
+            amount_usd: Optional[float] = None) -> List[Dict[str, Any]]:
     """Every payment option we offer, USDC first."""
-    return [requirements(product, resource_url, sym) for sym in ASSETS]
+    return [requirements(product, resource_url, sym, amount_usd) for sym in ASSETS]
 
 
 def resource_info(product: str, resource_url: str) -> Dict[str, Any]:
@@ -232,11 +246,12 @@ def resource_info(product: str, resource_url: str) -> Dict[str, Any]:
             "mimeType": "application/json"}
 
 
-def payment_required(product: str, resource_url: str, error: str = "") -> Dict[str, Any]:
+def payment_required(product: str, resource_url: str, error: str = "",
+                     amount_usd: Optional[float] = None) -> Dict[str, Any]:
     out: Dict[str, Any] = {
         "x402Version": 2,
         "resource": resource_info(product, resource_url),
-        "accepts": accepts(product, resource_url),
+        "accepts": accepts(product, resource_url, amount_usd),
         "extensions": {},
     }
     if error:

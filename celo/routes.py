@@ -15,6 +15,7 @@ charged; settlement failures never leak content.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import threading
 import time
@@ -27,7 +28,7 @@ from .. import db
 from ..admin_auth import client_ip
 from ..models import agent_model, config_model, trade_model
 from ..services import agent_service, chat_service, oplog, pricing
-from . import x402, agentid
+from . import x402, agentid, tasks
 
 router = APIRouter(prefix="/api/x402")
 
@@ -165,55 +166,62 @@ def _bare(symbol: str) -> str:
     return (symbol or "").split(":")[-1].upper()
 
 
-def _402(product: str, resource: str, error: str = "") -> JSONResponse:
-    pr = x402.payment_required(product, resource, error)
+def _402(product: str, resource: str, error: str = "",
+         amount_usd: Optional[float] = None) -> JSONResponse:
+    pr = x402.payment_required(product, resource, error, amount_usd)
     resp = JSONResponse(status_code=402, content=pr)
     resp.headers["PAYMENT-REQUIRED"] = x402.b64e(pr)
     resp.headers["Access-Control-Expose-Headers"] = _EXPOSE
     return resp
 
 
-async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Optional[JSONResponse], Dict[str, Any]]:
+async def _gate(request: Request, product: str, agent_id: str = "",
+                amount_usd: Optional[float] = None) -> Tuple[Optional[JSONResponse], Dict[str, Any]]:
     """Returns (response, {}) when the caller must (re)pay, or (None, info)
-    when a valid payment authorization is in hand (verified, not settled)."""
+    when a valid payment authorization is in hand (verified, not settled).
+
+    `amount_usd` prices ONE request (a research task = unit × checks). The
+    caller recomputes it from the request body on every hop, so a client that
+    re-sends a signature against a bigger configuration simply fails the
+    `value >= amount` check below."""
     if not x402.enabled():
         raise HTTPException(503, "x402 payments are not enabled on this server")
     ip = _ip(request)
     if not _rate_ok(ip):
         raise HTTPException(429, "too many requests — slow down")
     resource = _resource_url(request)
-    offers = x402.accepts(product, resource)
+    offers = x402.accepts(product, resource, amount_usd)
     sig = request.headers.get("payment-signature") or ""
     if not sig:
-        return _402(product, resource, "PAYMENT-SIGNATURE header is required"), {}
+        return _402(product, resource, "PAYMENT-SIGNATURE header is required", amount_usd), {}
     try:
         payload = x402.b64d(sig)
         if not isinstance(payload, dict):
             raise ValueError("not an object")
     except Exception:
-        return _402(product, resource, "malformed PAYMENT-SIGNATURE header"), {}
+        return _402(product, resource, "malformed PAYMENT-SIGNATURE header", amount_usd), {}
     if int(payload.get("x402Version") or 0) != 2:
-        return _402(product, resource, "x402Version must be 2"), {}
+        return _402(product, resource, "x402Version must be 2", amount_usd), {}
     req = x402.match_offer(payload.get("accepted") or {}, offers)
     if req is None:
-        return _402(product, resource, "payment requirements mismatch — re-read PAYMENT-REQUIRED"), {}
+        return _402(product, resource, "payment requirements mismatch — re-read PAYMENT-REQUIRED", amount_usd), {}
     f = x402.payload_fields(payload)
     # Shape + validity window BEFORE anything is recorded or verified: the
     # ledger is permanent and the verifier costs a network round trip.
     if not _ADDR_RE.fullmatch(f["payer"]) or not _NONCE_RE.fullmatch(f["nonce"]):
-        return _402(product, resource, "authorization.from and nonce must be well-formed hex"), {}
+        return _402(product, resource, "authorization.from and nonce must be well-formed hex", amount_usd), {}
     if f["to"] != req["payTo"].lower():
-        return _402(product, resource, "authorization.to must equal payTo"), {}
+        return _402(product, resource, "authorization.to must equal payTo", amount_usd), {}
     try:
         now = int(time.time())
         if int(f["valid_after"]) > now:
-            return _402(product, resource, "authorization_not_yet_valid"), {}
+            return _402(product, resource, "authorization_not_yet_valid", amount_usd), {}
         if int(f["valid_before"]) < now + _MIN_VALID_S:
-            return _402(product, resource, "authorization_expired — sign with validBefore ≥ now + 60s"), {}
+            return _402(product, resource, "authorization_expired — sign with validBefore ≥ now + 60s", amount_usd), {}
         if int(f["value"]) < int(req["amount"]):
-            return _402(product, resource, "authorization.value below the required amount"), {}
+            return _402(product, resource, "authorization.value below the required amount", amount_usd), {}
     except (TypeError, ValueError):
-        return _402(product, resource, "authorization fields must be integers"), {}
+        return _402(product, resource, "authorization fields must be integers", amount_usd), {}
     decimals = x402.ASSETS.get(x402.asset_symbol(req["asset"]) or "USDC", x402.ASSETS["USDC"])["decimals"]
     info: Dict[str, Any] = {"payload": payload, "req": req, "product": product, "resource": resource,
                             "payer": f["payer"], "nonce": f["nonce"],
@@ -232,14 +240,14 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
             existing = await asyncio.to_thread(x402.finalize_one, existing)
         if existing["status"] == "settled" and not existing.get("meta", {}).get("delivered"):
             if not await asyncio.to_thread(x402.signature_matches_payer, payload, req):
-                return _402(product, resource, "payment invalid: signature does not match payer"), {}
+                return _402(product, resource, "payment invalid: signature does not match payer", amount_usd), {}
             info.update({"pid": int(existing["id"]), "already_settled": True, "tx": existing.get("tx") or ""})
             return None, info
         if existing["status"] == "settle_pending":
             return _pending_response(product, resource), {}
         if existing["status"] == "pending":
-            return _402(product, resource, "this payment is still being processed"), {}
-        return _402(product, resource, "duplicate payment nonce — sign a fresh authorization"), {}
+            return _402(product, resource, "this payment is still being processed", amount_usd), {}
+        return _402(product, resource, "duplicate payment nonce — sign a fresh authorization", amount_usd), {}
     if _payer_cooling(f["payer"]):
         raise HTTPException(429, "too many failed payments from this wallet — try again in 10 minutes")
     if not _attempt_ok(f["payer"]):
@@ -247,7 +255,7 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
     key = (f["payer"], f["nonce"])
     with _verifying_lock:
         if key in _verifying:
-            return _402(product, resource, "this payment is still being verified"), {}
+            return _402(product, resource, "this payment is still being verified", amount_usd), {}
         _verifying.add(key)
     try:
         v = await asyncio.to_thread(x402.verify, payload, req)
@@ -256,13 +264,13 @@ async def _gate(request: Request, product: str, agent_id: str = "") -> Tuple[Opt
             oplog.error("x402.verify", reason, params={"product": product, "payer": f["payer"][:12]}, status=402)
             # No strike here: nothing was generated, so nothing was wasted —
             # the per-payer attempt cap bounds verifier round trips instead.
-            return _402(product, resource, f"payment invalid: {reason}"), {}
+            return _402(product, resource, f"payment invalid: {reason}", amount_usd), {}
         _attempt_forgive(f["payer"])
         try:
             pid = x402.begin(f["payer"], f["nonce"], product, req, resource, agent_id=agent_id,
                              meta={"ip": ip})
         except x402.Duplicate:
-            return _402(product, resource, "duplicate payment nonce — sign a fresh authorization"), {}
+            return _402(product, resource, "duplicate payment nonce — sign a fresh authorization", amount_usd), {}
     finally:
         with _verifying_lock:
             _verifying.discard(key)
@@ -371,6 +379,18 @@ async def x402_config() -> Dict[str, Any]:
     cfg["agentid"] = await asyncio.to_thread(agentid.public_status)
     cfg["analyst_card"] = agentid.platform_uri()
     cfg["analyst_ready"] = await asyncio.to_thread(_analyst_ready)
+    cfg["tasks"] = {
+        "enabled": tasks.enabled(),
+        "types": list(tasks.TASK_TYPES),
+        "hours": list(tasks.HOURS_CHOICES),
+        "frequencies": list(tasks.FREQ_CHOICES),
+        "unit_usd": {t: tasks.unit_usd(t) for t in tasks.TASK_TYPES},
+        "max_checks": tasks.MAX_CHECKS,
+        "max_total_usd": tasks.MAX_TOTAL_USD,
+        "max_running_per_wallet": tasks.MAX_RUNNING_PER_PAYER,
+        "goal_max": tasks.GOAL_MAX,
+        "refundable": False,
+    }
     return cfg
 
 
@@ -382,6 +402,10 @@ async def x402_activity() -> Dict[str, Any]:
     if _activity_cache["val"] is not None and now - _activity_cache["at"] < _ACTIVITY_TTL_S:
         return _activity_cache["val"]
     val = await asyncio.to_thread(x402.activity)
+    try:
+        val["tasks"] = await asyncio.to_thread(tasks.summary)
+    except Exception as e:
+        oplog.error("x402.activity_tasks", repr(e)[:200])
     _activity_cache["val"], _activity_cache["at"] = val, now
     return val
 
@@ -635,3 +659,156 @@ async def paid_insight(code: str, request: Request):
         if not content.get("decision"):
             return _content_failed(info, "agent has no decision yet")
     return await _deliver(info, content, agent=agent)
+
+
+# ------------------------------------------------------------ paid: tasks --
+# "Create an agent": the buyer configures a standing assignment, pays once for
+# the whole run, and a background runner (celo/tasks.py) delivers one report
+# per check. The price is computed from the request body on EVERY hop — the
+# 402 challenge, the signature check and the ledger all see the same number.
+
+async def _json(request: Request) -> Dict[str, Any]:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    return body if isinstance(body, dict) else {}
+
+
+def _refused(info: Dict[str, Any], status: int, message: str, reason: str) -> JSONResponse:
+    """Refuse AFTER the authorization was verified but BEFORE settlement —
+    nothing is charged and the payer keeps no strike (it is not their fault
+    the run could not be accepted)."""
+    if not info.get("already_settled"):
+        x402.finish(info["pid"], "content_failed", error=reason)
+    oplog.error("x402.task", reason, params={"payer": info["payer"][:12]}, status=status)
+    return JSONResponse(status_code=status, content={"error": message, "charged": False})
+
+
+def _quote_public(q: Dict[str, Any]) -> Dict[str, Any]:
+    return {"task": q["task"], "symbol": q["symbol"], "hours": q["hours"],
+            "frequency": q["frequency"], "checks": q["checks"],
+            "unit_usd": q["unit_usd"], "total_usd": q["total_usd"],
+            "atomic": x402.atomic(q["total_usd"]), "asset": "USDC",
+            "product": q["product"], "interval_s": q["interval_s"], "window_s": q["window_s"]}
+
+
+@router.post("/tasks/quote")
+async def task_quote(request: Request):
+    """FREE: what this configuration would cost. Same pure function the 402
+    challenge uses, so the number the buyer sees is the number they sign."""
+    body = await _json(request)
+    try:
+        q = await asyncio.to_thread(tasks.quote_from_body, body)
+    except tasks.Invalid as e:
+        raise HTTPException(400, str(e))
+    return {"enabled": tasks.enabled(), **_quote_public(q),
+            "note": "One payment covers the whole run. Stopping early does not refund."}
+
+
+@router.post("/tasks")
+async def task_create(request: Request):
+    """PAID (variable): pay once, the run starts immediately."""
+    if not tasks.enabled():
+        raise HTTPException(503, "paid research tasks are not enabled on this server")
+    body = await _json(request)
+    try:
+        q = await asyncio.to_thread(tasks.quote_from_body, body)
+    except tasks.Invalid as e:
+        raise HTTPException(400, str(e))
+    resp, info = await _gate(request, q["product"], amount_usd=q["total_usd"])
+    if resp is not None:
+        return resp
+    # Verified, not yet settled: refuse here and nothing is charged.
+    running = await asyncio.to_thread(tasks.running_for, info["payer"])
+    if running >= tasks.MAX_RUNNING_PER_PAYER and not info.get("already_settled"):
+        return _refused(info, 409,
+                        f"This wallet already has {running} running tasks — let one finish first. "
+                        f"Nothing was charged.", "per-wallet task limit")
+    content = _cached_content(info["payer"], info["nonce"])
+    if content is None:
+        row, token = await asyncio.to_thread(
+            tasks.create, q, info["payer"], info["nonce"], int(info["pid"]), float(info["amount_usd"]))
+        if not row:
+            return _content_failed(info, "task could not be created")
+        content = {"product": q["product"], "quote": _quote_public(q), "token": token,
+                   "task": tasks.view(row, with_runs=False), "ts": time.time()}
+    task_id = str((content.get("task") or {}).get("task_id") or "")
+    out = await _deliver(info, content)
+    if out.status_code != 200 or not task_id:
+        return out
+    # Settled: the run starts now. The settlement hash lives in the delivered
+    # body (only _deliver sees it), so read it back from there.
+    try:
+        payload = json.loads(bytes(out.body).decode("utf-8"))
+    except Exception:
+        payload = None
+    tx = str(((payload or {}).get("payment") or {}).get("tx") or info.get("tx") or "")
+    row = await asyncio.to_thread(tasks.activate, task_id, tx)
+    if payload is None:
+        return out
+    if row:
+        payload["task"] = tasks.view(row, with_runs=False)
+    fresh = JSONResponse(status_code=200, content=payload)
+    for k, v in out.headers.items():
+        if k.lower() in ("payment-response", "access-control-expose-headers"):
+            fresh.headers[k] = v
+    return fresh
+
+
+def _task_token(request: Request, token: str = "") -> str:
+    return (token or request.headers.get("x-task-token") or "").strip()
+
+
+def _task_or_403(task_id: str, token: str) -> Dict[str, Any]:
+    row = tasks.by_id(task_id)
+    if not row or row["status"] == "awaiting_payment":
+        raise HTTPException(404, "task not found")
+    if not tasks.token_ok(row, token):
+        # Same answer for "wrong token" and "not yours": a task id must not be
+        # a way to learn that someone else's task exists.
+        raise HTTPException(403, "this task needs the access token it was created with — "
+                                 "restore it by signing with the wallet that paid")
+    return row
+
+
+@router.get("/tasks/challenge")
+async def task_challenge(address: str = ""):
+    """FREE: the exact text a buyer signs to restore their tasks on a new
+    device. No transaction, no gas."""
+    address = (address or "").strip().lower()
+    if not _ADDR_RE.fullmatch(address):
+        raise HTTPException(400, "address required")
+    issued = int(time.time())
+    return {"address": address, "issued_at": issued,
+            "message": tasks.recovery_message(address, issued), "ttl_s": tasks.RECOVER_TTL_S}
+
+
+@router.get("/tasks/{task_id}")
+async def task_get(task_id: str, request: Request, token: str = ""):
+    """FREE, token-gated: the buyer's own configuration, progress and reports."""
+    row = await asyncio.to_thread(_task_or_403, task_id, _task_token(request, token))
+    return await asyncio.to_thread(tasks.view, row, True)
+
+
+@router.post("/tasks/{task_id}/stop")
+async def task_stop(task_id: str, request: Request, token: str = ""):
+    """FREE, token-gated. Soft stop, no refund — the run was paid in full up
+    front and the buyer is told so before signing."""
+    tok = _task_token(request, token)
+    row = await asyncio.to_thread(_task_or_403, task_id, tok)
+    out = await asyncio.to_thread(tasks.stop, row["task_id"])
+    return {"stopped": True, "refunded": False, "task": tasks.view(out or row, with_runs=False)}
+
+
+@router.post("/tasks/recover")
+async def task_recover(request: Request):
+    """FREE: prove the wallet with a signature, get this wallet's tasks back
+    (with fresh access tokens)."""
+    body = await _json(request)
+    try:
+        rows = await asyncio.to_thread(tasks.recover, str(body.get("address") or ""),
+                                       body.get("issued_at"), str(body.get("signature") or ""))
+    except tasks.Invalid as e:
+        raise HTTPException(400, str(e))
+    return {"tasks": rows, "count": len(rows)}

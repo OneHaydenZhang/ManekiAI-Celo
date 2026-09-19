@@ -1,257 +1,498 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="zh" data-theme="dark">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Agent Arena · Maneki AI on Celo</title>
-<meta name="description" content="Buy ManekiAI answers and live trading-agent insights for a few cents in USDC on Celo — no login, no exchange keys, settled over x402." />
-<meta property="og:type" content="website" />
-<meta property="og:title" content="Agent Arena · Maneki AI on Celo" />
-<meta property="og:description" content="Buy ManekiAI answers and live trading-agent insights for a few cents in USDC on Celo — no login, no exchange keys, settled over x402." />
-<meta property="og:image" content="https://manekiai.io/maneki-mascot.png" />
-<meta property="og:url" content="https://manekiai.io/arena" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Agent Arena · Maneki AI on Celo" />
-<meta name="twitter:description" content="Buy ManekiAI answers and live trading-agent insights for a few cents in USDC on Celo — no login, no exchange keys, settled over x402." />
-<meta name="twitter:image" content="https://manekiai.io/maneki-mascot.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
-<link rel="icon" href="/maneki-icon.png" />
-<link rel="stylesheet" href="/app.css" />
-<style>
-  .arena{max-width:1180px;margin:0 auto;padding:18px 18px 60px}
-  .arena-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 0 18px}
-  .arena-top .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:18px}
-  .arena-top .brand .logo{width:28px;height:28px;border-radius:9px;background:url(/maneki-icon.png) center/cover}
-  .celo-tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px;font-weight:850;font-size:12px;background:#fcff52;color:#171a12}
-  .hero{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:16px}
-  .hero h1{font-size:30px;line-height:1.15;margin:0 0 10px;letter-spacing:-.02em}
-  .hero p{margin:0;color:var(--muted);line-height:1.6}
-  .steps{display:grid;gap:8px;margin-top:14px}
-  .step{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted)}
-  .step b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fcff52;color:#171a12;font-size:12px;flex:none}
-  .prices{display:grid;gap:8px}
-  .price{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card2)}
-  .price b{font-size:16px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-  .agent-card{display:grid;gap:10px}
-  .agent-card .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .kpi{border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--card2)}
-  .kpi .tiny{font-size:11px}.kpi b{display:block;font-size:15px;margin-top:2px}
-  .answer{border:1px solid rgba(20,214,186,.35);border-radius:14px;padding:14px;background:var(--card2);display:grid;gap:8px;white-space:pre-wrap;line-height:1.55;font-size:14px}
-  .answer .hd{font-weight:800;font-size:15px}
-  .answer .pt{padding-left:0}
-  .txlink{font-size:12px;color:var(--accent2);word-break:break-all}
-  .wallet{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .msg{font-size:13px;min-height:16px;margin-top:8px}
-  .msg.err{color:var(--red)}.msg.ok{color:var(--green)}.msg.warn{color:var(--amber)}
-  .off{opacity:.55}
-  textarea.textarea{height:88px;padding:12px 14px;resize:vertical;font:inherit}
-  .foot{margin-top:26px;font-size:12px;color:var(--muted);line-height:1.7;word-break:break-all}
-  .lang{cursor:pointer;font-size:12px;color:var(--muted);text-decoration:underline}
-  .disclaimer{font-size:11px;color:var(--muted);opacity:.8;margin-top:8px}
-  .gbox{border:1px solid var(--amber);border-radius:14px;padding:14px;margin-bottom:16px;background:var(--card2);display:grid;gap:8px;font-size:13px}
-  .gbox .hd{font-weight:800;font-size:15px}
-  .gbox a{color:var(--accent2)}
-  .badge-new{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;background:rgba(20,214,186,.18);color:var(--green)}
-  .tag.stale{opacity:.75}
-  .latest{font-size:12px;color:var(--muted)}
-  .acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
-  .act-rows{margin-top:12px;font-size:12px;overflow-x:auto}
-  .act-rows table{width:100%;border-collapse:collapse;min-width:520px}
-  .act-rows th,.act-rows td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
-  .act-rows th{font-weight:600;color:var(--muted)}
-  details.purchases summary{cursor:pointer;font-weight:800;font-size:15px;list-style:none;display:flex;align-items:center;gap:8px}
-  details.purchases summary::-webkit-details-marker{display:none}
-  .purchase{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card2);margin-top:8px;font-size:13px}
-  .purchase .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-  .purchase .reread{cursor:pointer;color:var(--accent2);font-size:12px;text-decoration:underline}
-  @media (max-width:820px){.hero{grid-template-columns:1fr}}
-  .guide-strip{display:block;text-align:center;font-size:12.5px;font-weight:700;padding:7px 12px;margin:0 0 10px;border-radius:10px;background:linear-gradient(90deg,#35b779,#fcff52);color:#171a12;text-decoration:none}
-  .guide-strip:hover{filter:brightness(1.05)}
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maneki AI · 你的市场研究工作台</title>
+<meta name="description" content="向 Maneki 提问，或配置你自己的 Agent。咨询按次付费，Agent 按任务运行。">
+<meta name="theme-color" content="#03090b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Maneki AI — ask, or put an agent to work">
+<meta property="og:description" content="Ask ManekiAI a market question for cents, or configure an agent that watches your market for you and reports back. Paid in USDC on Celo over x402 — no login, no exchange keys.">
+<meta property="og:image" content="https://manekiai.io/maneki-mascot.png">
+<meta property="og:url" content="https://manekiai.io/arena">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Maneki AI — ask, or put an agent to work">
+<meta name="twitter:description" content="Ask a market question for cents, or pay an agent to watch your market and report back. USDC on Celo, x402, no login.">
+<meta name="twitter:image" content="https://manekiai.io/maneki-mascot.png">
+<link rel="icon" href="/maneki-icon.png">
+<link rel="stylesheet" href="/app.css">
+<style>/* Match the existing Maneki product dark theme. */
+:root,html[data-theme="dark"]{--bg:#03090b;--bg2:#071417;--card:#0b1a1d;--card2:#0f2427;--glass:rgba(9,24,27,.78);--ink:#ecfffa;--muted:#91aaa4;--soft:#5d7771;--line:#1f3b3b;--line2:#153033;--accent:#00b8a3;--accent2:#6fffe4;--accent3:#19d4b7;--accentSoft:rgba(20,214,186,.13);--green:#22e6a7;--greenSoft:rgba(34,230,167,.12);--red:#ff6472;--redSoft:rgba(255,100,114,.12);--amber:#f5b63d;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{background:radial-gradient(circle at top left,rgba(20,214,186,.14),transparent 30%),radial-gradient(circle at 85% 5%,rgba(111,255,228,.12),transparent 26%),var(--bg);color:var(--ink);font-family:"Avenir Next","PingFang SC","Microsoft YaHei",system-ui,sans-serif;letter-spacing:0;line-height:1.5;margin:0}h1,h2,h3,h4,p{margin:0}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}[hidden]{display:none!important}button,a,input,select,textarea,summary{outline-offset:5px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent2)}.arena{max-width:1216px;margin:auto;padding:0 40px}.skip-link{position:absolute;top:-100px;left:24px;padding:12px;background:var(--accent2);color:var(--bg);z-index:30}.skip-link:focus{top:10px}
+.arena-top{height:100px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:28px}.brand{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:650;letter-spacing:-1px;white-space:nowrap}.brand img{border-radius:10px}.brand-ai{font-size:12px;font-weight:500;letter-spacing:0;margin-left:5px;color:var(--muted)}.top-nav{display:flex;gap:32px;margin-right:auto;margin-left:35px;font-size:13px;color:var(--muted)}.top-nav a[aria-current]{color:var(--ink)}.wallet{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}.lang{background:none;border:0;font-size:12px;color:var(--muted);padding:10px 0}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;border:1px solid var(--line);padding:12px 22px;border-radius:9px;font-size:14px;font-weight:600;box-shadow:none;gap:8px;transition:background .18s,transform .18s,border-color .18s}.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent3));color:#032320;border-color:transparent;box-shadow:none}.btn.primary:hover:not(:disabled){background:linear-gradient(135deg,var(--accent3),var(--accent2));border-color:transparent}.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}.btn.sm{min-height:38px;padding:8px 14px;font-size:12px}.btn:active:not(:disabled){transform:translateY(1px)}.text-btn{border:0;background:none;padding:9px 0;color:var(--accent2);font-size:12px;font-weight:500;text-align:left;min-height:36px}.text-btn:hover:not(:disabled){color:var(--accent2);text-decoration:underline}.tag{font-size:11px;border-radius:5px;font-weight:500;padding:4px 8px;background:var(--card2);box-shadow:none;border:1px solid var(--line)}
+.hero{display:flex;justify-content:space-between;gap:50px;align-items:center;padding:58px 0 46px}.eyebrow{font-size:10px;letter-spacing:.2em;color:var(--accent2);font-weight:600;margin-bottom:19px}.hero h1{font-size:clamp(32px,3.8vw,48px);font-weight:560;line-height:1.4;letter-spacing:-.045em;text-wrap:balance}.hero-accent{color:var(--accent2)}.lede{font-size:14px;line-height:1.8;color:var(--muted);margin-top:18px;max-width:590px}.hero-note{border-left:1px solid var(--line);padding:6px 0 5px 28px;max-width:235px;flex-shrink:0}.network-label{font-size:11px;letter-spacing:.06em;color:var(--accent2)}.hero-note p{font-size:19px;line-height:1.7;margin:13px 0 10px;white-space:pre-line}.hero-note .tiny{font-size:11px}.tiny{font-size:12px;line-height:1.7;color:var(--muted)}
+.workspace{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card);scroll-margin-top:24px}.service-tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--bg2);border-bottom:1px solid var(--line)}.service-tab{position:relative;border:0;background:transparent;padding:25px 32px;display:flex;gap:17px;align-items:center;text-align:left;color:var(--muted);transition:background .2s}.service-tab+.service-tab{border-left:1px solid var(--line)}.service-tab:after{content:"";position:absolute;bottom:-1px;height:2px;left:32px;right:32px;background:transparent}.service-tab[aria-selected="true"]{background:var(--card2);color:var(--ink)}.service-tab[aria-selected="true"]:after{background:var(--accent2)}.service-tab:hover{background:var(--card2)}.service-index{font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}.service-tab strong{font-size:17px;font-weight:600;display:block;letter-spacing:.01em}.service-tab small{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:5px}.tab-arrow{margin-left:auto;font-size:21px;color:var(--accent2)}.service-tab[aria-selected="false"] .tab-arrow{color:var(--muted)}.service-panel{display:grid;grid-template-columns:minmax(0,1.42fr) minmax(0,1fr)}.composer,.agent-form{padding:32px 36px 30px;min-width:0}.section-intro{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:26px}.overline{font-size:10px;letter-spacing:.075em;color:var(--muted);font-weight:500}.section-intro h2{font-size:23px;font-weight:550;letter-spacing:-.025em;margin-top:7px;line-height:1.5}.answer-price{font-size:11px;white-space:nowrap;color:var(--accent2);font-variant-numeric:tabular-nums}.field{display:flex;flex-direction:column;gap:9px;font-size:12px;min-width:0}.field>span{color:var(--ink)}.input,.select,.textarea{width:100%;border:1px solid var(--line);background:var(--bg2);border-radius:8px;color:var(--ink);min-height:44px;padding:11px 13px;font-size:13px;box-shadow:none}.select{height:44px;padding-right:28px}.input::placeholder,.textarea::placeholder{color:var(--muted);opacity:1}.textarea{height:110px;min-height:90px;resize:vertical;line-height:1.8}.input:focus,.select:focus,.textarea:focus{border-color:var(--accent2)}.question-fields{display:grid;gap:18px}.market-field{max-width:180px}.suggestions{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}.suggestions button{padding:6px 9px;border:1px solid transparent;border-radius:5px;background:var(--card2);color:var(--muted);font-size:10px;transition:border-color .18s}.suggestions button:hover{border-color:var(--accent);color:var(--ink)}.composer-actions{display:flex;gap:23px;align-items:center;flex-wrap:wrap;margin-top:26px}.payment-note{color:var(--muted);font-size:10px;line-height:1.7;margin-top:13px}.deliverable,.run-summary{padding:30px 31px 25px;background:var(--card2);border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0}.deliver-top{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:28px}.paper-mark{font-family:inherit;font-style:normal;font-size:15px;font-weight:650;letter-spacing:-.025em;color:var(--accent2);white-space:nowrap}.deliverable h3{font-size:23px;font-weight:500;line-height:1.6;margin:21px 0 9px;max-width:280px;letter-spacing:-.03em}.deliver-list{list-style:none;margin:12px 0 16px;padding:0}.deliver-list li{display:flex;gap:18px;border-bottom:1px solid var(--line);padding:17px 0}.deliver-list li>span{font-size:10px;color:var(--muted);padding-top:4px}.deliver-list h4{font-size:13px;font-weight:550;margin:0 0 6px}.deliver-list p{font-size:11px;line-height:1.7;color:var(--muted)}.aside-note{font-size:10px;line-height:1.7;color:var(--muted);margin-top:auto;padding-top:20px}.small-label{display:inline-flex;font-size:10px;color:var(--accent2);border:1px solid rgba(20,214,186,.35);border-radius:4px;padding:4px 7px;white-space:nowrap}
+.task-picker{border:0;padding:0;margin:0 0 20px;min-width:0}.task-picker legend{font-size:12px;color:var(--ink);margin-bottom:10px}.task-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.task-options label{display:flex;gap:10px;align-items:flex-start;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:12px}.task-options label:has(input:checked){background:var(--accentSoft);border-color:var(--accent)}.task-options input{accent-color:var(--accent2);margin:3px 0 0;flex-shrink:0}.task-options strong{display:block;font-size:12px;font-weight:550}.task-options small{display:block;font-size:10px;color:var(--muted);margin-top:4px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.goal-field{margin-top:20px}.goal-field small{color:var(--muted);font-size:10px}.goal-field .textarea{height:90px}.advanced{margin-top:19px}.advanced summary{font-size:11px;color:var(--muted);cursor:pointer;padding:5px 0}.advanced .form-grid{margin-top:14px}.agent-form .section-intro{margin-bottom:22px}.run-summary h3{font-size:25px;font-weight:500;margin:24px 0 12px;overflow-wrap:anywhere}.summary-goal{font-size:12px;line-height:1.8;color:var(--muted);overflow-wrap:anywhere;white-space:pre-wrap}.summary-lines{margin:22px 0 14px}.summary-lines div{display:flex;justify-content:space-between;gap:18px;font-size:12px;padding:10px 0;border-bottom:1px solid var(--line)}.summary-lines dt{color:var(--muted)}.summary-lines dd{margin:0;text-align:right}.quote-instruction{font-size:13px;color:var(--ink);padding:13px 0 9px}.quote-total{display:flex;gap:10px;align-items:baseline;margin:9px 0}.quote-total strong{font-size:38px;font-weight:500;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.quote-total span{font-size:12px;color:var(--muted)}.quote-disclosure{font-size:11px;line-height:1.8;color:var(--amber);margin:14px 0}.run-summary .btn{width:100%;margin:0 0 11px}.summary-bottom{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:24px;margin-top:auto;color:var(--muted);font-size:10px}.run-summary #quoteReview{border-top:1px solid var(--line);margin-top:10px;padding-top:19px}
+.msg{font-size:12px;line-height:1.8;margin-top:12px;overflow-wrap:anywhere}.msg:empty{display:none}.msg.err{color:var(--red)}.msg.warn{color:var(--amber)}.msg.ok{color:var(--accent2)}.gbox{margin:16px 0;padding:18px;border:1px solid rgba(245,182,61,.4);border-radius:9px;background:rgba(245,182,61,.08);font-size:12px;line-height:1.8;display:grid;gap:8px}.gbox a{color:var(--accent2)}.answer{border-top:1px solid var(--line);padding:22px 0 0;margin-top:20px;display:grid;gap:13px;font-size:13px;line-height:1.9;overflow-wrap:anywhere;white-space:pre-wrap}.answer .hd{font-size:16px;font-weight:550;color:var(--ink)}.answer .pt{color:var(--ink)}.answer .disclaimer{font-size:10px;color:var(--muted)}.txlink{color:var(--accent2);font-size:11px;overflow-wrap:anywhere}
+.records{margin-top:50px;scroll-margin-top:24px}.record-heading{display:flex;justify-content:space-between;gap:20px;align-items:flex-end}.record-heading h2{font-size:24px;font-weight:550;margin-top:6px;letter-spacing:-.025em}.record-heading>.tiny{font-size:10px}.record-tabs{display:flex;gap:30px;border-bottom:1px solid var(--line);margin-top:17px}.record-tabs button{border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);padding:15px 0;font-size:12px}.record-tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent2)}.empty-state{display:flex;justify-content:space-between;align-items:center;gap:25px;padding:30px 0}.empty-state h3{font-size:15px;font-weight:500;margin-bottom:6px}.empty-state p{font-size:11px;color:var(--muted);line-height:1.8}.empty-state .btn{flex-shrink:0}.history-label{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;padding:19px 0 4px}.history-label:has(+ #purchasesList .empty-state){display:none}.purchase,.draft-item{border-bottom:1px solid var(--line);padding:22px 0}.purchase .row,.draft-top{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}.purchase b{font-size:13px;font-weight:550}.purchase .reread{margin-left:10px}.draft-item h3{font-size:15px;font-weight:550;overflow-wrap:anywhere}.draft-item .draft-meta{font-size:11px;line-height:1.8;color:var(--muted);margin-top:7px}.draft-actions{display:flex;gap:20px;flex-wrap:wrap}.draft-status{font-size:10px;padding:4px 7px;border:1px solid rgba(20,214,186,.35);border-radius:4px;color:var(--accent2)}.draft-note{font-size:11px;color:var(--muted);margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere}.demo-steps{display:flex;gap:22px;padding:17px 0 4px;flex-wrap:wrap;list-style:none;font-size:10px;color:var(--muted);margin:0}.demo-steps li[aria-current="step"]{color:var(--accent2)}
+.how-row{display:grid;grid-template-columns:repeat(3,1fr);gap:25px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:23px 0;margin-top:30px}.how-row>div{display:flex;gap:12px;align-items:center}.how-row span{font-size:10px;color:var(--muted)}.how-row p{font-size:11px;color:var(--muted)}.page-footer{padding:26px 0 35px}.footer-row{display:flex;justify-content:space-between;gap:20px;font-size:12px}.footer-celo{font-size:10px;color:var(--muted);margin-left:8px}.footer-row>div{display:flex;gap:23px;color:var(--muted);font-size:11px}.proof-details{font-size:10px;color:var(--muted);margin-top:18px}.proof-details summary{cursor:pointer;width:fit-content;padding:4px 0}.proof-details[open] summary{margin-bottom:15px}.foot{font-size:10px;line-height:1.9;overflow-wrap:anywhere;margin-top:10px}.preview-banner{background:var(--card2);border-bottom:1px solid var(--line);padding:8px 20px;text-align:center;color:var(--ink);font-size:10px}.preview-banner a{margin-left:14px;text-decoration:underline}
+@media(min-width:1500px){.arena{max-width:1290px}.hero{padding:67px 0 53px}.hero h1{font-size:52px}}
+@media(max-width:960px){.arena{padding:0 28px}.top-nav{margin-left:0;gap:20px}.hero{gap:25px}.hero h1{font-size:37px}.hero-note{max-width:195px;padding-left:23px}.composer,.agent-form{padding:28px 25px}.deliverable,.run-summary{padding:27px 25px}.service-tab{padding:23px 25px}.service-panel{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}.section-intro{align-items:flex-start;flex-direction:column;gap:8px}.section-intro h2{font-size:21px}.deliverable h3{font-size:21px}.composer-actions{gap:15px}}
+@media(max-width:720px){.arena{padding:0 20px}.arena-top{height:82px;gap:15px}.brand{font-size:21px}.brand img{width:30px;height:30px}.top-nav{display:none}.wallet{gap:12px}.wallet .tag{display:none}.hero{padding:35px 0 30px}.hero h1{font-size:34px;letter-spacing:-.045em}.hero-note{display:none}.eyebrow{margin-bottom:15px}.lede{font-size:12px;max-width:340px}.service-tab{padding:19px 16px;gap:10px}.service-tab strong{font-size:15px}.service-tab small{font-size:10px;max-width:140px}.service-index{display:none}.tab-arrow{font-size:17px}.service-tab:after{left:16px;right:16px}.service-panel{grid-template-columns:1fr}.composer,.agent-form{padding:25px 22px}.section-intro{flex-direction:row;align-items:center}.section-intro h2{font-size:21px}.deliverable,.run-summary{border-left:0;border-top:1px solid var(--line);padding:24px 22px}.deliverable h3{max-width:none;margin:14px 0 5px;font-size:21px}.deliver-list{margin:4px 0 10px}.deliver-list li{padding:13px 0}.aside-note{padding-top:12px}.deliver-list p{font-size:12px}.market-field{max-width:none}.records{margin-top:36px}.record-heading{align-items:flex-start}.record-heading h2{font-size:22px}.record-heading>.tiny{max-width:100px;text-align:right}.empty-state{align-items:flex-start;flex-direction:column;gap:14px;padding:24px 0}.how-row{grid-template-columns:1fr;gap:17px;padding:22px 0;margin-top:22px}.draft-top{gap:13px}.draft-actions{gap:17px}.summary-bottom{padding-top:25px}.form-grid{gap:12px}.summary-goal{font-size:13px}}
+@media(max-width:380px){.arena{padding:0 14px}.hero h1{font-size:29px}.service-tab{padding:17px 13px}.tab-arrow{display:none}.wallet .btn{padding:8px 10px}.composer-actions{flex-direction:column;align-items:stretch;gap:6px}.section-intro{flex-direction:column;align-items:flex-start}.task-options{grid-template-columns:1fr}.footer-row{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+/* Isolate the workbench hero from the host landing page's generic hero rules. */
+.arena .hero h1 span{background:none;-webkit-background-clip:initial;background-clip:initial;color:var(--ink);-webkit-text-fill-color:currentColor}.arena .hero h1 .hero-accent{color:var(--accent2)}.arena .hero .eyebrow{font-size:10px;line-height:1.5;letter-spacing:.2em;color:var(--accent2);margin:0 0 19px}.arena .hero .lede{font-size:14px;line-height:1.8;color:var(--muted);margin:18px 0 0}.arena .hero .hero-note p{font-size:19px;line-height:1.7;margin:13px 0 10px;color:var(--ink)}
+@media(max-width:720px){.arena .hero .eyebrow{margin-bottom:15px}.arena .hero .lede{font-size:12px;max-width:340px}}
+.choice-field{border:0;margin:0;padding:0;min-width:0}.choice-field legend{color:var(--ink);font-size:12px;margin-bottom:9px}.inline-choices{display:flex;gap:5px;min-height:44px}.inline-choices label{position:relative;display:flex;align-items:center;justify-content:center;flex:1;border:1px solid var(--line);border-radius:7px;background:var(--bg2);cursor:pointer;padding:8px 5px;text-align:center;min-width:0;font-size:11px;white-space:nowrap}.inline-choices input{position:absolute;opacity:0;width:1px;height:1px}.inline-choices label:has(input:checked){border-color:var(--accent);background:var(--accentSoft);color:var(--accent2)}.inline-choices label:has(input:focus-visible){outline:2px solid var(--accent2);outline-offset:3px}
+.guide-strip{display:block;text-align:center;font-size:12.5px;font-weight:700;padding:7px 12px;margin:10px 0 0;border-radius:10px;background:linear-gradient(90deg,#35b779,#fcff52);color:#171a12;text-decoration:none}
+.guide-strip:hover{filter:brightness(1.05)}
+.task-card{border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px;background:var(--card2)}
+.task-card h3{font-size:15px;margin:0 0 4px}
+.task-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.task-state{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent2);white-space:nowrap}
+.task-state.done{color:var(--muted)}
+.bar{height:5px;border-radius:99px;background:var(--line2);margin:12px 0 8px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent2)}
+.report{border-top:1px solid var(--line2);padding-top:10px;margin-top:10px;font-size:12.5px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.report .seq{color:var(--soft);font-size:11px}
+.task-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
 </style>
 </head>
 <body class="js">
+<a class="skip-link" href="#workspace" data-t="skip">跳到工作台</a>
 <div class="arena">
-  <a class="guide-strip" href="/hackathon" data-t="guideStrip">📘 Celo “Agents at Work” hackathon — guide, journeys &amp; on-chain proofs →</a>
-  <div class="arena-top">
-    <div class="brand"><span class="logo"></span>Maneki AI <span class="celo-tag">⚡ Agent Arena · on Celo</span></div>
-    <div class="wallet">
-      <span class="lang" id="langToggle">中文</span>
-      <a class="btn ghost sm" href="/" data-t="back">← App</a>
-      <span class="tag gray" id="usdcBal" hidden>USDC —</span>
-      <span class="tag gray" id="usatBal" hidden>USA₮ —</span>
-      <button class="btn primary sm" id="btnConnect" data-t="connect">Connect wallet</button>
+<header class="arena-top">
+  <a class="brand" href="#workspace" aria-label="Maneki AI"><img src="/maneki-icon.png" width="36" height="36" alt=""><span>Maneki<span class="brand-ai">AI</span></span></a>
+  <nav class="top-nav" aria-label="Main"><a href="#workspace" aria-current="page" data-t="workspace">工作台</a><a href="#records" data-t="mySpace">我的记录</a></nav>
+  <div class="wallet"><button type="button" class="lang" id="langToggle">English</button><span class="tag gray" id="usdcBal" hidden></span><span class="tag gray" id="usatBal" hidden></span><button type="button" class="btn ghost sm" id="btnConnect" data-t="connect">连接钱包</button></div>
+</header>
+<a class="guide-strip" id="guideStrip" href="/hackathon" hidden data-t="guideStrip">📘 Celo「Agents at Work」— guide, journeys &amp; on-chain proofs →</a>
+<main id="main">
+  <section class="hero" aria-labelledby="pageTitle">
+    <div><p class="eyebrow">YOUR MARKET COMPANION</p><h1 id="pageTitle"><span data-t="heroFirst">有问题，问 Maneki。</span><br><span class="hero-accent" data-t="heroSecond">有计划，让 Agent 来。</span></h1><p class="lede" data-t="heroDesc">从一次市场咨询，到一位按你要求工作的研究助手。</p></div>
+    <div class="hero-note"><span class="network-label">Built on Celo</span><p data-t="heroNote">为答案付费。<br>为执行设定预算。</p><span class="tiny" data-t="heroHint">先配置，确认费用后再启动。</span></div>
+  </section>
+  <p class="msg" id="walletMsg" role="status" hidden></p><div class="gbox" id="mobileWallet" hidden></div><div class="gbox" id="getUsdcBox" hidden></div>
+  <section id="workspace" class="workspace" aria-label="Maneki workspace">
+    <div class="service-tabs" role="tablist" aria-label="Services">
+      <button type="button" class="service-tab" id="tab-consult" role="tab" aria-selected="true" aria-controls="consultPanel" tabindex="0"><span class="service-index">01</span><span><strong data-t="consultTab">付费咨询</strong><small data-t="consultHint">一个问题，一份清楚的分析</small></span><span class="tab-arrow" aria-hidden="true">↗</span></button>
+      <button type="button" class="service-tab" id="tab-create" role="tab" aria-selected="false" aria-controls="createPanel" tabindex="-1"><span class="service-index">02</span><span><strong data-t="createTab">创建 Agent</strong><small data-t="createHint">你的参数，你的专属任务</small></span><span class="tab-arrow" aria-hidden="true">↗</span></button>
     </div>
-  </div>
-  <p class="msg" id="walletMsg" hidden></p>
-  <div class="gbox" id="mobileWallet" hidden></div>
-  <div class="gbox" id="getUsdcBox" hidden></div>
-
-  <div class="hero">
-    <div class="card pad">
-      <h1 data-t="h1">Agents at work — buy their research for cents, on Celo.</h1>
-      <p data-t="lede">Every ManekiAI agent trades US-stock perps on Hyperliquid 24/7 with real fills. Here anyone with USDC on Celo can ask the ManekiAI analyst a question or unlock a live agent's latest decision — no login, no exchange keys. Payment is an x402 micro-payment: you sign, the Celo facilitator settles on-chain and pays the gas.</p>
-      <div class="steps">
-        <div class="step"><b>1</b><span data-t="s1">Connect a wallet that holds USDC on Celo (chain 42220). No CELO needed — you only sign.</span></div>
-        <div class="step"><b>2</b><span data-t="s2">Ask a question or pick an agent. Your wallet signs an EIP-3009 authorization for the exact price.</span></div>
-        <div class="step"><b>3</b><span data-t="s3">The answer arrives with the on-chain settlement link. Agent owners earn a share of every insight sold.</span></div>
+    <section id="consultPanel" class="service-panel" role="tabpanel" aria-labelledby="tab-consult" tabindex="0">
+      <div class="composer">
+        <div class="section-intro"><div><p class="overline" data-t="consultOverline">从你关心的问题开始</p><h2 id="askTitle" data-t="askTitle">今天，想了解什么？</h2></div><span class="answer-price" id="askPrice">—</span></div>
+        <div class="question-fields"><label class="field market-field"><span data-t="marketLabel">关注市场</span><select class="select" id="askSymbol"><option>NVDA</option></select></label><label class="field"><span data-t="questionLabel">你的问题</span><textarea class="textarea" id="askMsg" maxlength="600" placeholder="例如：NVDA 今天有哪些需要注意的风险？"></textarea></label></div>
+        <div class="suggestions" id="suggestions" aria-label="Question ideas"></div>
+        <p class="msg warn" role="status" id="enabledMsg" hidden></p><p class="msg warn" role="status" id="analystMsg" hidden></p>
+        <div class="composer-actions"><button type="button" class="btn primary" id="btnAsk" disabled data-t="askBtn">付费获取分析</button><button type="button" class="text-btn" id="btnBrief" disabled data-t="briefBtn">只看快速简报</button></div>
+        <p class="payment-note" data-t="paymentNote">按次付费 · Celo 上的 USDC / USA₮ · 无订阅</p>
+        <div class="msg" id="askMsgLine" role="status" aria-live="polite"></div><div id="askAnswer" aria-live="polite"></div>
+        <div id="loadError" class="gbox" hidden><p data-t="loadFailed">咨询服务暂时无法加载，你的问题会保留。</p><button type="button" class="text-btn" id="retryLoad" data-t="retryLoad">重新加载</button></div>
       </div>
-      <p class="msg warn" id="enabledMsg" hidden></p>
-      <p class="msg warn" id="analystMsg" hidden></p>
-    </div>
-    <div class="card pad">
-      <div class="label" data-t="prices">Prices · USDC on Celo</div>
-      <div class="prices" id="priceList"><span class="tiny">…</span></div>
-      <p class="tiny" style="margin-top:12px" id="idsLine"></p>
-    </div>
-  </div>
-
-  <div class="card pad" style="margin-bottom:16px">
-    <div class="row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-      <div><h2 style="margin:0" data-t="askTitle">Ask ManekiAI</h2><p class="tiny" style="margin-top:4px" data-t="askSub">The platform analyst — same market data and model the trading agents use. One question, one answer.</p></div>
-      <span class="tag purple" id="askPrice">$0.02</span>
-    </div>
-    <div style="display:grid;grid-template-columns:160px 1fr;gap:10px;margin-top:12px;align-items:start">
-      <select class="select" id="askSymbol"></select>
-      <textarea class="textarea" id="askMsg" maxlength="600" placeholder="e.g. Is NVDA setting up for a breakout this week? What would invalidate it?"></textarea>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
-      <button class="btn primary" id="btnAsk" data-t="askBtn">Ask · pay with USDC</button>
-      <button class="btn ghost" id="btnBrief" data-t="briefBtn">Symbol brief · $0.01</button>
-      <span class="msg" id="askMsgLine"></span>
-    </div>
-    <div id="askAnswer" style="margin-top:12px"></div>
-    <p class="disclaimer" data-t="nfa">Market commentary for information only — not financial advice.</p>
-  </div>
-
-  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:6px 0 10px">
-    <h2 style="margin:0" data-t="agentsTitle">Live agents selling insights</h2>
-    <span class="tiny" id="agentsSub"></span>
-  </div>
-  <div class="grid" id="agentGrid"><span class="tiny">…</span></div>
-  <p class="disclaimer" data-t="nfa">Market commentary for information only — not financial advice.</p>
-
-  <div class="card pad" id="purchasesWrap" style="margin-top:16px" hidden>
-    <details class="purchases" id="purchasesDetails">
-      <summary><span data-t="purchases">Your purchases</span> <span class="tag gray" id="purchasesCount">0</span></summary>
-      <div id="purchasesList"></div>
-    </details>
-  </div>
-
-  <div class="card pad" id="activity" style="margin-top:16px">
-    <div class="row" style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
-      <h2 style="margin:0" data-t="actTitle">On-chain activity</h2>
-      <span class="tiny" id="actSub"></span>
-    </div>
-    <div id="actBody"><span class="tiny">…</span></div>
-  </div>
-
-  <div class="foot" id="foot"></div>
+      <aside class="deliverable" aria-labelledby="deliverTitle"><div class="deliver-top"><span class="overline" data-t="deliverOverline">每次咨询，你会得到</span><span class="paper-mark">Maneki AI</span></div><h3 id="deliverTitle" data-t="deliverTitle">把信息，变成判断依据。</h3><ol class="deliver-list"><li><span>01</span><div><h4 data-t="sampleSetupTitle">市场形势</h4><p data-t="sampleSetup">梳理当下行情，解释判断的依据。</p></div></li><li><span>02</span><div><h4 data-t="sampleLevelsTitle">观察重点</h4><p data-t="sampleLevels">关注哪些变化，以及它们为何重要。</p></div></li><li><span>03</span><div><h4 data-t="sampleRiskTitle">风险与边界</h4><p data-t="sampleRisk">什么情况会让当前判断失效。</p></div></li></ol><p class="aside-note" data-t="nfa">分析仅供参考，不构成投资建议。</p></aside>
+    </section>
+    <section id="createPanel" class="service-panel" role="tabpanel" aria-labelledby="tab-create" tabindex="0" hidden>
+      <form id="agentForm" class="agent-form" novalidate>
+        <div class="section-intro"><div><p class="overline" data-t="agentOverline">把计划交给 Agent</p><h2 data-t="agentTitle">它来做事，你来定方向。</h2></div><span class="small-label" data-t="draftFree">配置免费</span></div>
+        <fieldset class="task-picker"><legend data-t="taskLabel">希望它帮你做什么？</legend><div class="task-options"><label><input type="radio" name="task" value="monitor" checked><span><strong data-t="taskMonitor">持续监控</strong><small data-t="taskMonitorDesc">跟踪变化，汇总观察</small></span></label><label><input type="radio" name="task" value="research"><span><strong data-t="taskResearch">跟踪研究</strong><small data-t="taskResearchDesc">围绕问题，持续分析</small></span></label></div></fieldset>
+        <div class="form-grid"><label class="field"><span data-t="marketLabel">关注市场</span><select class="select" id="agentSymbol"><option>NVDA</option></select></label><fieldset class="choice-field" id="agentDuration"><legend data-t="durationLabel">运行时长</legend><div class="inline-choices"><label><input type="radio" name="duration" value="1"><span data-t="hour1">1 小时</span></label><label><input type="radio" name="duration" value="6" checked><span data-t="hour6">6 小时</span></label><label><input type="radio" name="duration" value="24"><span data-t="hour24">24 小时</span></label></div></fieldset></div>
+        <label class="field goal-field"><span data-t="goalLabel">你的关注重点</span><textarea class="textarea" id="agentGoal" maxlength="600" aria-describedby="goalHelp agentError" placeholder="例如：关注 NVDA 的价格变化，每小时整理主要风险。"></textarea><small id="goalHelp" data-t="goalHelp">写清楚关注的变化与希望得到的结果。</small></label>
+        <div class="suggestions" id="agentPresets" aria-label="Agent task ideas"></div>
+        <details class="advanced"><summary data-t="advanced">更多设置</summary><div class="form-grid"><label class="field"><span data-t="nameLabel">Agent 名称（可选）</span><input class="input" id="agentName" maxlength="60" placeholder="NVDA 观察助手"></label><fieldset class="choice-field" id="agentFrequency"><legend data-t="frequencyLabel">检查频率</legend><div class="inline-choices"><label><input type="radio" name="frequency" value="60" checked><span data-t="every60">每 60 分钟</span></label><label><input type="radio" name="frequency" value="15"><span data-t="every15">每 15 分钟</span></label></div></fieldset></div></details>
+        <div id="agentError" class="msg err" role="alert"></div>
+        <div class="composer-actions"><button type="submit" class="btn primary" id="btnQuote" data-t="quoteButton">查看运行费用</button><button type="button" class="text-btn" id="btnSaveDraft" data-t="saveDraft">保存草稿</button></div><p class="payment-note" data-t="creationNote">保存草稿免费；启动前确认运行范围与费用。</p><p class="msg" id="draftMsg" role="status"></p>
+      </form>
+      <aside class="run-summary" aria-labelledby="runSummaryTitle"><div class="deliver-top"><span class="overline" data-t="yourAgent">你的 Agent</span><span class="small-label" data-t="designPreview">流程预览</span></div><h3 id="runSummaryTitle">NVDA 观察助手</h3><p id="summaryGoal" class="summary-goal"></p><dl class="summary-lines"><div><dt data-t="taskLabelShort">任务</dt><dd id="summaryTask"></dd></div><div><dt data-t="durationLabel">运行时长</dt><dd id="summaryDuration"></dd></div><div><dt data-t="frequencyLabel">检查频率</dt><dd id="summaryFrequency"></dd></div><div><dt data-t="executionLabel">执行范围</dt><dd data-t="researchOnly">分析与监控</dd></div></dl>
+        <div id="quoteIdle"><p class="quote-instruction" data-t="quoteHint">配置好任务，再查看费用明细。</p><p class="tiny" data-t="noTrading">此流程不授权真实交易。</p></div>
+        <div id="quoteReview" hidden tabindex="-1"><span class="overline" data-t="quoteReal">运行费用</span><div class="quote-total"><strong id="quoteTotal">—</strong><span>USDC</span></div><p id="quoteBreakdown" class="tiny"></p><p class="quote-disclosure" id="quoteDisclosure" data-t="noRefund">一次付清整段运行；提前停止不退款。</p><button type="button" class="btn primary" id="btnAgentLaunch" data-t="payStart">支付并启动</button><p class="tiny" data-t="budgetNote">按本次配置运行，到期停止，不自动续费。</p></div>
+        <div class="summary-bottom"><span data-t="draftFirst">先配置</span><span aria-hidden="true">→</span><span data-t="thenReview">确认费用</span><span aria-hidden="true">→</span><span data-t="thenRun">开始运行</span></div>
+      </aside>
+    </section>
+  </section>
+  <section id="records" class="records" aria-labelledby="recordsTitle"><div class="record-heading"><div><p class="overline" data-t="yourWorkspace">属于你的工作空间</p><h2 id="recordsTitle" data-t="mySpace">我的记录</h2></div><span class="tiny" data-t="localRecords">记录保存在当前浏览器</span></div><div class="record-tabs" role="tablist" aria-label="Personal records"><button type="button" role="tab" id="tab-history" aria-selected="true" aria-controls="consultHistory" tabindex="0" data-t="myConsultations">我的咨询</button><button type="button" role="tab" id="tab-agents" aria-selected="false" aria-controls="agentHistory" tabindex="-1" data-t="myAgents">我的 Agent</button></div>
+    <div id="consultHistory" role="tabpanel" aria-labelledby="tab-history" tabindex="0"><div id="purchasesWrap"><div class="history-label"><span data-t="purchases">已保存的咨询与购买</span><span id="purchasesCount"></span></div><div id="purchasesList"></div></div></div>
+    <div id="agentHistory" role="tabpanel" aria-labelledby="tab-agents" tabindex="0" hidden><div id="draftList"></div><p class="msg" id="recordsMsg" role="status"></p></div>
+  </section>
+  <section class="how-row" aria-label="How it works"><div><span>01</span><p data-t="howChoose">提出问题，或配置任务</p></div><div><span>02</span><p data-t="howPay">看清费用，再确认支付</p></div><div><span>03</span><p data-t="howResult">查看结果，保留付款凭证</p></div></section>
+</main>
+<footer class="page-footer"><div class="footer-row"><span>Maneki AI <span class="footer-celo">on Celo</span></span><div><a href="https://github.com/OneHaydenZhang/ManekiAI-Celo" target="_blank" rel="noopener">GitHub ↗</a><a href="/hackathon" data-t="projectInfo">项目说明 ↗</a></div></div><details class="proof-details"><summary data-t="technicalDetails">链上身份与支付信息</summary><div id="idsLine" class="tiny"></div><div class="foot" id="foot"></div></details></footer>
 </div>
-
 <script>
 (function () {
   'use strict';
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const I18N = {
-    en: {
-      back: '← App', connect: 'Connect wallet', h1: 'Agents at work — buy their research for cents, on Celo.',
-      guideStrip: '📘 Celo “Agents at Work” hackathon — guide, journeys & on-chain proofs →',
-      lede: 'Every ManekiAI agent trades US-stock perps on Hyperliquid 24/7 with real fills. Here anyone with USDC on Celo can ask the ManekiAI analyst a question or unlock a live agent’s latest decision — no login, no exchange keys. Payment is an x402 micro-payment: you sign, the Celo facilitator settles on-chain and pays the gas.',
-      s1: 'Connect a wallet that holds USDC on Celo (chain 42220). No CELO needed — you only sign.',
-      s2: 'Ask a question or pick an agent. Your wallet signs an EIP-3009 authorization for the exact price.',
-      s3: 'The answer arrives with the on-chain settlement link. Agent owners earn a share of every insight sold.',
-      prices: 'Prices · USDC on Celo', askTitle: 'Ask ManekiAI',
-      askSub: 'The platform analyst — same market data and model the trading agents use. One question, one answer.',
-      askBtn: 'Ask · pay with USDC', briefBtn: 'Symbol brief', agentsTitle: 'Live agents selling insights',
-      unlock: 'Unlock latest insight', disabled: 'x402 payments are not switched on for this server yet — the catalog is live, purchases open soon.',
-      noWallet: 'No EVM wallet found — install MetaMask / Rabby / OKX Wallet, or open this page inside MiniPay.',
-      noWalletMobileHd: 'Open in a wallet app',
-      noWalletMobile: 'No wallet detected in this browser. Open this page inside your wallet app:',
-      openMetaMask: 'Open in MetaMask', miniPayNote: 'MiniPay users: open the Arena from the MiniPay app — the wallet connects automatically and already holds USDC on Celo.',
-      signing: 'Sign the USDC authorization in your wallet (no gas)…',
-      settling: 'Settling on Celo…', confirming: 'Confirming on Celo (a few seconds)…', paid: 'Paid & settled on Celo', needMsg: 'Type a question first.',
-      noAgents: 'No agent is selling yet — run your own at manekiai.io and switch on “Sell insights” (you earn a share of every sale).',
-      busy: 'The analyst is busy — nothing was charged, retry shortly.', rounds: 'rounds', est: 'Est. P&L', win: 'Win rate', ord: 'Order success',
-      running: 'live', stopped: 'idle', action: 'Action', conf: 'Confidence', why: 'Reasoning', market: 'Market read', lessons: 'Lessons the agent learned',
-      viewTx: 'View settlement on Celoscan', celoId: 'Celo Agent ID', owner: 'owner share', tierStd: 'Standard', tierGpt: 'GPT tier', tierClaude: 'Claude tier', tierZerog: '0G tier',
-      registered: 'agents registered on Celo (ERC-8004)',
-      nfa: 'Market commentary for information only — not financial advice.',
-      analystOff: 'The analyst is offline right now — Ask and Brief are paused; agent insights still work.',
-      connected: 'Wallet connected', walletChanged: 'Wallet account changed', connectFail: 'Could not connect the wallet — please try again.',
-      needFunds: 'Not enough USDC on Celo for this purchase — nothing was signed or charged.',
-      getUsdcHd: 'Get USDC on Celo', getUsdc1: 'Bridge or swap from any chain with Jumper (LI.FI) — prefilled to USDC on Celo →',
-      getUsdc2: 'Withdraw USDC or USDT to the Celo network from an exchange (Binance, OKX, Bybit, Coinbase…).',
-      getUsdc3: 'MiniPay wallets already hold USDC on Celo — open the Arena from the MiniPay app.',
-      getUsdc4: 'Or use the app’s own bridge: manekiai.io → Settings → “Get USDC on Celo” →', close: 'close',
-      purchases: 'Your purchases', reread: 'read again', newDec: 'new decisions since you unlocked', noNew: 'no new decision since you unlocked',
-      latest: 'Latest', stale: 'stale', noDecision: 'no decision yet', noDecisionBtn: 'No decision yet',
-      genAgo: 'generated', refresh10: 'refreshes every 10 min', shared: 'shared brief',
-      actTitle: 'On-chain activity', actSettled: 'Settled purchases', actPayers: 'Distinct payers', actReturning: 'Returning payers', actUsd: 'USDC volume',
-      actDeposits: 'Celo deposits', actSenders: 'senders', actRecent: 'Most recent settlements', actNone: 'No settlements yet — be the first.',
-      actFail: 'Activity feed unavailable right now.', actRegs: 'Registrations', actPlatform: 'Platform Agent ID', actAgents: 'agents registered',
-      when: 'When', product: 'Product', amount: 'Amount', payer: 'Payer', agent: 'Agent', tx: 'Tx',
-      errFunds: 'Not enough USDC on Celo for this purchase.', errSig: 'The wallet signature was not accepted — please try again.',
-      errNonce: 'This payment authorization was already used — please try again.', errExpired: 'The signature expired, please try again.',
-      errNotYet: 'The signature is not valid yet — check your device clock and try again.', errBusy: 'Payment service busy, nothing was charged, try again in a minute.',
-      errSettle: 'Settlement on Celo did not go through — please try again.', errRate: 'Too many requests — please wait a moment and retry.',
-      errRateWallet: 'This wallet hit the safety limit — please try again in 10 minutes.',
-      busyCharged: 'Your payment settled on Celo but the content could not be generated right now — retry the same request in a moment, you will not be charged again.',
-      stillPending: 'Still confirming on Celo — your payment is safe. Come back in a minute and retry with the same wallet; you will not be charged twice.',
-      errRejected: 'Signature cancelled in the wallet.', errGeneric: 'Something went wrong — please try again.', errChain: 'Please switch your wallet to the Celo network.',
-      ref: 'ref',
-    },
-    zh: {
-      back: '← 返回应用', connect: '连接钱包', h1: 'Agent 在干活——花几美分买它们的研究，就在 Celo 上。',
-      guideStrip: '📘 Celo「Agents at Work」黑客松 · 体验指南 / 动线 / 链上证明 →',
-      lede: '每个 ManekiAI Agent 都在 Hyperliquid 上 7×24 交易美股永续，有真实成交。在这里，任何持有 Celo USDC 的钱包都能向 ManekiAI 分析师提问，或解锁一个在跑 Agent 的最新决策——不用登录、不用交易所 key。支付是 x402 微支付：你只签名，Celo facilitator 上链结算并代付 gas。',
-      s1: '连接一个在 Celo（链 42220）上持有 USDC 的钱包。不需要 CELO——你只需签名。',
-      s2: '提问或选一个 Agent。钱包会为精确金额签一份 EIP-3009 授权。',
-      s3: '答案随链上结算链接一起返回。Agent 主人从每次售出中获得分成。',
-      prices: '价格 · Celo 上的 USDC', askTitle: '问 ManekiAI',
-      askSub: '平台分析师——与交易 Agent 使用同一套行情数据与模型。一问一答。',
-      askBtn: '提问 · 用 USDC 支付', briefBtn: '个股简报', agentsTitle: '在售洞察的在跑 Agent',
-      unlock: '解锁最新洞察', disabled: '本服务器尚未开启 x402 支付——目录已上线，购买即将开放。',
-      noWallet: '未检测到 EVM 钱包——请安装 MetaMask / Rabby / OKX Wallet，或在 MiniPay 内打开本页。',
-      noWalletMobileHd: '在钱包 App 中打开',
-      noWalletMobile: '当前浏览器未检测到钱包。请在钱包 App 内打开本页：',
-      openMetaMask: '在 MetaMask 中打开', miniPayNote: 'MiniPay 用户：从 MiniPay App 打开竞技场即可自动连接，钱包里已有 Celo USDC。',
-      signing: '请在钱包中签署 USDC 授权（无 gas）…',
-      settling: '正在 Celo 上结算…', confirming: '正在 Celo 上确认（几秒钟）…', paid: '已支付并在 Celo 结算', needMsg: '先输入问题。',
-      noAgents: '目前还没有 Agent 在售——去 manekiai.io 跑一个你自己的，并打开「出售洞察」（每次售出你都有分成）。',
-      busy: '分析师繁忙——未扣费，请稍后重试。', rounds: '回合', est: '预计盈亏', win: '胜率', ord: '下单成功率',
-      running: '运行中', stopped: '空闲', action: '动作', conf: '置信度', why: '推理', market: '行情读数', lessons: 'Agent 学到的经验',
-      viewTx: '在 Celoscan 查看结算', celoId: 'Celo Agent ID', owner: '主人分成', tierStd: '标准档', tierGpt: 'GPT 档', tierClaude: 'Claude 档', tierZerog: '0G 档',
-      registered: '个 Agent 已在 Celo 注册（ERC-8004）',
-      nfa: '市场评论仅供参考——不构成投资建议。',
-      analystOff: '分析师当前离线——提问与简报暂停，Agent 洞察仍可购买。',
-      connected: '钱包已连接', walletChanged: '钱包账户已切换', connectFail: '钱包连接失败——请重试。',
-      needFunds: '你在 Celo 上的 USDC 不足以完成本次购买——未签名、未扣费。',
-      getUsdcHd: '获取 Celo 上的 USDC', getUsdc1: '用 Jumper（LI.FI）从任意链跨链/兑换——已预填为 Celo USDC →',
-      getUsdc2: '从交易所（Binance、OKX、Bybit、Coinbase…）把 USDC 或 USDT 提现到 Celo 网络。',
-      getUsdc3: 'MiniPay 钱包本身就持有 Celo USDC——从 MiniPay App 打开竞技场即可。',
-      getUsdc4: '或使用应用内置的桥：manekiai.io → 设置 → 「获取 Celo USDC」→', close: '关闭',
-      purchases: '你的购买记录', reread: '再看一次', newDec: '个新决策（自你解锁后）', noNew: '自你解锁后暂无新决策',
-      latest: '最新', stale: '已过时', noDecision: '尚无决策', noDecisionBtn: '尚无决策',
-      genAgo: '生成于', refresh10: '每 10 分钟刷新', shared: '共享简报',
-      actTitle: '链上活动', actSettled: '已结算购买', actPayers: '付款人数', actReturning: '回头付款人', actUsd: 'USDC 成交额',
-      actDeposits: 'Celo 充值', actSenders: '位发送方', actRecent: '最近结算', actNone: '暂无结算——来做第一个。',
-      actFail: '活动数据暂时不可用。', actRegs: '链上注册', actPlatform: '平台 Agent ID', actAgents: '个 Agent 已注册',
-      when: '时间', product: '产品', amount: '金额', payer: '付款人', agent: 'Agent', tx: '交易',
-      errFunds: '你在 Celo 上的 USDC 不足以完成本次购买。', errSig: '钱包签名未被接受——请重试。',
-      errNonce: '这份支付授权已被使用——请重试。', errExpired: '签名已过期，请重试。',
-      errNotYet: '签名尚未生效——请检查设备时间后重试。', errBusy: '支付服务繁忙，未扣费，请一分钟后重试。',
-      errSettle: 'Celo 结算未完成——请重试。', errRate: '请求过于频繁——请稍候再试。',
-      errRateWallet: '这个钱包触发了安全上限——请 10 分钟后再试。',
-      busyCharged: '你的付款已在 Celo 结算，但内容暂时无法生成——稍后用同一钱包重试同一请求即可，不会二次扣费。',
-      stillPending: '仍在 Celo 上确认中——你的付款是安全的。请一分钟后用同一钱包重试，不会二次扣费。',
-      errRejected: '已在钱包中取消签名。', errGeneric: '出了点问题——请重试。', errChain: '请把钱包切换到 Celo 网络。',
-      ref: '编码',
-    },
-  };
+  "en": {
+    "connect": "Connect wallet",
+    "askTitle": "What’s on your mind?",
+    "askBtn": "Pay for an answer",
+    "briefBtn": "Quick brief",
+    "disabled": "Consultation payments are unavailable. You can write a question or review what is included.",
+    "noWallet": "No EVM wallet found — install MetaMask / Rabby / OKX Wallet, or open this page inside MiniPay.",
+    "noWalletMobileHd": "Open in a wallet app",
+    "noWalletMobile": "No wallet detected in this browser. Open this page inside your wallet app:",
+    "openMetaMask": "Open in MetaMask",
+    "miniPayNote": "MiniPay users: open a supported HTTPS deployment inside MiniPay, then check your token balance.",
+    "signing": "Sign the USDC authorization in your wallet (no gas)…",
+    "settling": "Settling on Celo…",
+    "confirming": "Confirming on Celo (a few seconds)…",
+    "paid": "Paid & settled on Celo",
+    "needMsg": "Type a question first.",
+    "busy": "The analyst is busy — nothing was charged, retry shortly.",
+    "est": "Est. P&L",
+    "win": "Win rate",
+    "ord": "Order success",
+    "action": "Action",
+    "conf": "Confidence",
+    "why": "Reasoning",
+    "market": "Market read",
+    "lessons": "Lessons the agent learned",
+    "viewTx": "View settlement on Celoscan",
+    "celoId": "Celo Agent ID",
+    "tierStd": "Standard",
+    "tierGpt": "GPT tier",
+    "tierClaude": "Claude tier",
+    "tierZerog": "0G tier",
+    "nfa": "For information only. Not investment advice.",
+    "analystOff": "The analyst is offline. Your question is preserved.",
+    "connected": "Wallet connected",
+    "walletChanged": "Wallet account changed",
+    "connectFail": "Could not connect the wallet — please try again.",
+    "needFunds": "Not enough USDC on Celo for this purchase — nothing was signed or charged.",
+    "getUsdcHd": "Get USDC on Celo",
+    "getUsdc1": "Bridge or swap from any chain with Jumper (LI.FI) — prefilled to USDC on Celo →",
+    "getUsdc2": "Withdraw USDC or USDT to the Celo network from an exchange (Binance, OKX, Bybit, Coinbase…).",
+    "getUsdc3": "Check your wallet’s Celo balance; opening MiniPay does not add funds.",
+    "getUsdc4": "Or use the app’s own bridge: manekiai.io → Settings → “Get USDC on Celo” →",
+    "close": "close",
+    "purchases": "Saved consultations & purchases",
+    "reread": "read again",
+    "genAgo": "generated",
+    "refresh10": "refreshes every 10 min",
+    "shared": "shared brief",
+    "errFunds": "Not enough USDC on Celo for this purchase.",
+    "errSig": "The wallet signature was not accepted — please try again.",
+    "errNonce": "This authorization has been used. Check your payment record first.",
+    "errExpired": "The authorization expired. Check whether a payment already settled before proceeding.",
+    "errNotYet": "The signature is not valid yet — check your device clock and try again.",
+    "errBusy": "Payment service busy, nothing was charged, try again in a minute.",
+    "errSettle": "Settlement on Celo did not go through — please try again.",
+    "errRate": "Too many requests — please wait a moment and retry.",
+    "errRateWallet": "This wallet hit the safety limit — please try again in 10 minutes.",
+    "busyCharged": "Payment settled but the answer was not generated. Keep your receipt and contact project support; do not pay again.",
+    "stillPending": "Payment is still confirming. Check the on-chain record before making another payment.",
+    "errRejected": "Signature cancelled in the wallet.",
+    "errGeneric": "The request did not complete. If you signed a payment, check its status before trying again.",
+    "errChain": "Please switch your wallet to the Celo network.",
+    "ref": "ref",
+    "marketLabel": "Market to follow",
+    "questionLabel": "Your question",
+    "paymentNote": "Pay per answer · USDC / USA₮ on Celo · No subscription",
+    "technicalDetails": "On-chain identity & payment details",
+    "sampleSetupTitle": "The market context",
+    "sampleSetup": "Understand the conditions behind the analyst’s view.",
+    "sampleLevelsTitle": "What to watch",
+    "sampleLevels": "The changes that matter, and why they matter.",
+    "sampleRiskTitle": "Risks & boundaries",
+    "sampleRisk": "What could change or invalidate the view.",
+    "pricePerAnswer": "answer",
+    "loadFailed": "The consultation service could not load. Your question is still here.",
+    "retryLoad": "Try again",
+    "skip": "Skip to workspace",
+    "workspace": "Workspace",
+    "mySpace": "My workspace",
+    "heroFirst": "Ask Maneki.",
+    "heroSecond": "Create your agent.",
+    "heroDesc": "From a focused market question to a research assistant working to your brief.",
+    "heroNote": "Pay for an answer.\nSet a budget for a task.",
+    "heroHint": "Configure first. Review the cost before starting.",
+    "consultTab": "Ask Maneki",
+    "consultHint": "One question. A considered answer.",
+    "createTab": "Create an agent",
+    "createHint": "Your parameters. Your own task.",
+    "consultOverline": "START WITH WHAT MATTERS TO YOU",
+    "deliverOverline": "WITH EVERY CONSULTATION",
+    "deliverTitle": "Turn information into perspective.",
+    "agentOverline": "PUT YOUR PLAN TO WORK",
+    "agentTitle": "Your direction. Your agent.",
+    "draftFree": "Free to configure",
+    "taskLabel": "What should your agent do?",
+    "taskMonitor": "Market monitoring",
+    "taskMonitorDesc": "Track changes and observations",
+    "taskResearch": "Ongoing research",
+    "taskResearchDesc": "Keep investigating your question",
+    "durationLabel": "Run for",
+    "hour1": "1 hour",
+    "hour6": "6 hours",
+    "hour24": "24 hours",
+    "goalLabel": "What should it focus on?",
+    "goalHelp": "Describe the changes to watch and the result you need.",
+    "advanced": "More settings",
+    "nameLabel": "Agent name (optional)",
+    "frequencyLabel": "Check frequency",
+    "every60": "Every 60 minutes",
+    "every15": "Every 15 minutes",
+    "quoteButton": "Review running cost",
+    "saveDraft": "Save draft",
+    "creationNote": "Drafts are free. Review the task and cost before starting.",
+    "yourAgent": "YOUR AGENT",
+    "designPreview": "Flow preview",
+    "taskLabelShort": "Task",
+    "executionLabel": "Scope",
+    "researchOnly": "Research & monitoring",
+    "quoteHint": "Configure your task, then review the cost.",
+    "noTrading": "This flow does not authorize live trading.",
+    "budgetNote": "Run for the chosen duration, then stop. No auto-renewal.",
+    "draftFirst": "Configure",
+    "thenReview": "Review cost",
+    "thenRun": "Start task",
+    "yourWorkspace": "A SPACE FOR YOUR WORK",
+    "localRecords": "Saved in this browser",
+    "myConsultations": "My consultations",
+    "myAgents": "My agents",
+    "howChoose": "Ask a question or configure a task",
+    "howPay": "Review the cost before you pay",
+    "howResult": "Keep the result and payment receipt",
+    "projectInfo": "About the project ↗",
+    "monitorAgent": "market watcher",
+    "researchAgent": "research assistant",
+    "summaryGoalEmpty": "Describe your focus to build a task brief here.",
+    "goalRequired": "Describe what your agent should focus on first.",
+    "invalidTask": "Check the market, duration and frequency.",
+    "quoteUnavailable": "Agent quoting and execution are not connected yet. You can save a draft now.",
+    "launchUnavailable": "Execution not connected",
+    "saveFailed": "This browser could not save the draft. Allow local storage and try again; your input is preserved.",
+    "draftSaved": "Draft saved to My agents in this browser. No payment made.",
+    "noDrafts": "Your first agent starts here.",
+    "noDraftsHint": "Choose a market and a task. Save a draft now and run it when ready.",
+    "status_draft": "Draft",
+    "status_running": "Running",
+    "status_completed": "Completed",
+    "status_stopped": "Stopped",
+    "continueConfig": "Continue configuring",
+    "exportConfig": "Export configuration",
+    "consultHistoryTitle": "Keep the thinking behind every answer.",
+    "consultHistoryHint": "Connect your wallet to see purchases and receipts saved in this browser.",
+    "noConsultations": "Your first analysis starts with a question.",
+    "noConsultationsHint": "Your answers and payment receipts will be saved here.",
+    "startQuestion": "Ask a question",
+    "legacyInsight": "Archived insight",
+    "guideStrip": "📘 Celo “Agents at Work” — guide, journeys & on-chain proofs →",
+    "quoteReal": "RUN COST",
+    "quoting": "Pricing this run…",
+    "checksWord": "checks",
+    "payStart": "Pay & start",
+    "noRefund": "One payment covers the whole run. Stopping early does not refund.",
+    "tasksOff": "Agent runs are not open on this server right now.",
+    "launching": "Starting your agent…",
+    "taskStarted": "Your agent is running — the first report lands shortly.",
+    "myTasksTitle": "Running & finished agents",
+    "noTasks": "No paid agent runs yet.",
+    "noTasksHint": "Connect your wallet to see the agents it has paid for.",
+    "restore": "Restore with my wallet",
+    "restoring": "Waiting for your signature…",
+    "restored": "Restored {n} run(s) to this browser.",
+    "restoreNone": "This wallet has no agent runs yet.",
+    "refreshTasks": "Refresh",
+    "stopTask": "Stop",
+    "stopConfirm": "Stopping ends this run now. It does not refund the part that has not run yet. Continue?",
+    "progressWord": "checks delivered",
+    "latestReport": "Latest report",
+    "allReports": "All reports",
+    "hideReports": "Hide reports",
+    "awaitFirst": "Waiting for the first report…",
+    "checkFailed": "This check produced nothing — you were not charged extra.",
+    "tasksLocal": "Run receipts live in this browser. On another device, restore them by signing with the wallet that paid.",
+    "st_running": "Running",
+    "st_completed": "Completed",
+    "st_stopped": "Stopped",
+    "st_failed": "Stopped early",
+    "st_awaiting_payment": "Awaiting payment",
+    "everyMin": "every {n} min",
+    "receipt": "Payment"
+  },
+  "zh": {
+    "connect": "连接钱包",
+    "askTitle": "今天，想了解什么？",
+    "askBtn": "付费获取分析",
+    "briefBtn": "只看快速简报",
+    "disabled": "咨询付款暂未开放。你可以先填写问题或查看交付说明。",
+    "noWallet": "未检测到 EVM 钱包——请安装 MetaMask / Rabby / OKX Wallet，或在 MiniPay 内打开本页。",
+    "noWalletMobileHd": "在钱包 App 中打开",
+    "noWalletMobile": "当前浏览器未检测到钱包。请在钱包 App 内打开本页：",
+    "openMetaMask": "在 MetaMask 中打开",
+    "miniPayNote": "MiniPay 用户请在应用内打开已支持的 HTTPS 部署，并先检查代币余额。",
+    "signing": "请在钱包中签署 USDC 授权（无 gas）…",
+    "settling": "正在 Celo 上结算…",
+    "confirming": "正在 Celo 上确认（几秒钟）…",
+    "paid": "已支付并在 Celo 结算",
+    "needMsg": "先输入问题。",
+    "busy": "分析师繁忙——未扣费，请稍后重试。",
+    "est": "预计盈亏",
+    "win": "胜率",
+    "ord": "下单成功率",
+    "action": "动作",
+    "conf": "置信度",
+    "why": "推理",
+    "market": "行情读数",
+    "lessons": "Agent 学到的经验",
+    "viewTx": "在 Celoscan 查看结算",
+    "celoId": "Celo Agent ID",
+    "tierStd": "标准档",
+    "tierGpt": "GPT 档",
+    "tierClaude": "Claude 档",
+    "tierZerog": "0G 档",
+    "nfa": "分析仅供参考，不构成投资建议。",
+    "analystOff": "分析师暂时离线，你输入的问题会保留。",
+    "connected": "钱包已连接",
+    "walletChanged": "钱包账户已切换",
+    "connectFail": "钱包连接失败——请重试。",
+    "needFunds": "你在 Celo 上的 USDC 不足以完成本次购买——未签名、未扣费。",
+    "getUsdcHd": "获取 Celo 上的 USDC",
+    "getUsdc1": "用 Jumper（LI.FI）从任意链跨链/兑换——已预填为 Celo USDC →",
+    "getUsdc2": "从交易所（Binance、OKX、Bybit、Coinbase…）把 USDC 或 USDT 提现到 Celo 网络。",
+    "getUsdc3": "先检查钱包中的 Celo 代币余额，打开 MiniPay 不会自动获得资金。",
+    "getUsdc4": "或使用应用内置的桥：manekiai.io → 设置 → 「获取 Celo USDC」→",
+    "close": "关闭",
+    "purchases": "已保存的咨询与购买",
+    "reread": "再看一次",
+    "genAgo": "生成于",
+    "refresh10": "每 10 分钟刷新",
+    "shared": "共享简报",
+    "errFunds": "你在 Celo 上的 USDC 不足以完成本次购买。",
+    "errSig": "钱包签名未被接受——请重试。",
+    "errNonce": "这份支付授权已使用，请先核对付款记录。",
+    "errExpired": "授权已过期，请先核对是否已有付款结算。",
+    "errNotYet": "签名尚未生效——请检查设备时间后重试。",
+    "errBusy": "支付服务繁忙，未扣费，请一分钟后重试。",
+    "errSettle": "Celo 结算未完成——请重试。",
+    "errRate": "请求过于频繁——请稍候再试。",
+    "errRateWallet": "这个钱包触发了安全上限——请 10 分钟后再试。",
+    "busyCharged": "付款已结算，但答案暂时未生成。请保留付款凭证并联系项目支持，不要重新支付。",
+    "stillPending": "付款仍在确认中。请先核对链上记录，确认结果前不要再次支付。",
+    "errRejected": "已在钱包中取消签名。",
+    "errGeneric": "请求未完成。若已签署付款，请先核对付款记录，再决定下一步。",
+    "errChain": "请把钱包切换到 Celo 网络。",
+    "ref": "编码",
+    "marketLabel": "关注市场",
+    "questionLabel": "你的问题",
+    "paymentNote": "按次付费 · Celo 上的 USDC / USA₮ · 无订阅",
+    "technicalDetails": "链上身份与支付信息",
+    "sampleSetupTitle": "市场形势",
+    "sampleSetup": "梳理当下行情，解释判断的依据。",
+    "sampleLevelsTitle": "观察重点",
+    "sampleLevels": "关注哪些变化，以及它们为何重要。",
+    "sampleRiskTitle": "风险与边界",
+    "sampleRisk": "什么情况会让当前判断失效。",
+    "pricePerAnswer": "次",
+    "loadFailed": "咨询服务暂时无法加载，你的问题会保留。",
+    "retryLoad": "重新加载",
+    "skip": "跳到工作台",
+    "workspace": "工作台",
+    "mySpace": "我的记录",
+    "heroFirst": "有问题，问 Maneki。",
+    "heroSecond": "有计划，让 Agent 来。",
+    "heroDesc": "从一次市场咨询，到一位按你要求工作的研究助手。",
+    "heroNote": "为答案付费。\n为执行设定预算。",
+    "heroHint": "先配置，确认费用后再启动。",
+    "consultTab": "付费咨询",
+    "consultHint": "一个问题，一份清楚的分析",
+    "createTab": "创建 Agent",
+    "createHint": "你的参数，你的专属任务",
+    "consultOverline": "从你关心的问题开始",
+    "deliverOverline": "每次咨询，你会得到",
+    "deliverTitle": "把信息，变成判断依据。",
+    "agentOverline": "把计划交给 Agent",
+    "agentTitle": "它来做事，你来定方向。",
+    "draftFree": "配置免费",
+    "taskLabel": "希望它帮你做什么？",
+    "taskMonitor": "持续监控",
+    "taskMonitorDesc": "跟踪变化，汇总观察",
+    "taskResearch": "跟踪研究",
+    "taskResearchDesc": "围绕问题，持续分析",
+    "durationLabel": "运行时长",
+    "hour1": "1 小时",
+    "hour6": "6 小时",
+    "hour24": "24 小时",
+    "goalLabel": "你的关注重点",
+    "goalHelp": "写清楚关注的变化与希望得到的结果。",
+    "advanced": "更多设置",
+    "nameLabel": "Agent 名称（可选）",
+    "frequencyLabel": "检查频率",
+    "every60": "每 60 分钟",
+    "every15": "每 15 分钟",
+    "quoteButton": "查看运行费用",
+    "saveDraft": "保存草稿",
+    "creationNote": "保存草稿免费；启动前确认运行范围与费用。",
+    "yourAgent": "你的 Agent",
+    "designPreview": "流程预览",
+    "taskLabelShort": "任务",
+    "executionLabel": "执行范围",
+    "researchOnly": "分析与监控",
+    "quoteHint": "配置好任务，再查看费用明细。",
+    "noTrading": "此流程不授权真实交易。",
+    "budgetNote": "按本次配置运行，到期停止，不自动续费。",
+    "draftFirst": "先配置",
+    "thenReview": "确认费用",
+    "thenRun": "开始运行",
+    "yourWorkspace": "属于你的工作空间",
+    "localRecords": "记录保存在当前浏览器",
+    "myConsultations": "我的咨询",
+    "myAgents": "我的 Agent",
+    "howChoose": "提出问题，或配置任务",
+    "howPay": "看清费用，再确认支付",
+    "howResult": "查看结果，保留付款凭证",
+    "projectInfo": "项目说明 ↗",
+    "monitorAgent": "观察助手",
+    "researchAgent": "研究助手",
+    "summaryGoalEmpty": "写下关注重点，这里会生成你的任务摘要。",
+    "goalRequired": "先写下你希望 Agent 关注什么。",
+    "invalidTask": "请检查市场、时长与检查频率。",
+    "quoteUnavailable": "创建 Agent 的报价与运行服务尚未接入。现在可以保存任务草稿。",
+    "launchUnavailable": "运行服务待接入",
+    "saveFailed": "浏览器无法保存草稿。请允许本地存储后再试，已填参数仍保留。",
+    "draftSaved": "草稿已保存到“我的 Agent”，仅保存在此浏览器，未付款。",
+    "noDrafts": "从你的第一个 Agent 开始。",
+    "noDraftsHint": "设定关注市场与任务，先保存草稿，准备好再运行。",
+    "status_draft": "草稿",
+    "status_running": "运行中",
+    "status_completed": "已完成",
+    "status_stopped": "已停止",
+    "continueConfig": "继续配置",
+    "exportConfig": "导出参数",
+    "consultHistoryTitle": "让每一次咨询，都有迹可循。",
+    "consultHistoryHint": "连接钱包后，可查看此浏览器保存的咨询与付款凭证。",
+    "noConsultations": "你的第一份分析，从一个问题开始。",
+    "noConsultationsHint": "完成咨询后，答案与付款凭证会保存在这里。",
+    "startQuestion": "开始提问",
+    "legacyInsight": "历史洞察",
+    "guideStrip": "📘 Celo「Agents at Work」黑客松 · 体验指南 / 动线 / 链上证明 →",
+    "quoteReal": "运行费用",
+    "quoting": "正在计算本次运行费用…",
+    "checksWord": "次检查",
+    "payStart": "支付并启动",
+    "noRefund": "一次付清整段运行；提前停止不退款。",
+    "tasksOff": "本服务器当前未开放 Agent 运行。",
+    "launching": "正在启动你的 Agent…",
+    "taskStarted": "Agent 已开始工作，第一份报告很快送达。",
+    "myTasksTitle": "进行中与已完成的 Agent",
+    "noTasks": "还没有付费运行的 Agent。",
+    "noTasksHint": "连接钱包后，这里会显示该钱包付费运行过的 Agent。",
+    "restore": "用钱包找回",
+    "restoring": "等待你的签名…",
+    "restored": "已找回 {n} 个运行记录。",
+    "restoreNone": "这个钱包还没有付费运行过 Agent。",
+    "refreshTasks": "刷新",
+    "stopTask": "停止",
+    "stopConfirm": "停止后立即结束本次运行，剩余未执行的部分不退款。确定继续吗？",
+    "progressWord": "次检查已完成",
+    "latestReport": "最新报告",
+    "allReports": "全部报告",
+    "hideReports": "收起报告",
+    "awaitFirst": "等待第一份报告…",
+    "checkFailed": "这次检查没有产出——不会额外扣费。",
+    "tasksLocal": "运行凭证保存在当前浏览器。换设备时，用付款的钱包签名即可找回。",
+    "st_running": "运行中",
+    "st_completed": "已完成",
+    "st_stopped": "已停止",
+    "st_failed": "提前结束",
+    "st_awaiting_payment": "等待支付确认",
+    "everyMin": "每 {n} 分钟",
+    "receipt": "支付凭证"
+  }
+};
   let LANG = (() => { try { return localStorage.getItem('arena_lang') || ((navigator.language || '').startsWith('zh') ? 'zh' : 'en'); } catch (_) { return 'en'; } })();
   // Seed the host app's language key once (it defaults to en) so "← App" lands
   // in the same language; never override a choice already made there.
@@ -263,15 +504,16 @@
   function applyLang() {
     document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
     $('#langToggle').textContent = LANG === 'zh' ? 'English' : '中文';
+    document.title = LANG === 'zh' ? 'Maneki AI · 你的市场研究工作台' : 'Maneki AI · Your market workspace';
     document.documentElement.lang = LANG === 'zh' ? 'zh' : 'en';
-    if (CFG) { renderPrices(); renderAgents(); renderFoot(); renderGates(); }
-    renderPurchases(); renderActivity(); renderMobileWallet();
+    if (CFG) { renderPrices(); renderFoot(); renderGates(); }
+    renderPurchases(); renderMobileWallet(); renderSuggestions(); renderPresets(); updateSummary(false); renderAgentsPanel();
     if (!$('#getUsdcBox').hidden) renderGetUsdc();
   }
   $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); localStorage.setItem('vectora-lang', LANG); } catch (_) {} applyLang(); };
 
   // ------------------------------------------------------------ state ----
-  let CFG = null, CAT = null, ACT = null, ACT_FAILED = false, ACCOUNT = '';
+  let CFG = null, CAT = null, ACCOUNT = '';
   const b64e = (s) => btoa(unescape(encodeURIComponent(s)));
   const b64d = (s) => decodeURIComponent(escape(atob(s)));
   const provider = () => (window.ethereum || null);
@@ -287,7 +529,7 @@
   // Relative to wherever THIS page is actually served (preview box, prod,
   // local run) — a hardcoded production domain would 404 on every other host.
   const APP_BRIDGE = location.origin + '/#settings';
-  const ACTIONS = { open_long: ['open long', '开多'], open_short: ['open short', '开空'], close: ['close', '平仓'], close_long: ['close long', '平多'], close_short: ['close short', '平空'],
+  const ACTIONS = { user_close: ['Closed by owner', '用户已平仓'], open_long: ['open long', '开多'], open_short: ['open short', '开空'], close: ['close', '平仓'], close_long: ['close long', '平多'], close_short: ['close short', '平空'],
                     hold: ['hold', '观望'], add: ['add', '加仓'], reduce: ['reduce', '减仓'], wait: ['wait', '等待'] };
   const actionLabel = (a) => { const k = String(a || '').toLowerCase(); const m = ACTIONS[k]; return m ? (LANG === 'zh' ? m[1] : m[0]) : k.replace(/_/g, ' '); };
   function ago(ts) {
@@ -308,36 +550,44 @@
   };
   const assetName = (addr) => { const a = assetList().find((x) => String(x.address).toLowerCase() === String(addr || '').toLowerCase()); return a ? (a.key === 'USAT' ? 'USA₮' : a.key) : 'USDC'; };
 
+  function renderSuggestions() {
+    const ideas = LANG === 'zh' ? ['今天最值得关注什么？', '哪些变化会让当前判断失效？', '当前主要风险是什么？'] : ['What matters today?', 'What would invalidate the setup?', 'What are the main risks?'];
+    $('#askMsg').placeholder = ideas[0];
+    $('#suggestions').innerHTML = ideas.map((q) => `<button type="button">${esc(q)}</button>`).join('');
+    $('#suggestions').querySelectorAll('button').forEach((button) => { button.onclick = () => { $('#askMsg').value = button.textContent; $('#askMsg').focus(); }; });
+  }
+  const validPercent = (value) => value != null && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
+  const percent = (value) => validPercent(value) ? Number(value).toFixed(0) + '%' : '—';
   async function load() {
-    const [cfg, cat] = await Promise.all([fetch('/api/x402/config').then((r) => r.json()), fetch('/api/x402/catalog').then((r) => r.json())]);
+    const previousSymbol = $('#askSymbol').value, previousAgentSymbol = $('#agentSymbol').value;
+    const read = async (path) => { const r = await fetch(path); if (!r.ok) throw new Error('Could not load research'); return r.json(); };
+    const [cfg, cat] = await Promise.all([read('/api/x402/config'), read('/api/x402/catalog')]);
     CFG = cfg; CAT = cat;
-    renderPrices(); renderAgents(); renderFoot(); renderGates();
+    renderPrices(); renderFoot(); renderGates();
     const syms = (cat.analyst && cat.analyst.symbols) || ['NVDA'];
-    $('#askSymbol').innerHTML = syms.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    $('#agentSymbol').innerHTML = syms.map((symbol) => `<option value="${esc(symbol)}"${symbol === previousAgentSymbol ? ' selected' : ''}>${esc(symbol)}</option>`).join('');
+    $('#loadError').hidden = true;
+    $('#askSymbol').innerHTML = syms.map((s) => `<option value="${esc(s)}"${s === previousSymbol ? ' selected' : ''}>${esc(s)}</option>`).join('');
+    const gs = $('#guideStrip'); if (gs) gs.hidden = !((cfg.links || {}).guide);
+    renderAgentsPanel();
   }
   function renderGates() {
     if (!CFG) return;
     const en = $('#enabledMsg'); en.hidden = !!CFG.enabled; if (!CFG.enabled) en.textContent = t('disabled');
-    const off = CFG.analyst_ready === false;
-    const am = $('#analystMsg'); am.hidden = !off; if (off) am.textContent = t('analystOff');
+    const off = !CFG.enabled || CFG.analyst_ready === false;
+    const am = $('#analystMsg'); am.hidden = CFG.analyst_ready !== false; if (CFG.analyst_ready === false) am.textContent = t('analystOff');
     $('#btnAsk').disabled = $('#btnBrief').disabled = off;
     $('#btnAsk').classList.toggle('off', off); $('#btnBrief').classList.toggle('off', off);
   }
-  function loadActivity() {
-    return fetch('/api/x402/activity').then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
-      .then((d) => { ACT = d || {}; ACT_FAILED = false; }).catch(() => { ACT_FAILED = true; }).then(renderActivity);
-  }
-
   function renderPrices() {
     if (!CFG) return;
     const p = CFG.prices || {};
-    const names = { chat: LANG === 'zh' ? '问 ManekiAI · 一问' : 'Ask ManekiAI · one question', brief: LANG === 'zh' ? '个股简报（10 分钟共享）' : 'Symbol brief (shared, 10 min)', insight: LANG === 'zh' ? 'Agent 最新洞察' : 'Agent latest insight' };
-    $('#priceList').innerHTML = Object.keys(p).map((k) => `<div class="price"><span>${esc(names[k] || k)}</span><b>$${(+p[k].usd).toFixed(2)} <span class="tiny">USDC</span></b></div>`).join('');
-    $('#askPrice').textContent = '$' + (+((p.chat || {}).usd || 0)).toFixed(2) + ' USDC';
-    $('#btnBrief').textContent = t('briefBtn') + ' · $' + (+((p.brief || {}).usd || 0)).toFixed(2);
+    const amount = (k) => Number.isFinite(Number((p[k] || {}).usd)) ? '$' + Number(p[k].usd).toFixed(2) : '—';
+    $('#askPrice').textContent = amount('chat') + ' / ' + t('pricePerAnswer');
+    $('#btnAsk').textContent = t('askBtn') + ' · ' + amount('chat');
+    $('#btnBrief').textContent = t('briefBtn') + ' · ' + amount('brief');
     const a = CFG.agentid || {}, pa = a.platform_agent;
-    $('#idsLine').innerHTML = (pa ? `${t('celoId')} #${esc(pa.agentId)} <a class="txlink" target="_blank" rel="noopener" href="${esc((a.explorer_tx || 'https://celoscan.io/tx/') + pa.txhash)}">↗</a> · ` : '')
-      + `${esc(a.registered_agents || 0)} ${t('registered')} · ${LANG === 'zh' ? '收款地址' : 'payTo'} <a class="txlink" target="_blank" rel="noopener" href="https://celoscan.io/address/${esc(CFG.pay_to || '')}">${esc(short(CFG.pay_to))}</a>`;
+    $('#idsLine').innerHTML = pa ? `${t('celoId')} #${esc(pa.agentId)} <a class="txlink" target="_blank" rel="noopener" href="${esc((a.explorer_tx || 'https://celoscan.io/tx/') + pa.txhash)}">↗</a>` : '';
   }
 
   function renderFoot() {
@@ -349,66 +599,6 @@
     $('#foot').innerHTML = `ERC-8004 Identity Registry (Celo 42220): ${addrLink(a.identity_registry)} · Reputation Registry: ${addrLink(a.reputation_registry)}${a.registrar ? ` · ${LANG === 'zh' ? '注册钱包' : 'registrar'}: ${addrLink(a.registrar)}${a.registrar_celo != null ? ` (${(+a.registrar_celo).toFixed(3)} CELO)` : ''}` : ''}<br>
       x402 facilitator: ${esc(CFG.facilitator || '')}${CFG.settler ? ` (${esc(CFG.settler)})` : ''} · ${LANG === 'zh' ? '资产' : 'assets'}: ${assets} · payTo: ${addrLink(CFG.pay_to)}<br>
       Analyst card: <a class="txlink" href="${esc(card)}" target="_blank" rel="noopener">${esc(card)}</a>${extra ? ' · ' + extra : ''} · Built for Celo “Agents at Work” (Sep 2026).`;
-  }
-
-  function renderAgents() {
-    if (!CAT) return;
-    const list = CAT.agents || [];
-    $('#agentsSub').textContent = list.length ? `${list.length} ${LANG === 'zh' ? '个在售' : 'for sale'}` : '';
-    if (!list.length) { $('#agentGrid').innerHTML = `<p class="tiny">${t('noAgents')}</p>`; return; }
-    const bought = purchasesFor(ACCOUNT);
-    $('#agentGrid').innerHTML = list.map((a) => {
-      const lastTs = +a.last_decision_ts || 0;
-      const purchasable = a.purchasable !== false && (a.purchasable === true || lastTs > 0 || (a.total_ticks || 0) > 0);
-      const stale = lastTs > 0 && (Date.now() / 1000 - lastTs) > 86400;
-      const latest = lastTs > 0 || a.last_action
-        ? `<div class="latest">${t('latest')}: <b>${esc(actionLabel(a.last_action) || '—')}</b>${lastTs ? ` · ${esc(ago(lastTs))}` : ''}${a.last_round ? ` · ${LANG === 'zh' ? '第 ' + esc(a.last_round) + ' 回合' : 'round ' + esc(a.last_round)}` : ''}${stale ? ` <span class="tag gray stale">${t('stale')}</span>` : ''}</div>`
-        : `<div class="latest">${t('latest')}: ${t('noDecision')}</div>`;
-      const mine = bought.filter((p) => p.product === 'insight' && p.code === a.code).sort((x, y) => (y.ts || 0) - (x.ts || 0))[0];
-      let badge = '';
-      if (mine) {
-        const n = mine.round ? Math.max(0, (+a.total_ticks || 0) - (+mine.round || 0)) : (lastTs > (mine.ts || 0) ? 1 : 0);
-        badge = n > 0 ? `<span class="badge-new">${n} ${t('newDec')}</span>` : `<span class="tiny">${t('noNew')}</span>`;
-      }
-      return `
-      <div class="card pad agent-card" data-code="${esc(a.code)}">
-        <div class="row"><div><b style="font-size:16px">${esc(a.label)}</b> <span class="tag gray" style="margin-left:6px">${esc(a.symbol)}</span></div>
-          <span class="tag ${a.running ? 'green' : 'gray'}">${a.running ? t('running') : t('stopped')}</span></div>
-        <div class="row tiny"><span>${esc(tierName(a.model_tier))} · ${esc(a.persona)} · ${esc(a.total_ticks)} ${t('rounds')}</span>
-          ${a.celo_agent_id > 0 ? `<a class="txlink" target="_blank" rel="noopener" href="https://celoscan.io/tx/${esc(a.celo_agent_tx)}">${t('celoId')} #${esc(a.celo_agent_id)} ↗</a>` : ''}</div>
-        ${latest}
-        <div class="kpis">
-          <div class="kpi"><span class="tiny">${t('est')}</span><b class="${(+a.estimated_profit || 0) >= 0 ? 'green' : 'red'}">${usd(a.estimated_profit)}</b></div>
-          <div class="kpi"><span class="tiny">${t('win')}</span><b>${a.win_rate == null ? '—' : (+a.win_rate).toFixed(0) + '%'}</b></div>
-          <div class="kpi"><span class="tiny">${t('ord')}</span><b>${a.order_success_rate == null ? '—' : a.order_success_rate + '%'}</b></div>
-        </div>
-        <div class="row"><button class="btn primary sm btn-unlock${purchasable ? '' : ' off'}" data-code="${esc(a.code)}" ${purchasable ? '' : 'disabled'}>${purchasable ? `${t('unlock')} · $${(+a.price_usd).toFixed(2)} USDC` : t('noDecisionBtn')}</button>
-          <a class="tiny" href="${esc(a.card)}" target="_blank" rel="noopener">agent card ↗</a></div>
-        ${badge ? `<div>${badge}</div>` : ''}
-        <div class="msg" id="msg-${esc(a.code)}"></div>
-        <div id="ins-${esc(a.code)}"></div>
-      </div>`; }).join('');
-    document.querySelectorAll('.btn-unlock').forEach((b) => { b.onclick = () => buyInsight(b.dataset.code); });
-  }
-
-  // --------------------------------------------------------- activity ----
-  function renderActivity() {
-    const body = $('#actBody'); if (!body) return;
-    if (ACT_FAILED) { body.innerHTML = `<p class="tiny">${t('actFail')}</p>`; $('#actSub').textContent = ''; return; }
-    if (!ACT) return;
-    const s = ACT.summary || {}, dep = ACT.deposits || {}, regs = ACT.registrations || {}, L = ACT.links || (CFG && CFG.links) || {};
-    $('#actSub').textContent = ACT.generated_at ? `${LANG === 'zh' ? '更新于' : 'updated'} ${ago(ACT.generated_at)}` : '';
-    const kpi = (label, v) => `<div class="kpi"><span class="tiny">${label}</span><b>${v}</b></div>`;
-    const tiles = kpi(t('actSettled'), esc(s.settled || 0)) + kpi(t('actPayers'), esc(s.payers || 0)) + kpi(t('actReturning'), esc(s.returning_payers || 0))
-      + kpi(t('actUsd'), '$' + (+(s.usd || 0)).toFixed(2)) + kpi(t('actDeposits'), `${esc(dep.count || 0)} <span class="tiny">· ${esc(dep.senders || 0)} ${t('actSenders')} · $${(+(dep.usd || 0)).toFixed(2)}</span>`);
-    const byp = (s.by_product || []).length ? `<p class="tiny" style="margin-top:8px">${s.by_product.map((b) => `${esc(b.product)} ${esc(b.n)} · $${(+(b.usd || 0)).toFixed(2)}`).join(' · ')}</p>` : '';
-    const recent = (ACT.recent || []).slice(0, 20);
-    const rows = recent.length ? `<div class="act-rows"><div class="tiny" style="margin-bottom:4px">${t('actRecent')}</div><table><thead><tr><th>${t('when')}</th><th>${t('product')}</th><th>${t('amount')}</th><th>${t('payer')}</th><th>${t('agent')}</th><th>${t('tx')}</th></tr></thead><tbody>${recent.map((r) => `<tr><td>${esc(ago(r.ts))}</td><td>${esc(r.product)}</td><td>$${(+(r.amount_usd || 0)).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td>${esc(r.payer_short || '')}</td><td>${esc(r.agent_code || '')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || ('https://celoscan.io/tx/' + r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')}</tbody></table></div>`
-      : `<p class="tiny" style="margin-top:10px">${t('actNone')}</p>`;
-    const pf = regs.platform;
-    const regLine = `<p class="tiny" style="margin-top:10px"><b>${t('actRegs')}</b>: ${pf && pf.agentId ? `${t('actPlatform')} #${esc(pf.agentId)}${pf.txhash ? ` <a class="txlink" target="_blank" rel="noopener" href="${esc(pf.explorer || ('https://celoscan.io/tx/' + pf.txhash))}">↗</a>` : ''} · ` : ''}${esc(regs.count || (regs.agents || []).length || 0)} ${t('actAgents')}</p>`;
-    const links = [L.repo ? `<a class="txlink" href="${esc(L.repo)}" target="_blank" rel="noopener">GitHub ↗</a>` : '', L.dune ? `<a class="txlink" href="${esc(L.dune)}" target="_blank" rel="noopener">Dune ↗</a>` : ''].filter(Boolean).join(' · ');
-    body.innerHTML = `<div class="acts">${tiles}</div>${byp}${rows}${regLine}${links ? `<p class="tiny">${links}</p>` : ''}`;
   }
 
   // -------------------------------------------------------- purchases ----
@@ -425,11 +615,14 @@
   function renderPurchases() {
     const wrap = $('#purchasesWrap'); if (!wrap) return;
     const list = purchasesFor(ACCOUNT).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
-    wrap.hidden = !list.length; $('#purchasesCount').textContent = String(list.length);
-    if (!list.length) { $('#purchasesList').innerHTML = ''; return; }
+    wrap.hidden = false; $('#purchasesCount').textContent = list.length ? String(list.length) : '';
+    if (!list.length) {
+      $('#purchasesList').innerHTML = `<div class="empty-state"><div><h3>${t(ACCOUNT ? 'noConsultations' : 'consultHistoryTitle')}</h3><p>${t(ACCOUNT ? 'noConsultationsHint' : 'consultHistoryHint')}</p></div><button type="button" id="firstQuestion" class="btn ghost sm">${t('startQuestion')} ↗</button></div>`;
+      $('#firstQuestion').onclick = () => { setService('consult'); $('#workspace').scrollIntoView({block:'start'}); $('#askMsg').focus({preventScroll:true}); }; return;
+    }
     $('#purchasesList').innerHTML = list.map((p, i) => `<div class="purchase" data-i="${i}">
-      <div class="row"><span><b>${esc(p.product)}</b> ${esc(p.code || p.symbol || '')}${p.round ? ` · ${LANG === 'zh' ? '第 ' + esc(p.round) + ' 回合' : 'round ' + esc(p.round)}` : ''} <span class="tiny">· ${esc(ago(p.ts))}</span></span>
-        <span>${p.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(p.explorer || ('https://celoscan.io/tx/' + p.tx))}">${t('viewTx')} ↗</a> · ` : ''}<span class="reread" data-i="${i}">${t('reread')}</span></span></div>
+      <div class="row"><span><b>${esc(p.product === 'chat' ? t('consultTab') : p.product === 'brief' ? t('briefBtn') : t('legacyInsight'))}</b> ${esc(p.code || p.symbol || '')}${p.round ? ` · ${LANG === 'zh' ? '第 ' + esc(p.round) + ' 回合' : 'round ' + esc(p.round)}` : ''} <span class="tiny">· ${esc(ago(p.ts))}</span></span>
+        <span>${p.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(p.explorer || ('https://celoscan.io/tx/' + p.tx))}">${t('viewTx')} ↗</a> · ` : ''}<button type="button" class="lang reread" data-i="${i}">${t('reread')}</button></span></div>
       <div class="p-body" id="pbody-${i}"></div></div>`).join('');
     $('#purchasesList').querySelectorAll('.reread').forEach((el) => { el.onclick = () => {
       const p = list[+el.dataset.i], box = $('#pbody-' + el.dataset.i); if (!p || !box) return;
@@ -463,7 +656,7 @@
     ACCOUNT = String(addr || '').toLowerCase();
     $('#btnConnect').textContent = ACCOUNT ? short(ACCOUNT) : t('connect');
     if (!ACCOUNT) { $('#usdcBal').hidden = true; $('#usatBal').hidden = true; }
-    refreshBalance(); renderPurchases(); renderAgents();
+    refreshBalance(); renderPurchases(); refreshTasks();
   }
   let _eventsBound = false;
   function bindProviderEvents() {
@@ -548,11 +741,11 @@
     const typed = {
       types: {
         EIP712Domain: [{ name: 'name', type: 'string' }, { name: 'version', type: 'string' }, { name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' }],
-        TransferWithAuthorization: [{ name: 'from', type: 'address' }, { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'validAfter', type: 'uint256' }, { name: 'validBefore', type: 'uint256' }, { name: 'nonce', type: 'bytes32' }],
+        TransferWithAuthorization: [{ name: 'from', type: 'address' }, { name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }, { name: 'validAfter', type: 'uint256' }, { name: 'validBefore', type: 'uint256' }, { name: 'nonce', type: 'bytes32' }]
       },
       primaryType: 'TransferWithAuthorization',
       domain: { name: (acc.extra || {}).name || 'USDC', version: (acc.extra || {}).version || '2', chainId: CFG.chain.chain_id, verifyingContract: acc.asset },
-      message: auth,
+      message: auth
     };
     onStatus && onStatus(t('signing').replace('USDC', assetName(acc.asset)));
     let sig;
@@ -572,7 +765,7 @@
     }
     // Still 202 after the retry budget: 202 is "ok" to fetch(), so without this
     // the callers would render an empty answer and record a tx-less purchase.
-    // The payment is safe — a later retry with the same signature is served free.
+    // A later recovery must reuse this authorization; full persisted recovery is still a backend integration requirement.
     if (r.status === 202) { const err = new Error(t('stillPending')); err.friendly = true; err.pending = true; throw err; }
     return r;
   }
@@ -621,7 +814,7 @@
     const m = $('#askMsgLine'), out = $('#askAnswer');
     const symbol = $('#askSymbol').value, message = ($('#askMsg').value || '').trim();
     if (kind === 'chat' && !message) { setMsg(m, t('needMsg'), 'warn'); return; }
-    if (!CFG.enabled) { setMsg(m, t('disabled'), 'warn'); return; }
+    if (!CFG || !CFG.enabled) { setMsg(m, t('disabled'), 'warn'); return; }
     if (CFG.analyst_ready === false) { setMsg(m, t('analystOff'), 'warn'); return; }
     $('#btnAsk').disabled = $('#btnBrief').disabled = true;
     try {
@@ -635,9 +828,8 @@
       out.innerHTML = answerHtml(d);
       setMsg(m, '✓', 'ok'); refreshBalance();
       savePurchase({ ts: Math.floor(Date.now() / 1000), product: kind, symbol, round: 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
-      loadActivity();
     } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && (e.noFunds || e.pending)) ? 'warn' : 'err'); }
-    finally { $('#btnAsk').disabled = $('#btnBrief').disabled = CFG.analyst_ready === false; }
+    finally { renderGates(); }
   }
   $('#btnAsk').onclick = () => ask('chat');
   $('#btnBrief').onclick = () => ask('brief');
@@ -650,30 +842,361 @@
         <div class="hd">${t('action')}: ${esc(actionLabel(dec.action) || '—')} · ${t('conf')} ${dec.confidence != null ? (+dec.confidence * 100).toFixed(0) + '%' : '—'} <span class="tiny">· ${LANG === 'zh' ? '第' : 'round'} ${esc(dec.round)} · ${esc(when)}${dec.ts ? ` (${esc(ago(dec.ts))})` : ''}${dec.executed ? ' · executed' : ''}</span></div>
         <div><b>${t('why')}</b><br>${esc(LANG === 'zh' && dec.reasoning_zh ? dec.reasoning_zh : dec.reasoning)}</div>
         <div class="tiny"><b>${t('market')}</b>: ${esc(mk.symbol || '')} mid $${esc(mk.mid)} · mark $${esc(mk.mark)} · funding ${mk.funding != null ? (+mk.funding * 100).toFixed(4) + '%' : '—'} · OI ${esc(mk.open_interest == null ? '—' : mk.open_interest)} · position ${esc(mk.position || '')}</div>
-        <div class="tiny">${t('est')} ${usd(st.estimated_profit)} · ${t('win')} ${st.win_rate == null ? '—' : (+st.win_rate).toFixed(0) + '%'} · ${t('ord')} ${st.order_success_rate == null ? '—' : st.order_success_rate + '%'} (${esc(st.order_executed || 0)}/${esc(st.order_attempted || 0)})</div>
+        <div class="tiny">${t('est')} ${usd(st.estimated_profit)} · ${t('win')} ${percent(st.win_rate)} · ${t('ord')} ${percent(st.order_success_rate)} (${esc(st.order_executed || 0)}/${esc(st.order_attempted || 0)})</div>
         ${d.lessons ? `<div class="tiny"><b>${t('lessons')}</b><br>${esc(d.lessons)}</div>` : ''}
         ${payLine(d.payment)}<div class="disclaimer">${t('nfa')}</div></div>`;
   }
-  async function buyInsight(code) {
-    const m = $('#msg-' + code), box = $('#ins-' + code), btn = document.querySelector(`.btn-unlock[data-code="${code}"]`);
-    if (!CFG.enabled) { setMsg(m, t('disabled'), 'warn'); return; }
-    if (btn) btn.disabled = true;
-    try {
-      setMsg(m, '…');
-      const r = await payFetch('/api/x402/agents/' + encodeURIComponent(code) + '/insight', { method: 'GET' }, (s) => setMsg(m, s));
-      const d = await readJson(r);
-      if (!r.ok) { showError(m, r.status, d); return; }
-      box.innerHTML = insightHtml(d);
-      setMsg(m, '✓', 'ok'); refreshBalance();
-      const dec = d.decision || {};
-      savePurchase({ ts: Math.floor(Date.now() / 1000), product: 'insight', code, round: +dec.round || 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
-      loadActivity();
-    } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && (e.noFunds || e.pending)) ? 'warn' : 'err'); }
-    finally { if (btn) btn.disabled = false; }
+  // New task configuration stays local until a server quote/job API is integrated.
+  const DRAFT_KEY = 'maneki_task_drafts_v3';
+  let service = 'consult', historyTab = 'history', quoteSnapshot = null, editingId = null, lastQuote = null;
+  function setService(next, focus = false) {
+    service = next === 'create' ? 'create' : 'consult';
+    ['consult','create'].forEach((key) => {
+      const tab = $('#tab-' + key), active = key === service;
+      tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1;
+      $('#' + key + 'Panel').hidden = !active;
+    });
+    if (focus) $('#tab-' + service).focus();
   }
+  function setHistory(next, focus = false) {
+    historyTab = next === 'agents' ? 'agents' : 'history';
+    ['history','agents'].forEach((key) => {
+      const tab = $('#tab-' + key), active = key === historyTab;
+      tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1;
+    });
+    $('#consultHistory').hidden = historyTab !== 'history'; $('#agentHistory').hidden = historyTab !== 'agents';
+    if (focus) $('#tab-' + historyTab).focus();
+  }
+  function bindTabs(ids, choose) {
+    ids.forEach((id, i) => {
+      const el = $('#tab-' + id); el.onclick = () => choose(id);
+      el.addEventListener('keydown', (e) => {
+        let index = i;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') index = (i+1) % ids.length;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') index = (i-1+ids.length) % ids.length;
+        else if (e.key === 'Home') index = 0;
+        else if (e.key === 'End') index = ids.length-1;
+        else return;
+        e.preventDefault(); choose(ids[index], true);
+      });
+    });
+  }
+  bindTabs(['consult','create'], setService); bindTabs(['history','agents'], setHistory);
+  function taskValues() {
+    return { task: ($('#agentForm input[name="task"]:checked') || {}).value || 'monitor', symbol: $('#agentSymbol').value || 'NVDA', hours: Number(($('#agentDuration input:checked') || {}).value), frequency: Number(($('#agentFrequency input:checked') || {}).value), name: $('#agentName').value.trim().slice(0,60), goal: $('#agentGoal').value.trim().slice(0,600) };
+  }
+  function taskName(v) { return v.name || v.symbol + ' ' + t(v.task === 'research' ? 'researchAgent' : 'monitorAgent'); }
+  const hoursText = (h) => h + (LANG === 'zh' ? ' 小时' : ' hours');
+  const frequencyText = (m) => LANG === 'zh' ? '每 ' + m + ' 分钟' : 'Every ' + m + ' min';
+  function validateTask(v) {
+    $('#agentGoal').removeAttribute('aria-invalid');
+    if (!v.goal) { $('#agentGoal').setAttribute('aria-invalid','true'); $('#agentGoal').focus(); return t('goalRequired'); }
+    const symbols = Array.from($('#agentSymbol').options || []).map(o=>o.value);
+    if (!['monitor','research'].includes(v.task) || ![1,6,24].includes(v.hours) || ![15,60].includes(v.frequency) || !symbols.includes(v.symbol)) return t('invalidTask');
+    return '';
+  }
+  function updateSummary(invalidate = true) {
+    const v = taskValues();
+    $('#runSummaryTitle').textContent = taskName(v);
+    $('#summaryGoal').textContent = v.goal || t('summaryGoalEmpty');
+    $('#summaryTask').textContent = t(v.task === 'research' ? 'taskResearch' : 'taskMonitor');
+    $('#summaryDuration').textContent = hoursText(v.hours);
+    $('#summaryFrequency').textContent = frequencyText(v.frequency);
+    if (invalidate) { quoteSnapshot = null; $('#quoteReview').hidden = true; $('#quoteIdle').hidden = false; setMsg($('#agentError'),''); setMsg($('#draftMsg'),''); }
+    if (quoteSnapshot) renderQuote();
+  }
+  function taskBody(v) {
+    return {task: v.task, symbol: v.symbol, hours: v.hours, frequency: v.frequency,
+            goal: v.goal, name: v.name};
+  }
+  const money = (n) => '$' + Number(n || 0).toFixed(2);
+  let quoteSeq = 0;
+  async function renderQuote() {
+    if (!quoteSnapshot) return;
+    const v = quoteSnapshot, mine = ++quoteSeq;
+    $('#quoteReview').hidden = false; $('#quoteIdle').hidden = true;
+    const head = $('#quoteReview .overline'); if (head) head.textContent = t('quoteReal');
+    $('#quoteTotal').textContent = '…';
+    $('#quoteBreakdown').textContent = t('quoting');
+    $('#quoteDisclosure').textContent = t('noRefund');
+    $('#btnAgentLaunch').disabled = true;
+    let d = null;
+    try {
+      const r = await fetch('/api/x402/tasks/quote', {method: 'POST',
+        headers: {'Content-Type': 'application/json'}, body: JSON.stringify(taskBody(v))});
+      d = r.ok ? await r.json() : null;
+    } catch (_) { d = null; }
+    if (mine !== quoteSeq) return;                       // a newer edit won
+    if (!d) {
+      $('#quoteTotal').textContent = '—';
+      $('#quoteBreakdown').textContent = '';
+      $('#quoteDisclosure').textContent = t('quoteUnavailable');
+      $('#btnAgentLaunch').textContent = t('launchUnavailable');
+      $('#btnAgentLaunch').disabled = true;
+      return;
+    }
+    lastQuote = d;
+    $('#quoteTotal').textContent = Number(d.total_usd).toFixed(2);
+    $('#quoteBreakdown').textContent = d.checks + ' ' + t('checksWord') + ' × ' + money(d.unit_usd) + ' USDC';
+    const on = !!d.enabled;
+    $('#btnAgentLaunch').textContent = on ? t('payStart') + ' · ' + money(d.total_usd) : t('tasksOff');
+    $('#btnAgentLaunch').disabled = !on;
+    $('#quoteReview').hidden = false; $('#quoteIdle').hidden = true;
+  }
+  $('#agentForm').addEventListener('input', () => updateSummary());
+  $('#agentForm').addEventListener('change', () => updateSummary());
+  $('#agentForm').addEventListener('submit', (e) => {
+    e.preventDefault(); const v = taskValues(), error = validateTask(v);
+    if (error) { setMsg($('#agentError'), error, 'err'); return; }
+    setMsg($('#agentError'),''); quoteSnapshot = v; renderQuote();
+    $('#quoteReview').focus({preventScroll:true}); $('#quoteReview').scrollIntoView({block:'nearest',behavior:'auto'});
+  });
+  function loadDrafts() {
+    try {
+      const rows = JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]');
+      if (!Array.isArray(rows)) return [];
+      return rows.filter(v => v && typeof v.id === 'string' && ['monitor','research'].includes(v.task) && [1,6,24].includes(v.hours) && [15,60].includes(v.frequency) && typeof v.symbol === 'string' && typeof v.name === 'string' && typeof v.goal === 'string' && v.kind === 'draft' && ['draft','running','completed','stopped'].includes(v.status)).slice(0,30);
+    } catch (_) { return []; }
+  }
+  function storeDraft(row) {
+    const rows = loadDrafts().filter(v=>v.id!==row.id); rows.unshift(row);
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(rows.slice(0,30))); }
+    catch (_) { return false; }
+    renderDrafts(); return true;
+  }
+  function persistTask(kind) {
+    const v = taskValues(), error = validateTask(v);
+    if (error) { setMsg($('#agentError'),error,'err'); return null; }
+    const row = {...v, id: editingId || crypto.randomUUID(), kind, status: kind === 'demo' ? 'running' : 'draft', updatedAt: Date.now()};
+    if (!storeDraft(row)) { setMsg($('#draftMsg'), t('saveFailed'), 'err'); return null; }
+    editingId = kind === 'draft' ? row.id : null;
+    return row;
+  }
+  $('#btnSaveDraft').onclick = () => {
+    if (!persistTask('draft')) return;
+    setMsg($('#draftMsg'),t('draftSaved'),'ok'); setHistory('agents');
+  };
+  async function launchTask() {
+    const v = taskValues(), error = validateTask(v);
+    if (error) { setMsg($('#agentError'), error, 'err'); return; }
+    if (!quoteSnapshot || JSON.stringify(v) !== JSON.stringify(quoteSnapshot)) { renderQuote(); return; }
+    if (!(CFG && CFG.tasks && CFG.tasks.enabled)) { setMsg($('#agentError'), t('tasksOff'), 'err'); return; }
+    const btn = $('#btnAgentLaunch'), m = $('#draftMsg');
+    btn.disabled = true; setMsg(m, t('launching'));
+    try {
+      const r = await payFetch('/api/x402/tasks', {method: 'POST',
+        headers: {'Content-Type': 'application/json'}, body: JSON.stringify(taskBody(v))},
+        (st) => setMsg(m, st));
+      const d = await readJson(r);
+      if (!r.ok || !d.task) {
+        // 400/409 are our own buyer-safe sentences (bad configuration, too many
+        // runs already) — show them verbatim; anything else goes through the
+        // shared payment-error mapping.
+        const own = (r.status === 400 || r.status === 409) ? (d.detail || d.error || '') : '';
+        if (own) setMsg(m, own, 'err'); else showError(m, r.status, d);
+        return;
+      }
+      saveTaskRef({task_id: d.task.task_id, token: d.token || '', ts: Date.now()});
+      TASK_STATE[d.task.task_id] = Object.assign({runs: []}, d.task);
+      quoteSnapshot = null; $('#quoteReview').hidden = true; $('#quoteIdle').hidden = false;
+      setMsg(m, t('taskStarted'), 'ok');
+      setHistory('agents'); renderAgentsPanel();
+      $('#records').scrollIntoView({block: 'start', behavior: 'auto'});
+      refreshTasks();
+    } catch (e) {
+      setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), 'err');
+      if (e && e.noFunds) renderGetUsdc();
+    } finally { btn.disabled = false; }
+  }
+  $('#btnAgentLaunch').onclick = launchTask;
+
+  function editDraft(row) {
+    editingId = row.id;
+    $('#agentForm').querySelectorAll('input[name="task"]').forEach(el => { el.checked = el.value === row.task; });
+    if (![...$('#agentSymbol').options].some(o=>o.value===row.symbol)) {
+      const option = document.createElement('option'); option.value = row.symbol; option.textContent = row.symbol; $('#agentSymbol').append(option);
+    }
+    $('#agentSymbol').value=row.symbol; $('#agentDuration').querySelectorAll('input').forEach(el=>{el.checked=Number(el.value)===row.hours;}); $('#agentFrequency').querySelectorAll('input').forEach(el=>{el.checked=Number(el.value)===row.frequency;}); $('#agentName').value=row.name; $('#agentGoal').value=row.goal;
+    updateSummary(); setService('create'); $('#workspace').scrollIntoView({block:'start',behavior:'auto'}); $('#agentGoal').focus({preventScroll:true});
+  }
+  function exportDraft(row) {
+    const config = {name:row.name, task:row.task, symbol:row.symbol, duration_hours:row.hours, check_every_minutes:row.frequency, instructions:row.goal, trading_enabled:false};
+    const blob = new Blob([JSON.stringify(config,null,2)],{type:'application/json'}), url=URL.createObjectURL(blob), link=document.createElement('a');
+    link.href=url; link.download='maneki-agent-config.json'; document.body.append(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function renderDrafts() {
+    const rows = loadDrafts(), box = $('#draftBox') || $('#draftList');
+    if (!rows.length) {
+      box.innerHTML=`<div class="empty-state"><div><h3>${t('noDrafts')}</h3><p>${t('noDraftsHint')}</p></div><button type="button" id="firstAgent" class="btn ghost sm">${t('createTab')} ↗</button></div>`;
+      $('#firstAgent').onclick=()=>{setService('create');$('#workspace').scrollIntoView({block:'start'});$('#agentGoal').focus({preventScroll:true});}; return;
+    }
+    box.innerHTML = rows.map((row, i) => `<article class="draft-item">
+      <div class="draft-top"><div><h3>${esc(taskName(row))}</h3>
+        <p class="draft-meta">${esc(row.symbol)} · ${esc(hoursText(row.hours))} · ${esc(frequencyText(row.frequency))}</p></div>
+        <span class="draft-status">${t('status_draft')}</span></div>
+      <p class="draft-note">${esc(row.goal)}</p>
+      <div class="draft-actions">
+        <button type="button" class="text-btn" data-draft-action="edit" data-index="${i}">${t('continueConfig')}</button>
+        <button type="button" class="text-btn" data-draft-action="export" data-index="${i}">${t('exportConfig')} ↗</button>
+      </div></article>`).join('');
+    box.querySelectorAll('[data-draft-action]').forEach((button) => {
+      button.onclick = () => {
+        const row = rows[Number(button.dataset.index)]; if (!row) return;
+        if (button.dataset.draftAction === 'edit') editDraft(row); else exportDraft(row);
+      };
+    });
+  }
+  // ---------------------------------------------------------- my agents ----
+  // A paid run is identified by a task id + the access token handed out once
+  // at purchase. Both live in this browser; the wallet that paid can always
+  // sign a challenge to get them back (restoreTasks).
+  const tKey = (acct) => 'maneki_tasks_v1_' + String(acct || '').toLowerCase();
+  const TASK_STATE = {}, OPEN_REPORTS = {};
+  let taskTimer = null;
+  function taskRefs(acct) {
+    if (!acct) return [];
+    try { const v = JSON.parse(localStorage.getItem(tKey(acct)) || '[]'); return Array.isArray(v) ? v : []; }
+    catch (_) { return []; }
+  }
+  function saveTaskRef(rec) {
+    if (!ACCOUNT || !rec || !rec.task_id) return;
+    try {
+      const list = taskRefs(ACCOUNT).filter((x) => x.task_id !== rec.task_id);
+      list.unshift(rec);
+      localStorage.setItem(tKey(ACCOUNT), JSON.stringify(list.slice(0, 30)));
+    } catch (_) {}
+  }
+  async function fetchTask(ref) {
+    try {
+      const r = await fetch('/api/x402/tasks/' + encodeURIComponent(ref.task_id)
+                            + '?token=' + encodeURIComponent(ref.token || ''));
+      if (!r.ok) return null;
+      const d = await r.json();
+      TASK_STATE[ref.task_id] = d;
+      return d;
+    } catch (_) { return null; }
+  }
+  async function refreshTasks() {
+    const refs = taskRefs(ACCOUNT);
+    if (refs.length) await Promise.all(refs.slice(0, 10).map(fetchTask));
+    renderAgentsPanel();
+    if (!taskTimer) {
+      // One cheap poll a minute, and only while something is actually running.
+      taskTimer = setInterval(() => {
+        const live = taskRefs(ACCOUNT).some((r) => {
+          const d = TASK_STATE[r.task_id]; return !d || d.status === 'running';
+        });
+        if (live && !document.hidden) refreshTasks();
+      }, 60000);
+    }
+  }
+  function reportHtml(run) {
+    const head = `<span class="seq">#${esc(run.seq)} · ${esc(ago(run.ts))}</span><br>`;
+    if (!run.ok) return `<div class="report">${head}${t('checkFailed')}</div>`;
+    return `<div class="report">${head}${esc((run.report && run.report.text) || run.headline || '')}</div>`;
+  }
+  function taskCard(d) {
+    const done = +d.checks_done || 0, total = Math.max(1, +d.checks_total || 1);
+    const pct = Math.min(100, Math.round(100 * done / total));
+    const runs = (d.runs || []).slice().sort((a, b) => b.seq - a.seq);
+    const open = !!OPEN_REPORTS[d.task_id];
+    const shown = open ? runs : runs.slice(0, 1);
+    const title = d.name || (d.symbol + ' ' + t(d.task === 'research' ? 'researchAgent' : 'monitorAgent'));
+    const finished = d.status !== 'running';
+    return `<article class="task-card" data-task="${esc(d.task_id)}">
+      <div class="task-head"><div>
+        <h3>${esc(title)}</h3>
+        <p class="draft-meta">${esc(d.symbol)} · ${esc(hoursText(d.hours))} · ${esc(t('everyMin').replace('{n}', d.frequency))}</p>
+      </div><span class="task-state${finished ? ' done' : ''}">${t('st_' + d.status)}</span></div>
+      <p class="draft-note">${esc(d.goal || '')}</p>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <p class="tiny">${done}/${total} ${t('progressWord')}${d.checks_failed ? ' · ' + d.checks_failed + ' ✕' : ''}</p>
+      ${runs.length ? `<p class="tiny" style="margin-top:10px">${open ? t('allReports') : t('latestReport')}</p>${shown.map(reportHtml).join('')}`
+                    : `<p class="tiny" style="margin-top:10px">${t('awaitFirst')}</p>`}
+      <div class="task-actions">
+        ${runs.length > 1 ? `<button type="button" class="text-btn" data-task-action="toggle">${open ? t('hideReports') : t('allReports')} (${runs.length})</button>` : ''}
+        ${!finished ? `<button type="button" class="text-btn" data-task-action="stop">${t('stopTask')}</button>` : ''}
+        ${d.payment && d.payment.tx ? `<a class="text-btn" target="_blank" rel="noopener" href="${esc(d.payment.explorer)}">${t('receipt')} ↗</a>` : ''}
+      </div></article>`;
+  }
+  function renderAgentsPanel() {
+    const box = $('#draftList'); if (!box) return;
+    const rows = taskRefs(ACCOUNT).map((r) => TASK_STATE[r.task_id]).filter(Boolean);
+    const head = `<div class="history-label"><span>${t('myTasksTitle')}</span><span class="tiny">
+        <button type="button" class="text-btn" id="btnRestoreTasks">${t('restore')}</button>
+        ${rows.length ? ` · <button type="button" class="text-btn" id="btnRefreshTasks">${t('refreshTasks')}</button>` : ''}
+      </span></div>`;
+    const body = rows.length ? rows.map(taskCard).join('')
+                             : `<p class="tiny" style="margin:0 0 16px">${t(ACCOUNT ? 'noTasks' : 'noTasksHint')}</p>`;
+    box.innerHTML = head + body + '<div id="draftBox"></div>'
+                    + `<p class="tiny" style="margin-top:14px">${t('tasksLocal')}</p>`;
+    const rb = $('#btnRestoreTasks'); if (rb) rb.onclick = restoreTasks;
+    const fb = $('#btnRefreshTasks'); if (fb) fb.onclick = () => refreshTasks();
+    box.querySelectorAll('[data-task-action]').forEach((b) => {
+      b.onclick = () => {
+        const host = b.closest('[data-task]'); if (!host) return;
+        if (b.dataset.taskAction === 'toggle') { OPEN_REPORTS[host.dataset.task] = !OPEN_REPORTS[host.dataset.task]; renderAgentsPanel(); }
+        else stopTask(host.dataset.task);
+      };
+    });
+    renderDrafts();
+  }
+  async function stopTask(id) {
+    const ref = taskRefs(ACCOUNT).find((x) => x.task_id === id); if (!ref) return;
+    if (!window.confirm(t('stopConfirm'))) return;
+    const m = $('#recordsMsg');
+    try {
+      const r = await fetch('/api/x402/tasks/' + encodeURIComponent(id) + '/stop?token='
+                            + encodeURIComponent(ref.token || ''), {method: 'POST'});
+      if (!r.ok) { setMsg(m, t('errGeneric'), 'err'); return; }
+      setMsg(m, '');
+      await fetchTask(ref); renderAgentsPanel();
+    } catch (_) { setMsg(m, t('errGeneric'), 'err'); }
+  }
+  async function restoreTasks() {
+    const m = $('#recordsMsg');
+    if (!ACCOUNT) { try { await connect(); } catch (e) { setMsg(m, (e && e.message) || t('errGeneric'), 'err'); return; } }
+    if (!ACCOUNT) return;
+    setMsg(m, t('restoring'));
+    try {
+      const cr = await fetch('/api/x402/tasks/challenge?address=' + encodeURIComponent(ACCOUNT));
+      if (!cr.ok) throw new Error(t('errGeneric'));
+      const ch = await cr.json();
+      const sig = await provider().request({method: 'personal_sign', params: [ch.message, ACCOUNT]});
+      const r = await fetch('/api/x402/tasks/recover', {method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({address: ACCOUNT, issued_at: ch.issued_at, signature: sig})});
+      const d = await readJson(r);
+      if (!r.ok) throw new Error(d.detail || d.error || t('errGeneric'));
+      (d.tasks || []).forEach((x) => {
+        saveTaskRef({task_id: x.task_id, token: x.token, ts: Date.now()});
+        TASK_STATE[x.task_id] = Object.assign({runs: []}, x);
+      });
+      setMsg(m, d.count ? t('restored').replace('{n}', d.count) : t('restoreNone'), d.count ? 'ok' : '');
+      await refreshTasks();
+    } catch (e) {
+      const we = walletError(e);
+      setMsg(m, (we && we.message) || t('errGeneric'), 'err');
+    }
+  }
+
+  function renderPresets() {
+    const presets=LANG==='zh'?['每小时整理主要风险','跟踪价格与市场情绪变化']:['Summarize the main risks each hour','Track price and market sentiment'];
+    $('#agentGoal').placeholder=LANG==='zh'?'例如：关注 NVDA 的价格变化，每小时整理主要风险。':'For example: track NVDA and summarize its main risks each hour.';
+    $('#agentName').placeholder=LANG==='zh'?'NVDA 观察助手':'NVDA market watcher';
+    $('#agentPresets').innerHTML=presets.map(text=>`<button type="button">${esc(text)}</button>`).join('');
+    $('#agentPresets').querySelectorAll('button').forEach(button=>{button.onclick=()=>{$('#agentGoal').value=button.textContent;updateSummary();$('#agentGoal').focus();};});
+  }
+
 
   applyLang();
   renderMobileWallet();
+  function showLoadFailure() {
+    $('#loadError').hidden = false;
+    $('#retryLoad').disabled = false;
+    $('#btnAsk').disabled = $('#btnBrief').disabled = true;
+  }
+  $('#retryLoad').onclick = () => { $('#retryLoad').disabled = true; load().then(applyLang).catch(showLoadFailure); };
   load().then(() => {
     applyLang();
     const p = provider();
@@ -684,9 +1207,7 @@
       connect().catch(() => { $('#btnConnect').hidden = false; });
     } else if (p && p.selectedAddress) { setAccount(p.selectedAddress); }
     else if (p && typeof p.request === 'function') { p.request({ method: 'eth_accounts' }).then((a) => { if (a && a[0]) setAccount(a[0]); }).catch(() => {}); }
-  }).catch(() => { $('#agentGrid').innerHTML = `<p class="tiny">${LANG === 'zh' ? '加载失败，请刷新重试。' : 'Could not load the catalog — please refresh.'}</p>`; });
-  loadActivity();
+  }).catch(showLoadFailure);
 })();
 </script>
-</body>
-</html>
+</body></html>

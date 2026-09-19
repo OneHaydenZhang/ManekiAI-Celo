@@ -656,7 +656,10 @@ def test_public_pages_and_guide_link(client, monkeypatch):
     web = Path(celo_routes.__file__).resolve().parent / "web"
     arena = (web / "arena.html").read_text(encoding="utf-8")
     guide = (web / "guide.html").read_text(encoding="utf-8")
-    assert "Agent Arena" in arena and 'href="/hackathon"' in arena
+    # The page is the two-entry workbench now (paid consultation + create an
+    # agent), and both entries plus the guide link must survive any redesign.
+    assert 'id="consultPanel"' in arena and 'id="createPanel"' in arena
+    assert '/api/x402/tasks' in arena and 'href="/hackathon"' in arena
     assert "Agents at Work" in guide and "/api/x402/activity" in guide and "/api/x402/catalog" in guide
     cfg = client.get("/api/x402/config").json()
     assert cfg["links"]["guide"].endswith("/hackathon")
