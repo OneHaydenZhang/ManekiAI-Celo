@@ -976,6 +976,23 @@ async def _celo_deliver(row: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
+@router.get("/celo/health")
+async def celo_health():
+    """PUBLIC: is the Celo link healthy right now — which gateway answers, how
+    fast, and what the price feed says. Nothing here is not already on-chain."""
+    return await asyncio.to_thread(native_pay.health)
+
+
+@router.get("/celo/orders/{order_id}/trace")
+async def celo_order_trace(order_id: str, request: Request, token: str = ""):
+    """Token-gated: every step this order went through, in order — including
+    the exact reason a payment was refused. Written for a human to read while
+    testing."""
+    row = await asyncio.to_thread(_celo_order_or_403, order_id,
+                                  (token or request.headers.get("x-order-token") or ""))
+    return await asyncio.to_thread(native_pay.order_trail, row)
+
+
 @router.post("/celo/orders/{order_id}/tx")
 async def celo_order_tx(order_id: str, request: Request, token: str = ""):
     """The buyer hands us their transfer hash; we verify it and deliver."""

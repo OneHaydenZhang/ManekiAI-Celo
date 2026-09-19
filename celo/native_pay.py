@@ -78,9 +78,28 @@ def pay_to() -> str:
 
 # -------------------------------------------------------------------- rpc --
 
+RPC_STATS: Dict[str, Dict[str, Any]] = {}      # in-process, for the diagnostics view
+
+
+def _stat(url: str, method: str, ms: float, ok: bool, err: str = "") -> None:
+    k = f"{url}|{method}"
+    st = RPC_STATS.setdefault(k, {"url": url, "method": method, "calls": 0, "fails": 0,
+                                  "ms_total": 0.0, "last_ms": 0.0, "last_at": 0.0, "last_error": ""})
+    st["calls"] += 1
+    st["ms_total"] += ms
+    st["last_ms"] = round(ms, 1)
+    st["last_at"] = time.time()
+    if not ok:
+        st["fails"] += 1
+        st["last_error"] = (err or "")[:160]
+
+
 def _rpc(method: str, params: list) -> Any:
+    """Every Celo RPC call goes through here, so the diagnostics view can show
+    which gateway answered, how fast, and what failed."""
     last: Optional[Exception] = None
     for url in RPC_URLS:
+        t0 = time.time()
         try:
             r = httpx.post(url, json={"jsonrpc": "2.0", "id": 1, "method": method,
                                       "params": params}, timeout=15.0)
@@ -88,9 +107,12 @@ def _rpc(method: str, params: list) -> Any:
             body = r.json() or {}
             if body.get("error"):
                 raise RuntimeError(str(body["error"])[:200])
+            _stat(url, method, (time.time() - t0) * 1000, True)
             return body.get("result")
         except Exception as e:                    # try the next gateway
+            _stat(url, method, (time.time() - t0) * 1000, False, repr(e))
             last = e
+    oplog.error("celo.rpc", f"{method}: {last!r}"[:300])
     raise RuntimeError(f"celo rpc failed: {last!r}")
 
 
@@ -112,6 +134,7 @@ def price_usd() -> Tuple[float, int]:
         return float(_price_cache["usd"]), int(_price_cache["fee"])
     one = 10 ** 18
     best_out, best_fee = 0, 0
+    quotes: Dict[str, float] = {}
     for fee in FEE_TIERS:
         data = ("0xc6a5026a" + _a32(CELO_TOKEN) + _a32(USDC) + _u32(one) + _u32(fee) + _u32(0))
         try:
@@ -119,12 +142,17 @@ def price_usd() -> Tuple[float, int]:
             out = int(str(res)[2:66], 16)
         except Exception:
             continue
+        quotes[str(fee)] = round(out / 10 ** 6, 6)
         if out > best_out:
             best_out, best_fee = out, fee
     usd = best_out / 10 ** 6
     if not (PRICE_FLOOR <= usd <= PRICE_CEIL):
+        oplog.error("celo.price", f"refused rate {usd} (tiers: {quotes})", status=503)
         raise Invalid("CELO pricing is unavailable right now — pay in USDC instead")
     _price_cache.update({"at": now, "usd": usd, "fee": best_fee})
+    oplog.op("celo.price", params={"usd": round(usd, 6), "fee_tier": best_fee,
+                                   "ms": round((time.time() - now) * 1000),
+                                   "tiers": quotes})
     return usd, best_fee
 
 
@@ -165,7 +193,39 @@ def ensure_schema() -> None:
     # One transfer can only ever pay for one order.
     db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uidx_celo_orders_tx ON celo_orders(tx) WHERE tx<>''")
     db.execute("CREATE INDEX IF NOT EXISTS idx_celo_orders_payer ON celo_orders(payer, status)")
+    existing = {r["name"] for r in db.query_all("PRAGMA table_info(celo_orders)")}
+    if "events_json" not in existing:
+        try:
+            db.execute("ALTER TABLE celo_orders ADD COLUMN events_json TEXT NOT NULL DEFAULT ''")
+        except Exception:
+            pass
     _schema_ready = True
+
+
+MAX_EVENTS = 40
+
+
+def events_of(row: Dict[str, Any]) -> List[Dict[str, Any]]:
+    try:
+        v = json.loads(row.get("events_json") or "[]")
+        return v if isinstance(v, list) else []
+    except ValueError:
+        return []
+
+
+def note(order_id: str, step: str, detail: str = "", **extra: Any) -> None:
+    """Append one line to an order's own trail. This is what a buyer (and we)
+    read to answer "what happened to my payment?" — every branch that accepts
+    or refuses money writes here, in words that are safe to show."""
+    row = db.query_one("SELECT events_json FROM celo_orders WHERE order_id=?", (order_id,))
+    if row is None:
+        return
+    evs = events_of(row)
+    evs.append({"ts": round(time.time(), 3), "step": step, "detail": (detail or "")[:300],
+                **{k: v for k, v in extra.items() if v is not None}})
+    db.execute("UPDATE celo_orders SET events_json=? WHERE order_id=?",
+               (json.dumps(evs[-MAX_EVENTS:], default=str), order_id))
+    oplog.op("celo." + step, params={"order": order_id, "detail": (detail or "")[:160], **extra})
 
 
 def _hash(tok: str) -> str:
@@ -221,6 +281,8 @@ def create(product: str, payer: str, amount_usd: float,
         "rate_usd, status, created_at, expires_at, payload_json) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         (oid, _hash(token), payer, product, float(amount_usd), str(wei), rate, "awaiting",
          now, now + QUOTE_TTL_S, json.dumps(payload or {}, default=str)))
+    note(oid, "created", f"{product} · ${float(amount_usd):.4f} = {wei / 10 ** 18:.6f} CELO "
+                         f"@ ${rate:.6f}", payer=payer[:10] + "…", celo=round(wei / 10 ** 18, 6))
     return by_id(oid) or {}, token
 
 
@@ -290,20 +352,33 @@ def attach_tx(row: Dict[str, Any], txhash: str) -> Dict[str, Any]:
         return row
     if time.time() > float(row.get("created_at") or 0) + CLAIM_TTL_S:
         raise Invalid("this order is too old to claim — start a new one")
+    oid = row["order_id"]
+    note(oid, "tx_submitted", txhash)
     dup = db.query_one("SELECT order_id FROM celo_orders WHERE tx=?", (txhash,))
-    if dup and dup["order_id"] != row["order_id"]:
+    if dup and dup["order_id"] != oid:
+        note(oid, "rejected", f"that transaction already paid order {dup['order_id']}")
         raise Invalid("that transaction already paid for another order")
     ok, logs = _logs_of_receipt(txhash)
     if not logs and not ok:
+        note(oid, "pending", "no receipt yet — the transaction is not mined")
         raise Invalid("that transaction is not confirmed yet — try again in a few seconds")
     if not ok:
+        note(oid, "rejected", "the transaction reverted on-chain")
         raise Invalid("that transaction failed on-chain — nothing was charged")
     paid = _paid_in_logs(logs, row["payer"], pay_to())
     if paid <= 0:
+        note(oid, "rejected", f"no CELO Transfer {row['payer'][:10]}… → {pay_to()[:10]}… in this "
+                              f"transaction ({len(logs)} log(s) total). A native send emits no log.")
         raise Invalid("that transaction did not send CELO to the payment address. "
                       "A plain wallet send cannot be detected — use the pay button.")
+    want = int(row.get("celo_wei") or 0)
     if not _enough(row, paid):
+        note(oid, "rejected", f"paid {paid / 10 ** 18:.6f} CELO, needs "
+                              f"{want * (10000 - TOLERANCE_BPS) / 10000 / 10 ** 18:.6f} "
+                              f"(quoted {want / 10 ** 18:.6f}, {TOLERANCE_BPS / 100:.0f}% tolerance)")
         raise Invalid("that payment is below the quoted amount")
+    note(oid, "verified", f"received {paid / 10 ** 18:.6f} CELO (quoted {want / 10 ** 18:.6f})",
+         logs=len(logs))
     db.execute("UPDATE celo_orders SET status='paid', tx=?, paid_wei=?, paid_at=?, error='' "
                "WHERE order_id=? AND status='awaiting'",
                (txhash, str(paid), time.time(), row["order_id"]))
@@ -330,7 +405,10 @@ def find_payment(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         }]) or []
     except Exception as e:
         oplog.error("celo_pay.scan", repr(e)[:200], params={"order": row["order_id"]})
+        note(row["order_id"], "scan_failed", repr(e)[:160])
         return None
+    note(row["order_id"], "scanned", f"{len(logs)} transfer(s) from this wallet in the last "
+                                     f"{SCAN_BLOCKS} blocks")
     used = {r["tx"] for r in db.query_all("SELECT tx FROM celo_orders WHERE tx<>''")}
     for lg in logs:
         txh = (lg.get("transactionHash") or "").lower()
@@ -349,12 +427,14 @@ def find_payment(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 def store_result(order_id: str, result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    note(order_id, "delivered", ", ".join(sorted(k for k in (result or {}) if k != "payment")))
     db.execute("UPDATE celo_orders SET status='delivered', result_json=? WHERE order_id=?",
                (json.dumps(result or {}, default=str), order_id))
     return by_id(order_id)
 
 
 def store_error(order_id: str, message: str) -> None:
+    note(order_id, "deliver_failed", (message or "")[:200])
     db.execute("UPDATE celo_orders SET error=? WHERE order_id=?", ((message or "")[:300], order_id))
 
 
@@ -388,3 +468,91 @@ def public_config() -> Dict[str, Any]:
         except Exception:
             cfg["rate_usd"] = 0.0
     return cfg
+
+
+# ---------------------------------------------------------- diagnostics --
+# Everything below is read-only and exists so a live test can be debugged
+# without SSH: which gateway answered, how fast, what each order did, and why
+# a payment was refused.
+
+def health() -> Dict[str, Any]:
+    """Probe every gateway and the price feed. Safe to call publicly: it says
+    nothing that is not already on-chain."""
+    gateways = []
+    for url in RPC_URLS:
+        t0 = time.time()
+        try:
+            blk = int(_rpc_one(url, "eth_blockNumber", []), 16)
+            gateways.append({"url": url, "ok": True, "block": blk,
+                             "ms": round((time.time() - t0) * 1000)})
+        except Exception as e:
+            gateways.append({"url": url, "ok": False, "error": repr(e)[:160],
+                             "ms": round((time.time() - t0) * 1000)})
+    out: Dict[str, Any] = {"enabled": enabled(), "pay_to": pay_to(), "gateways": gateways,
+                           "token_contract": CELO_TOKEN}
+    try:
+        rate, fee = price_usd()
+        out["price"] = {"usd_per_celo": round(rate, 6), "fee_tier": fee,
+                        "age_s": round(time.time() - float(_price_cache["at"]), 1)}
+    except Exception as e:
+        out["price"] = {"error": repr(e)[:160]}
+    return out
+
+
+def _rpc_one(url: str, method: str, params: list) -> Any:
+    """One gateway, no failover — the health probe needs per-gateway truth."""
+    t0 = time.time()
+    try:
+        r = httpx.post(url, json={"jsonrpc": "2.0", "id": 1, "method": method,
+                                  "params": params}, timeout=10.0)
+        r.raise_for_status()
+        body = r.json() or {}
+        if body.get("error"):
+            raise RuntimeError(str(body["error"])[:200])
+        _stat(url, method, (time.time() - t0) * 1000, True)
+        return body.get("result")
+    except Exception as e:
+        _stat(url, method, (time.time() - t0) * 1000, False, repr(e))
+        raise
+
+
+def order_trail(row: Dict[str, Any]) -> Dict[str, Any]:
+    """What happened to ONE order, in order. This is what a buyer sees while
+    testing — every line was written to be safe to show."""
+    return {**view(row), "events": events_of(row),
+            "quoted_celo": round(int(row.get("celo_wei") or 0) / 10 ** 18, 6),
+            "paid_celo": round(int(row.get("paid_wei") or 0) / 10 ** 18, 6),
+            "tolerance_bps": TOLERANCE_BPS}
+
+
+def recent_orders(limit: int = 20) -> List[Dict[str, Any]]:
+    ensure_schema()
+    rows = db.query_all("SELECT * FROM celo_orders ORDER BY id DESC LIMIT ?", (int(limit),))
+    return [{"order_id": r["order_id"], "product": r["product"], "status": r["status"],
+             "payer": (r["payer"] or "")[:10] + "…",
+             "usd": round(float(r["amount_usd"] or 0), 4),
+             "celo": round(int(r["celo_wei"] or 0) / 10 ** 18, 6),
+             "paid_celo": round(int(r["paid_wei"] or 0) / 10 ** 18, 6),
+             "tx": r.get("tx") or "", "created_at": float(r.get("created_at") or 0),
+             "error": (r.get("error") or "")[:160],
+             "events": events_of(r)} for r in rows]
+
+
+def rpc_stats() -> List[Dict[str, Any]]:
+    out = []
+    for st in RPC_STATS.values():
+        calls = max(1, int(st["calls"]))
+        out.append({**{k: st[k] for k in ("url", "method", "calls", "fails", "last_ms",
+                                          "last_at", "last_error")},
+                    "avg_ms": round(st["ms_total"] / calls, 1)})
+    return sorted(out, key=lambda x: (-x["calls"], x["method"]))
+
+
+def diag(limit: int = 20) -> Dict[str, Any]:
+    """The operator's one-stop view while someone is testing the CELO lane."""
+    return {"config": public_config(), "health": health(), "rpc": rpc_stats(),
+            "summary": summary(), "orders": recent_orders(limit),
+            "constants": {"quote_ttl_s": QUOTE_TTL_S, "claim_ttl_s": CLAIM_TTL_S,
+                          "buffer_bps": BUFFER_BPS, "tolerance_bps": TOLERANCE_BPS,
+                          "scan_blocks": SCAN_BLOCKS,
+                          "max_open_per_payer": MAX_OPEN_PER_PAYER}}
