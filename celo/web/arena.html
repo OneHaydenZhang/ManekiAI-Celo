@@ -293,6 +293,7 @@
     "noTasks": "No paid agent runs yet.",
     "noTasksHint": "Connect your wallet to see the agents it has paid for.",
     "restore": "Restore with my wallet",
+    "noContentKept": "This purchase is from before we kept deliveries, so only its on-chain receipt survives — the answer itself was never stored. Purchases made from now on can be re-opened here.",
     "restoreHint": "Records are kept on the server. Changed browser or device? Sign once and your consultations and agent runs come back.",
     "restoring": "Waiting for your signature…",
     "restored": "Restored {n} record(s) to this browser.",
@@ -519,6 +520,7 @@
     "noTasks": "还没有付费运行的 Agent。",
     "noTasksHint": "连接钱包后，这里会显示该钱包付费运行过的 Agent。",
     "restore": "用钱包找回",
+    "noContentKept": "这笔购买早于「交付即存证」的改动，只剩链上收据——答案本身当时没有保存。之后的购买都可以在这里重新打开。",
     "restoreHint": "记录保存在服务器上。换了浏览器或设备？签一次名，咨询和 Agent 运行都会回来。",
     "restoring": "等待你的签名…",
     "restored": "已找回 {n} 条记录。",
@@ -739,7 +741,13 @@
       <div class="p-body" id="pbody-${i}"></div></div>`).join('');
     $('#purchasesList').querySelectorAll('.reread').forEach((el) => { el.onclick = () => {
       const p = list[+el.dataset.i], box = $('#pbody-' + el.dataset.i); if (!p || !box) return;
-      box.innerHTML = box.innerHTML ? '' : (p.product === 'insight' ? insightHtml(p.content || {}) : answerHtml(p.content || {}));
+      if (box.innerHTML) { box.innerHTML = ''; return; }
+      const c = p.content || {};
+      // A purchase restored from before we kept deliveries has the receipt but
+      // not the answer — say so instead of opening an empty box.
+      const empty = !(c.reply || c.brief || c.structured || c.decision);
+      box.innerHTML = empty ? `<div class="answer"><div class="tiny">${t('noContentKept')}</div>${payLine(p)}</div>`
+        : (p.product === 'insight' ? insightHtml(c) : answerHtml(c));
     }; });
   }
 

@@ -664,7 +664,10 @@ def test_public_pages_and_guide_link(client, monkeypatch):
     # The guide is now just the journeys and the live data (2026-09-20), so it
     # reads the activity feed; it no longer needs the catalog.
     assert 'id="journeys"' in guide and 'id="recent"' in guide
-    assert "/api/x402/activity" in guide and "jE" not in guide
+    # (the "no jE" check is gone: E is a journey again since 2026-09-21, now
+    # meaning "swap CELO in the page" — what matters is where the page points)
+    assert "/api/x402/activity" in guide
+    assert "/#agent" not in guide and "/#settings" not in guide
     cfg = client.get("/api/x402/config").json()
     assert cfg["links"]["guide"].endswith("/hackathon")
     monkeypatch.setenv("CELO_GUIDE_ENABLED", "0")
