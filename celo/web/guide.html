@@ -77,33 +77,18 @@
     </div>
   </div>
 
-  <h1 data-t="h1">Celo「Agents at Work」黑客松 · ManekiAI 体验指南</h1>
+  <h1 data-t="h1">ManekiAI · 体验动线与实时数据</h1>
   <p class="lede" data-t="lede">这一页给产品 / 运营 / 评审看：黑客松要什么、我们做了什么、每一项链上证明在哪里点开、以及一步一步怎么体验。所有数字都是从本服务器的公开接口实时读的。</p>
   <div class="envnote" id="envNote" hidden></div>
-  <div class="flow" id="flow"></div>
-
-  <h2><span class="n">0</span><span data-t="s0">现在的状态（实时）</span></h2>
-  <div class="cards" id="status"></div>
-
-  <h2><span class="n">1</span><span data-t="s1">黑客松要求速览</span></h2>
-  <div class="rules" id="rules"></div>
-
-  <h2><span class="n">2</span><span data-t="s2">我们的产物与证明（点击即可打开）</span></h2>
-  <div class="proof" id="proof"></div>
-
-  <h2><span class="n">3</span><span data-t="s3">体验动线（按角色，一步一步）</span></h2>
-  <p class="lede" data-t="s3lede">推荐顺序：A 主人开售 → B 买家购买 → C 主人看收益 → D 充值 → E 运营观测。每一步下面都写了「观测什么」。</p>
+  <h2><span class="n">1</span><span data-t="s3">体验动线（一步一步）</span></h2>
+  <p class="lede" data-t="s3lede"></p>
   <div class="steps" id="journeys"></div>
 
-  <h2><span class="n">4</span><span data-t="s4">实时数据</span></h2>
+  <h2><span class="n">2</span><span data-t="s4">实时数据</span></h2>
   <div class="tiny" id="liveMeta"></div>
-  <div class="kpis" id="kpis"></div>
   <div class="wrap"><table id="recent"></table></div>
   <div class="wrap" style="margin-top:14px"><table id="regs"></table></div>
 
-  <h2><span class="n">5</span><span data-t="s5">报名 / 提交材料一览</span></h2>
-  <p class="note" id="subStatus"></p>
-  <div class="wrap"><table id="submission"></table></div>
   <p class="note" data-t="foot" style="margin-top:22px"></p>
 </div>
 
@@ -112,7 +97,6 @@
   'use strict';
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const DEADLINE = Date.parse('2026-09-14T09:00:00Z');
   const K = {   // static facts (live data overrides where available)
     identity: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432', reputation: '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
     payTo: '0x26523f5cea5da5d9411749afefe741ba340f6566', registrar: '0xaf6fA147e8F85781196627765FcaFC1044F89308',
@@ -141,11 +125,11 @@ group by 1 order by 1`;
 
   const I18N = {
     zh: {
-      navApp: '主站', navAppPreview: (h) => `主站（预览机 ${h}）`, navArena: '打开 Arena', h1: 'Celo「Agents at Work」黑客松 · ManekiAI 体验指南',
-      lede: '这一页给产品 / 运营 / 评审看：黑客松要什么、我们做了什么、每一项链上证明在哪里点开、以及一步一步怎么体验。所有数字都是从本服务器的公开接口实时读的。',
+      navApp: '主站', navAppPreview: (h) => `主站（预览机 ${h}）`, navArena: '打开 Arena', h1: 'ManekiAI · 体验动线与实时数据',
+      lede: '这一页只讲两件事：怎么一步一步体验，以及此刻真实发生了什么。所有数字都是从本服务器的公开接口实时读的。',
       envNote: (h) => `⚠ 本页、Arena 以及下面所有「主站 / Agent 中心」按钮都指向当前预览机 ${h}，不是 manekiai.io 生产站：生产站暂无 Arena / Celo 功能，两边的钱包账号、Agent 与燃料账本互不相通。动线 A / C / D 请在本机重新钱包登录，并使用本机的 Agent；D 步充入的 USDC 记到本机账本。所有购买与充值都是 Celo 主网真实 USDC（购买 $0.01–0.05 / 次）。`,
-      s0: '现在的状态（实时）', s1: '黑客松要求速览', s2: '我们的产物与证明（点击即可打开）', s3: '体验动线（按角色，一步一步）',
-      s3lede: '推荐顺序：A 问一次（$0.02）→ B 配置并付费运行一个 Agent（核心）→ C 回来看结果 / 找回 / 停止 → D 充燃料 → E 运营观测。每一步下面都写了「观测什么」。', s4: '实时数据', s5: '报名 / 提交材料一览',
+      s0: '现在的状态（实时）', s1: '黑客松要求速览', s2: '我们的产物与证明（点击即可打开）', s3: '体验动线（一步一步）',
+      s3lede: '推荐顺序：A 问一次（$0.02）→ B 配置并付费运行一个 Agent（核心）→ C 回来看结果 / 找回 / 停止 → D 充燃料。每一步下面都写了「观测什么」。', s4: '实时数据', s5: '报名 / 提交材料一览',
       foot: '本页与 Arena 只读公开接口，不持有任何私钥。市场内容仅供参考，不构成投资建议。预览机为纯 HTTP：桌面浏览器插件钱包可用，MiniPay / 手机深链需 HTTPS。',
       // status
       stReg: 'ERC-8004 链上身份', stRegSub: (n) => `平台 Analyst + ${n} 个 Agent 已在 Celo 主网注册`, stRegNone: '尚未注册',
@@ -194,10 +178,6 @@ group by 1 order by 1`;
       jDs: ['Agent 中心 → 「⚡ Agent 燃料」卡右侧充值区：链选「Celo」、币种选「USDC」', '点档位「+1,000」（或自定义）→ 弹窗「确认充值」', '钱包切到 Celo → 签一笔 ERC-20 转账（这一步付 CELO gas）', '等 12–60 秒自动到账；或点「已转账 · 刷新」'],
       jDw: '观测：燃料余额变大、右上 toast「+999 燃料」（预设 1,000 实际入账 999，是已知的差 1）；「充值与奖励」页签出现一行「充值」带 Celoscan 链接；本页「Celo 稳定币充值」+1；金库地址的代币转账页多一笔。',
       jDgo: '去 Agent 中心 →', jDcelo: '用 Jumper 获取 CELO ↗',
-      jE: 'E · 运营 / 评审：观测数据', jEpre: '公开接口不需要登录；后台 /admin 需要管理密码（登录框里叫「管理密码」，由运营方持有；评审不需要后台，本页第 4 节 + 公开接口足够）。',
-      jEs: ['本页第 4 节「实时数据」每 30 秒自动刷新', '公开活动接口 /api/x402/activity（JSON，60 秒缓存，排除运营钱包）', '后台 /admin →「燃料」页 →「⚡ Celo · Agents at Work」面板：注册钱包余额、Analyst ID、已注册 / 待注册、x402 状态与销售汇总；「Agent」页每行有 Celo# / ⚡Arena 芯片', '评审侧：Celoscan 上 payTo 地址的代币转账 = 全部结算 + 充值；Dune 查询见第 2 节'],
-      jEw: '注意：排行榜只算不是我们出资的独立钱包。团队自己的测试钱包用来验证流程没问题，但不会加分。排除名单目前后台没有入口，只能由运维在服务器环境变量 X402_OPERATOR_WALLETS（逗号分隔的 0x 地址）里配置并重启服务生效——自测前先把你的钱包地址发给运维加进去，公开活动统计就不会被自测污染。',
-      jEgo: '打开后台 →', jEact: '活动接口 ↗',
       // live
       liveUpd: '更新于', liveFail: '活动数据暂时不可用', kSettled: '已结算购买', kPayers: '独立付款人', kReturning: '回头付款人', kUsd: 'USDC / USA₮ 成交额', kDeposits: 'Celo 充值', kSenders: '充值发送方', kRegs: '已注册 Agent',
       thWhen: '时间', thProduct: '产品', thAmount: '金额', thPayer: '付款人', thAgent: 'Agent', thTx: '交易', recentH: '最近结算', recentNone: '暂无结算。做一次动线 B，这里就会出现第一行。',
@@ -221,11 +201,11 @@ group by 1 order by 1`;
       left: (h, m) => `${h} 小时 ${m} 分`,
     },
     en: {
-      navApp: 'App', navAppPreview: (h) => `App (preview host ${h})`, navArena: 'Open the Arena', h1: 'Celo “Agents at Work” hackathon · ManekiAI guide',
-      lede: 'For product, ops and judges: what the hackathon asks for, what we built, where each on-chain proof lives, and how to try it step by step. Every number is read live from this server’s public endpoints.',
+      navApp: 'App', navAppPreview: (h) => `App (preview host ${h})`, navArena: 'Open the Arena', h1: 'ManekiAI — journeys and live data',
+      lede: 'Two things only: how to try it, step by step, and what is actually happening right now. Every number is read live from this server’s public endpoints.',
       envNote: (h) => `⚠ This page, the Arena and every “App / Agents” button below point at the preview host ${h}, not manekiai.io: production has no Arena / Celo features yet, and wallet accounts, agents and Gas ledgers are not shared between the two. For journeys A / C / D sign in again here and use this host’s agents; a journey-D top-up credits this host’s ledger. All purchases and top-ups are real USDC on Celo mainnet ($0.01–0.05 per purchase).`,
-      s0: 'Status right now (live)', s1: 'Hackathon requirements at a glance', s2: 'What we built and the proofs (click to open)', s3: 'Journeys (by role, step by step)',
-      s3lede: 'Suggested order: A ask once ($0.02) → B configure and pay an agent to run (the core) → C come back for results / restore / stop → D top-up → E operator view. Every step says what to look at.',
+      s0: 'Status right now (live)', s1: 'Hackathon requirements at a glance', s2: 'What we built and the proofs (click to open)', s3: 'Journeys, step by step',
+      s3lede: 'Suggested order: A ask once ($0.02) → B configure and pay an agent to run (the core) → C come back for results / restore / stop → D top-up. Every step says what to look at.',
       foot: 'This page and the Arena only read public endpoints and hold no keys. Market content is for information only, not financial advice. The preview host is plain HTTP: desktop browser wallets work, MiniPay / mobile deep links need HTTPS.',
       stReg: 'ERC-8004 identity', stRegSub: (n) => `Platform Analyst + ${n} agents registered on Celo mainnet`, stRegNone: 'not registered yet',
       stLoading: 'loading…', stApiDown: 'endpoints unavailable right now; static facts shown',
@@ -270,10 +250,6 @@ group by 1 order by 1`;
       jDs: ['Agents → the “⚡ Agent Gas” card, top-up area: chain “Celo”, token “USDC”', 'Click the “+1,000” preset (or a custom amount) → “Confirm top-up” dialog', 'The wallet switches to Celo → sign one ERC-20 transfer (this step pays CELO gas)', 'Wait 12–60 s for automatic credit, or click “I sent it · refresh”'],
       jDw: 'Observe: the Gas balance grows and a toast shows “+999 Gas” (the 1,000 preset credits 999 — a known off-by-one); the “Top-ups & rewards” tab gains a “Top-up” row with a Celoscan link; “Celo stablecoin top-ups” on this page +1; the treasury’s token-transfer page gains one transfer.',
       jDgo: 'Go to Agents →', jDcelo: 'Get CELO with Jumper ↗',
-      jE: 'E · Operator / judge: watch the data', jEpre: 'Public endpoints need no login; the admin console (/admin) asks for the admin password (held by the operator; judges do not need it — section 4 and the public endpoint cover everything).',
-      jEs: ['Section 4 “Live data” on this page refreshes every 30 s', 'Public activity endpoint /api/x402/activity (JSON, 60 s cache, operator wallets excluded)', 'Admin /admin → “Points” page → “⚡ Celo · Agents at Work” panel: registrar balance, Analyst ID, registered / pending, x402 status and sales; the “Agents” page shows Celo# / ⚡Arena chips per row', 'Judge side: token transfers of the payTo address on Celoscan = all settlements + top-ups; Dune query in section 2'],
-      jEw: 'Note: the leaderboard counts only independent wallets not funded by us. The team’s own test wallets are fine for verifying the flow but do not score. The exclusion list has no admin-console field yet — it is the server env X402_OPERATOR_WALLETS (comma-separated 0x addresses) plus a service restart — so send your wallet address to ops before self-testing to keep the public activity stats clean.',
-      jEgo: 'Open admin →', jEact: 'Activity endpoint ↗',
       liveUpd: 'updated', liveFail: 'Activity feed unavailable right now', kSettled: 'Settled purchases', kPayers: 'Distinct payers', kReturning: 'Returning payers', kUsd: 'USDC / USA₮ volume', kDeposits: 'Celo top-ups', kSenders: 'Top-up senders', kRegs: 'Agents registered',
       thWhen: 'When', thProduct: 'Product', thAmount: 'Amount', thPayer: 'Payer', thAgent: 'Agent', thTx: 'Tx', recentH: 'Most recent settlements', recentNone: 'No settlements yet. Run journey B once and the first row appears here.',
       prod: { insight: 'Agent insight (retired)', chat: 'Ask', brief: 'Symbol brief', task_monitor: 'Agent run · monitoring', task_research: 'Agent run · research' },
@@ -301,7 +277,7 @@ group by 1 order by 1`;
   // "Go to Agents"; never override a choice the reader already made there.
   try { if (!localStorage.getItem('vectora-lang')) localStorage.setItem('vectora-lang', LANG); } catch (_) {}
   const t = (k) => (I18N[LANG] && I18N[LANG][k] != null ? I18N[LANG][k] : I18N.zh[k]);
-  let CFG = null, CAT = null, ACT = null, ENV = null, REPO = 'unknown', LOADED = false;
+  let CFG = null, ACT = null, ENV = null, LOADED = false;
   const scanTx = (h) => `${K.scan}/tx/${h}`, scanAddr = (a) => `${K.scan}/address/${a}`;
   const short = (a) => (a && a.length > 12 ? a.slice(0, 6) + '…' + a.slice(-4) : a || '');
   const btn = (href, label, ghost) => `<a class="btn sm${ghost ? ' ghost' : ''}" href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
@@ -313,12 +289,7 @@ group by 1 order by 1`;
     document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
     $('#langToggle').textContent = LANG === 'zh' ? 'English' : '中文';
     renderEnv();
-    $('#flow').innerHTML = t('flow').map((s, i) => (i ? '<i>→</i>' : '') + `<span>${esc(s)}</span>`).join('');
-    $('#rules').innerHTML = ['r1', 'r2', 'r3', 'r4'].map((k) => `<div class="card"><h4>${esc(t(k + 'h'))}</h4><ul>${t(k).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('');
-    $('#subStatus').textContent = t('subStatus');
-    $('#submission').innerHTML = `<tr><th>${esc(t('subH'))}</th><th>${esc(t('subV'))}</th></tr>` +
-      t('sub').map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td class="mono">${esc(v)}</td></tr>`).join('');
-    renderProof(); renderJourneys(); renderStatus(); renderLive();
+    renderJourneys(); renderLive();
   }
 
   function renderEnv() {
@@ -326,68 +297,6 @@ group by 1 order by 1`;
     const note = $('#envNote'), nav = $('#navApp');
     if (isPreview()) { note.hidden = false; note.textContent = t('envNote')(location.host); nav.textContent = t('navAppPreview')(location.host); }
     else { note.hidden = true; nav.textContent = t('navApp'); }
-  }
-
-  function renderStatus() {
-    const box = $('#status');
-    const a = (CFG && CFG.agentid) || {};
-    const regN = a.registered_agents != null ? +a.registered_agents : (ACT && ACT.registrations ? +ACT.registrations.count : null);
-    const platform = (a.platform_agent && a.platform_agent.agentId) || (ACT && ACT.registrations && ACT.registrations.platform && ACT.registrations.platform.agentId) || null;
-    const apiDown = LOADED && !CFG && !ACT;
-    const sell = CAT ? (CAT.agents || []).length : null;
-    const buyable = CAT ? (CAT.agents || []).filter((x) => x.purchasable !== false).length : null;
-    const sm = (ACT && ACT.summary) || {}, tk = (ACT && ACT.tasks) || {};
-    const dep = (ACT && ACT.deposits) || {};
-    const now = Date.now(), leftMs = DEADLINE - now;
-    const dl = leftMs > 0 ? t('left')(Math.floor(leftMs / 3600000), Math.floor((leftMs % 3600000) / 60000)) : t('stDlOver');
-    const card = (h, big, sub) => `<div class="card"><h4>${esc(h)}</h4><div class="big">${big}</div><div class="sub">${sub}</div></div>`;
-    const loading = '…';
-    // Three states for every live card: loading / endpoints down (fall back to static facts) / real value.
-    const regBig = platform ? `<span class="dot ok"></span>#${esc(platform)}` : !LOADED ? loading : apiDown ? `<span class="dot warn"></span>#${K.analystId}` : `<span class="dot warn"></span>—`;
-    const regSub = platform ? esc(t('stRegSub')(regN == null ? '?' : regN)) : !LOADED ? esc(t('stLoading')) : apiDown ? esc(t('stApiDown')) : esc(t('stRegNone'));
-    box.innerHTML =
-      card(t('stReg'), regBig, regSub) +
-      card(t('stPay'), CFG ? `<span class="dot ${CFG.enabled ? 'ok' : 'bad'}"></span>${esc(CFG.enabled ? t('stPayOn') : t('stPayOff'))}` : loading, CFG ? esc(t('stPaySub')(CFG.settler)) : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
-      card(t('stTasks'), ACT ? `<span class="dot ${(+tk.tasks || 0) > 0 ? 'ok' : 'warn'}"></span>${+tk.tasks || 0}` : loading,
-        ACT ? ((+tk.tasks || 0) > 0
-                ? esc(t('stTasksSub')(+tk.payers || 0, +tk.usd || 0, +tk.reports || 0))
-                  + ((+tk.running || 0) ? ` · ${esc(t('stTasksRunning')(+tk.running))}` : '')
-                  + ((+tk.returning_payers || 0) ? ` · ${esc(t('stTasksRet')(+tk.returning_payers))}` : '')
-                : `<span class="warn">${esc(t('stTasksNone'))}</span>`)
-            : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
-      card(t('stSales'), ACT ? `<span class="dot ${(+sm.settled || 0) > 0 ? 'ok' : 'warn'}"></span>${+sm.settled || 0}` : loading, ACT ? ((+sm.settled || 0) > 0 ? esc(t('stSalesSub')(+sm.payers || 0, +sm.usd || 0)) : `<span class="warn">${esc(t('stSalesNone'))}</span>`) : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
-      card(t('stDep'), ACT ? `<span class="dot ${(+dep.count || 0) > 0 ? 'ok' : 'warn'}"></span>${+dep.count || 0}` : loading, ACT ? ((+dep.count || 0) > 0 ? esc(t('stDepSub')(+dep.senders || 0, +dep.usd || 0)) : `<span class="warn">${esc(t('stDepNone'))}</span>`) : esc(LOADED ? t('stApiDown') : t('stLoading'))) +
-      card(t('stRepo'), REPO === 'public' ? `<span class="dot ok"></span>${esc(t('stRepoOk'))}` : REPO === 'private' ? `<span class="dot bad"></span>${esc(t('stRepoBad'))}` : `<span class="dot"></span>${esc(t('stRepoUnk'))}`,
-        `<a class="txlink" target="_blank" rel="noopener" href="${esc(repoUrl())}">${esc(repoUrl().replace('https://', ''))}</a> · ${esc(t('stRepoSub'))}${REPO === 'unknown' && LOADED ? ' ' + esc(t('stRepoUnkSub')) : ''}`) +
-      card(t('stDl'), `<span class="dot ${leftMs > 0 ? (leftMs < 6 * 3600000 ? 'warn' : 'ok') : 'bad'}"></span>${esc(dl)}`, esc(t('stDlSub')));
-  }
-
-  const repoUrl = () => (CFG && CFG.links && CFG.links.repo) || K.repo;
-  function renderProof() {
-    const samples = ((ACT && ACT.tasks && ACT.tasks.samples) || []);
-    const regs = (ACT && ACT.registrations && ACT.registrations.agents) || [];
-    const analystCard = (CFG && CFG.links && CFG.links.analyst_card) || (location.origin + '/api/agent-card/maneki-analyst');
-    const platformTx = (ACT && ACT.registrations && ACT.registrations.platform && ACT.registrations.platform.txhash) || K.analystTx;
-    const payTo = (CFG && CFG.pay_to) || K.payTo, registrar = (CFG && CFG.agentid && CFG.agentid.registrar) || K.registrar;
-    const signer = (ACT && ACT.wallets && ACT.wallets.facilitator_signer) || K.facilitatorSigner;
-    $('#proof').innerHTML = `
-      <div class="card"><h4>${esc(t('p1h'))}</h4><p>${esc(t('p1'))}</p>
-        <div class="btns">${btn(scanTx(platformTx), t('p1b1'))}${btn(analystCard, t('p1b2'), true)}${btn(scanAddr(K.identity), t('p1b3'), true)}${btn(scanAddr(registrar), t('p1b4'), true)}</div>
-        <div class="tiny" style="margin-top:10px">${esc(t('p1list'))} ${regs.length ? regs.map((r) => `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(r.code)} #${esc(r.celo_agent_id)}</a>`).join(' · ') : '—'}</div></div>
-      <div class="card"><h4>${esc(t('p2h'))}</h4><p>${esc(t('p2'))}</p>
-        <div class="btns">${btn(location.origin + '/api/x402/activity', t('p2b1'))}${btn(scanAddr(payTo) + '#tokentxns', t('p2b2'), true)}${btn(scanAddr(signer), t('p2b3'), true)}${btnSame('/arena#activity', t('p2b4'), true)}</div>
-        <div class="tiny mono" style="margin-top:10px">payTo ${esc(payTo)}</div></div>
-      <div class="card"><h4>${esc(t('p3h'))}</h4><p>${esc(t('p3'))}</p>
-        <div class="btns">${btn(scanAddr(payTo) + '#tokentxns', t('p3b1'))}<button class="btn sm ghost" id="copySql" type="button">${esc(t('p3b2'))}</button></div>
-        <pre class="sql">${esc(DUNE_SQL)}</pre></div>
-      <div class="card"><h4>${esc(t('p4h'))}</h4><p>${esc(t('p4'))}</p>
-        <div class="btns">${btn(repoUrl(), t('p4b1'))}${btn(repoUrl().replace(/\/$/, '') + '/commits/main', t('p4b2'), true)}${btn(repoUrl().replace(/\/$/, '') + '#readme', t('p4b3'), true)}</div></div>
-      <div class="card"><h4>${esc(t('p5h'))}</h4><p>${esc(t('p5'))}</p>
-        ${samples.length
-          ? `<div class="btns">${samples.map((x) => btnSame('/r/' + encodeURIComponent(x.share_id),
-              `${x.symbol} · ${x.reports} ${LANG === 'zh' ? '份报告' : 'reports'} · $${(+x.usd).toFixed(2)}`, true)).join('')}</div>`
-          : `<p class="note">${esc(t('p5none'))}</p>`}</div>`;
-    $('#copySql').onclick = () => { try { navigator.clipboard.writeText(DUNE_SQL).then(() => { $('#copySql').textContent = t('p3copied'); }); } catch (_) {} };
   }
 
   function renderJourneys() {
@@ -398,18 +307,14 @@ group by 1 order by 1`;
       role('jA', btnSame('/arena', t('jAgo')) + btnSame('/arena', t('jAswap')) + btn(JUMPER, t('jAusdc'), true)) +
       role('jB', btnSame('/arena', t('jBgo')) + btnSame('/arena', t('jBswap')) + btn(JUMPER, t('jBusdc'), true)) +
       role('jC', btnSame('/arena#records', t('jCgo'))) +
-      role('jD', btnSame('/#agent', t('jDgo')) + btn(JUMPER_CELO, t('jDcelo'), true)) +
-      role('jE', btnSame('/admin', t('jEgo'), true) + btn(location.origin + '/api/x402/activity', t('jEact'), true));
+      role('jD', btnSame('/#agent', t('jDgo')) + btn(JUMPER_CELO, t('jDcelo'), true));
   }
 
   function renderLive() {
     const meta = $('#liveMeta');
-    if (!ACT) { meta.textContent = LOADED ? t('liveFail') : t('stLoading'); $('#kpis').innerHTML = ''; $('#recent').innerHTML = ''; $('#regs').innerHTML = ''; return; }
+    if (!ACT) { meta.textContent = LOADED ? t('liveFail') : t('stLoading'); $('#recent').innerHTML = ''; $('#regs').innerHTML = ''; return; }
     const sm = ACT.summary || {}, dep = ACT.deposits || {}, regs = ACT.registrations || {};
     meta.textContent = `${t('liveUpd')} ${t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+ACT.generated_at || 0))))}`;
-    const kpi = (k, v) => `<div class="kpi"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`;
-    $('#kpis').innerHTML = kpi(t('kSettled'), +sm.settled || 0) + kpi(t('kPayers'), +sm.payers || 0) + kpi(t('kReturning'), +sm.returning_payers || 0) +
-      kpi(t('kUsd'), '$' + (+sm.usd || 0).toFixed(2)) + kpi(t('kDeposits'), +dep.count || 0) + kpi(t('kSenders'), +dep.senders || 0) + kpi(t('kRegs'), +regs.count || 0);
     const rec = ACT.recent || [];
     const prodLabel = (p) => ((t('prod') || {})[p]) || p || '—';
     $('#recent').innerHTML = `<tr><th colspan="6">${esc(t('recentH'))}</th></tr>` + (rec.length
@@ -425,33 +330,18 @@ group by 1 order by 1`;
 
   async function getJson(url) { try { const r = await fetch(url, { cache: 'no-store' }); return r.ok ? await r.json() : null; } catch (_) { return null; } }
   async function load(first) {
-    const [cfg, cat, act, ver] = await Promise.all([
-      first ? getJson('/api/x402/config') : Promise.resolve(CFG), getJson('/api/x402/catalog'), getJson('/api/x402/activity'),
+    const [cfg, act, ver] = await Promise.all([
+      first ? getJson('/api/x402/config') : Promise.resolve(CFG), getJson('/api/x402/activity'),
       first ? getJson('/api/version') : Promise.resolve(ENV)]);
-    if (cfg) CFG = cfg; if (cat) CAT = cat; if (act) ACT = act; if (ver) ENV = ver;
+    if (cfg) CFG = cfg; if (act) ACT = act; if (ver) ENV = ver;
     LOADED = true;
-    if (first) {
-      if (CFG && CFG.links && CFG.links.repo) $('#navRepo').href = CFG.links.repo;
-      checkRepo();
-    }
-    renderEnv(); renderStatus(); renderProof(); renderLive();
-  }
-  async function checkRepo() {
-    // GitHub's public API answers 200 for a public repo, 404 for private/missing;
-    // anything else (403 rate limit, blocked network) is "unknown", not "private".
-    const m = repoUrl().match(/github\.com\/([^/]+)\/([^/#?]+)/);
-    if (!m) return;
-    try {
-      const r = await fetch(`https://api.github.com/repos/${m[1]}/${m[2].replace(/\.git$/, '')}`, { cache: 'no-store' });
-      REPO = r.status === 200 ? 'public' : r.status === 404 ? 'private' : 'unknown';
-    } catch (_) { REPO = 'unknown'; }
-    renderStatus();
+    if (first && CFG && CFG.links && CFG.links.repo) $('#navRepo').href = CFG.links.repo;
+    renderEnv(); renderLive();
   }
   $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); localStorage.setItem('vectora-lang', LANG); } catch (_) {} renderStatic(); };
   renderStatic();
   load(true);
   setInterval(() => load(false), 30000);
-  setInterval(renderStatus, 60000);     // countdown
 })();
 </script>
 </body>

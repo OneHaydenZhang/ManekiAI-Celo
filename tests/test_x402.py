@@ -660,7 +660,10 @@ def test_public_pages_and_guide_link(client, monkeypatch):
     # agent), and both entries plus the guide link must survive any redesign.
     assert 'id="consultPanel"' in arena and 'id="createPanel"' in arena
     assert '/api/x402/tasks' in arena and 'href="/hackathon"' in arena
-    assert "Agents at Work" in guide and "/api/x402/activity" in guide and "/api/x402/catalog" in guide
+    # The guide is now just the journeys and the live data (2026-09-20), so it
+    # reads the activity feed; it no longer needs the catalog.
+    assert 'id="journeys"' in guide and 'id="recent"' in guide
+    assert "/api/x402/activity" in guide and "jE" not in guide
     cfg = client.get("/api/x402/config").json()
     assert cfg["links"]["guide"].endswith("/hackathon")
     monkeypatch.setenv("CELO_GUIDE_ENABLED", "0")
