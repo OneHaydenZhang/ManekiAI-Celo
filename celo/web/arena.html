@@ -293,9 +293,10 @@
     "noTasks": "No paid agent runs yet.",
     "noTasksHint": "Connect your wallet to see the agents it has paid for.",
     "restore": "Restore with my wallet",
+    "restoreHint": "Records are kept on the server. Changed browser or device? Sign once and your consultations and agent runs come back.",
     "restoring": "Waiting for your signature…",
-    "restored": "Restored {n} run(s) to this browser.",
-    "restoreNone": "This wallet has no agent runs yet.",
+    "restored": "Restored {n} record(s) to this browser.",
+    "restoreNone": "This wallet has nothing to restore yet.",
     "refreshTasks": "Refresh",
     "stopTask": "Stop",
     "stopConfirm": "Stopping ends this run now. It does not refund the part that has not run yet. Continue?",
@@ -305,7 +306,7 @@
     "hideReports": "Hide reports",
     "awaitFirst": "Waiting for the first report…",
     "checkFailed": "This check produced nothing — you were not charged extra.",
-    "tasksLocal": "Run receipts live in this browser. On another device, restore them by signing with the wallet that paid.",
+    "tasksLocal": "This browser keeps a copy; the records themselves live on the server. On another device, sign with the wallet that paid to bring them back.",
     "st_running": "Running",
     "st_completed": "Completed",
     "st_stopped": "Stopped",
@@ -518,9 +519,10 @@
     "noTasks": "还没有付费运行的 Agent。",
     "noTasksHint": "连接钱包后，这里会显示该钱包付费运行过的 Agent。",
     "restore": "用钱包找回",
+    "restoreHint": "记录保存在服务器上。换了浏览器或设备？签一次名，咨询和 Agent 运行都会回来。",
     "restoring": "等待你的签名…",
-    "restored": "已找回 {n} 个运行记录。",
-    "restoreNone": "这个钱包还没有付费运行过 Agent。",
+    "restored": "已找回 {n} 条记录。",
+    "restoreNone": "这个钱包还没有可找回的记录。",
     "refreshTasks": "刷新",
     "stopTask": "停止",
     "stopConfirm": "停止后立即结束本次运行，剩余未执行的部分不退款。确定继续吗？",
@@ -530,7 +532,7 @@
     "hideReports": "收起报告",
     "awaitFirst": "等待第一份报告…",
     "checkFailed": "这次检查没有产出——不会额外扣费。",
-    "tasksLocal": "运行凭证保存在当前浏览器。换设备时，用付款的钱包签名即可找回。",
+    "tasksLocal": "当前浏览器只是存了一份副本，记录本身在服务器上。换设备时，用付款的钱包签一次名就能找回。",
     "st_running": "运行中",
     "st_completed": "已完成",
     "st_stopped": "已停止",
@@ -697,6 +699,22 @@
   // -------------------------------------------------------- purchases ----
   const pKey = (acct) => 'arena_purchases_' + String(acct || '').toLowerCase();
   function purchasesFor(acct) { if (!acct) return []; try { const v = JSON.parse(localStorage.getItem(pKey(acct)) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; } }
+  function mergePurchases(rows) {
+    if (!ACCOUNT || !rows.length) return 0;
+    const list = purchasesFor(ACCOUNT);
+    const seen = new Set(list.map((p) => String(p.tx || '') + '|' + String(p.ts || '')));
+    let added = 0;
+    rows.forEach((r) => {
+      const rec = { ts: Math.floor(+r.ts || 0), product: r.product, symbol: r.symbol || '',
+                    round: 0, tx: r.tx || '', explorer: r.explorer || '', content: r.content || {} };
+      if (seen.has(String(rec.tx) + '|' + String(rec.ts))) return;
+      list.push(rec); added += 1;
+    });
+    if (!added) return 0;
+    list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    try { localStorage.setItem(pKey(ACCOUNT), JSON.stringify(list.slice(0, 50))); } catch (_) {}
+    return added;
+  }
   function savePurchase(rec) {
     if (!ACCOUNT) return;
     try {
@@ -710,8 +728,10 @@
     const list = purchasesFor(ACCOUNT).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
     wrap.hidden = false; $('#purchasesCount').textContent = list.length ? String(list.length) : '';
     if (!list.length) {
-      $('#purchasesList').innerHTML = `<div class="empty-state"><div><h3>${t(ACCOUNT ? 'noConsultations' : 'consultHistoryTitle')}</h3><p>${t(ACCOUNT ? 'noConsultationsHint' : 'consultHistoryHint')}</p></div><button type="button" id="firstQuestion" class="btn ghost sm">${t('startQuestion')} ↗</button></div>`;
-      $('#firstQuestion').onclick = () => { setService('consult'); $('#workspace').scrollIntoView({block:'start'}); $('#askMsg').focus({preventScroll:true}); }; return;
+      $('#purchasesList').innerHTML = `<div class="empty-state"><div><h3>${t(ACCOUNT ? 'noConsultations' : 'consultHistoryTitle')}</h3><p>${t(ACCOUNT ? 'noConsultationsHint' : 'consultHistoryHint')}</p>${ACCOUNT ? `<p class="tiny">${t('restoreHint')}</p>` : ''}</div><div><button type="button" id="firstQuestion" class="btn ghost sm">${t('startQuestion')} ↗</button>${ACCOUNT ? `<button type="button" id="restoreFromConsult" class="text-btn">${t('restore')}</button>` : ''}</div></div>`;
+      $('#firstQuestion').onclick = () => { setService('consult'); $('#workspace').scrollIntoView({block:'start'}); $('#askMsg').focus({preventScroll:true}); };
+      const rb2 = $('#restoreFromConsult'); if (rb2) rb2.onclick = restoreTasks;
+      return;
     }
     $('#purchasesList').innerHTML = list.map((p, i) => `<div class="purchase" data-i="${i}">
       <div class="row"><span><b>${esc(p.product === 'chat' ? t('consultTab') : p.product === 'brief' ? t('briefBtn') : t('legacyInsight'))}</b> ${esc(p.code || p.symbol || '')}${p.round ? ` · ${LANG === 'zh' ? '第 ' + esc(p.round) + ' 回合' : 'round ' + esc(p.round)}` : ''} <span class="tiny">· ${esc(ago(p.ts))}</span></span>
@@ -1538,8 +1558,13 @@
         saveTaskRef({task_id: x.task_id, token: x.token, ts: Date.now()});
         TASK_STATE[x.task_id] = Object.assign({runs: []}, x);
       });
-      setMsg(m, d.count ? t('restored').replace('{n}', d.count) : t('restoreNone'), d.count ? 'ok' : '');
+      // Consultations live on the server too now — a browser only ever held a
+      // copy, which is why a new device looked empty.
+      const got = mergePurchases(d.purchases || []);
+      const n = (+d.count || 0) + got;
+      setMsg(m, n ? t('restored').replace('{n}', n) : t('restoreNone'), n ? 'ok' : '');
       await refreshTasks();
+      renderPurchases();
     } catch (e) {
       const we = walletError(e);
       setMsg(m, (we && we.message) || t('errGeneric'), 'err');

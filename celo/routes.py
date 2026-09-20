@@ -350,6 +350,11 @@ async def _deliver(info: Dict[str, Any], content: Dict[str, Any],
                                       "agent_id": (agent or {}).get("agent_id", ""),
                                       "owner_credits": credits})
     x402.mark_delivered(pid)
+    # The buyer paid for this; keep it so a new browser or device can open it
+    # again (celo/tasks.recover hands it back after a wallet signature).
+    await asyncio.to_thread(
+        x402.store_receipt, info["payer"], info["nonce"], int(pid), info["product"],
+        str(content.get("symbol") or ""), float(info.get("amount_usd") or 0), tx, content)
     _content_cache.pop((info["payer"], info["nonce"]), None)
     body = dict(content)
     body["payment"] = {"tx": tx, "explorer": (x402.CHAIN["explorer_tx"] + tx) if tx else "",
@@ -845,15 +850,20 @@ async def task_stop(task_id: str, request: Request, token: str = ""):
 
 @router.post("/tasks/recover")
 async def task_recover(request: Request):
-    """FREE: prove the wallet with a signature, get this wallet's tasks back
-    (with fresh access tokens)."""
+    """FREE: prove the wallet with a signature and get everything it owns back —
+    its agent runs (with fresh access tokens) and the consultations it paid for,
+    content included. Records live on the server; a browser only ever held a
+    copy, which is why changing device or origin looked like data loss."""
     body = await _json(request)
     try:
         rows = await asyncio.to_thread(tasks.recover, str(body.get("address") or ""),
                                        body.get("issued_at"), str(body.get("signature") or ""))
     except tasks.Invalid as e:
         raise HTTPException(400, str(e))
-    return {"tasks": rows, "count": len(rows)}
+    address = str(body.get("address") or "").strip().lower()
+    receipts = await asyncio.to_thread(x402.receipts_for, address)
+    return {"tasks": rows, "count": len(rows), "purchases": receipts,
+            "purchase_count": len(receipts)}
 
 # ------------------------------------------------------- paid in CELO --
 # Same two products, paid by transferring CELO to our own address instead of

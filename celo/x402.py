@@ -490,7 +490,59 @@ def ensure_schema() -> None:
     db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uidx_x402_payer_nonce ON x402_payments(payer, nonce)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_x402_ts ON x402_payments(ts)")
     db.execute("CREATE INDEX IF NOT EXISTS idx_x402_tx ON x402_payments(tx)")
+    # What was actually delivered. Without this a buyer who changes browser or
+    # device has paid for an answer they can never open again: the content only
+    # ever lived in their page. Readable solely by the wallet that paid (see
+    # celo/tasks.recover), never in the public feed.
+    db.execute("""CREATE TABLE IF NOT EXISTS x402_receipts (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        payer        TEXT NOT NULL,
+        nonce        TEXT NOT NULL,
+        payment_id   INTEGER NOT NULL DEFAULT 0,
+        product      TEXT NOT NULL DEFAULT '',
+        symbol       TEXT NOT NULL DEFAULT '',
+        amount_usd   REAL NOT NULL DEFAULT 0,
+        tx           TEXT NOT NULL DEFAULT '',
+        ts           REAL NOT NULL DEFAULT 0,
+        content_json TEXT NOT NULL DEFAULT ''
+    )""")
+    db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uidx_x402_receipts ON x402_receipts(payer, nonce)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_x402_receipts_payer ON x402_receipts(payer, ts)")
     _schema_ready = True
+
+
+def store_receipt(payer: str, nonce: str, payment_id: int, product: str, symbol: str,
+                  amount_usd: float, tx: str, content: Dict[str, Any]) -> None:
+    """Keep a delivered purchase so its buyer can open it again later. Idempotent
+    per (payer, nonce) — a redelivery must not create a second copy."""
+    ensure_schema()
+    try:
+        db.execute(
+            "INSERT OR IGNORE INTO x402_receipts(payer, nonce, payment_id, product, symbol, "
+            "amount_usd, tx, ts, content_json) VALUES(?,?,?,?,?,?,?,?,?)",
+            ((payer or "").lower(), (nonce or "").lower(), int(payment_id or 0), product,
+             symbol or "", float(amount_usd or 0), (tx or "").lower(), time.time(),
+             json.dumps(content or {}, default=str)))
+    except Exception as e:                      # a receipt must never fail a sale
+        oplog.error("x402.receipt", repr(e)[:200], params={"product": product})
+
+
+def receipts_for(payer: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """Every purchase this wallet can re-open, newest first."""
+    ensure_schema()
+    rows = db.query_all("SELECT * FROM x402_receipts WHERE payer=? ORDER BY ts DESC LIMIT ?",
+                        ((payer or "").lower(), int(limit)))
+    out = []
+    for r in rows:
+        try:
+            content = json.loads(r["content_json"] or "{}") or {}
+        except ValueError:
+            content = {}
+        out.append({"product": r["product"], "symbol": r["symbol"], "ts": float(r["ts"] or 0),
+                    "amount_usd": round(float(r["amount_usd"] or 0), 6), "tx": r["tx"] or "",
+                    "explorer": (CHAIN["explorer_tx"] + r["tx"]) if r["tx"] else "",
+                    "content": content})
+    return out
 
 
 def begin(payer: str, nonce: str, product: str, req: Dict[str, Any], resource: str,
