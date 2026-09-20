@@ -14,9 +14,9 @@ real P&L). This package is the Celo layer built for the **Celo "Agents at Work" 
 | `tools/x402_buyer.py` | **Programmatic buyer** — a standalone x402 client (402 → pick asset → sign EIP-3009 → resend → content + settlement tx). "An agent buys an agent's research" without a browser; key only via `X402_BUYER_KEY`. Team purchases are a smoke test / demo, not leaderboard volume. |
 | `web/guide.html` | **Hackathon guide** (`/hackathon`) — what the hackathon asks for, what we built, every on-chain proof with a link, the journeys by role (owner / buyer / depositor / operator) and live counters read from the public `/api/x402/*` endpoints. Linked from a strip on top of the Arena and the host app (`config.links.guide`; `CELO_GUIDE_ENABLED=0` hides both). |
 
-Live (preview host, plain HTTP — desktop browser wallets): http://34.68.151.4/arena ·
-**guide, journeys & proofs: http://34.68.151.4/hackathon** ·
-analyst card: http://34.68.151.4/api/agent-card/maneki-analyst · activity: http://34.68.151.4/api/x402/activity ·
+Live (preview host, plain HTTP — desktop browser wallets): https://celo.manekiai.io/arena ·
+**guide, journeys & proofs: https://celo.manekiai.io/hackathon** ·
+analyst card: https://celo.manekiai.io/api/agent-card/maneki-analyst · activity: https://celo.manekiai.io/api/x402/activity ·
 platform Analyst = ERC-8004 **#9837** on Celo ([registration tx](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f))
 
 ## Why this is "agents at work"
@@ -139,7 +139,7 @@ timestamps here are therefore the real ones, not the time of the mirror run.
 * Facilitator `/supported`: `{x402Version:2, scheme:"exact", network:"eip155:42220"}`.
 * USDC `0xcebA9300f2b948710d2653dD7B07f33A8B32118C`: `name()="USDC"`, `version()="2"`.
 * USA₮ `0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771`: 6 decimals, EIP-712 domain `Tether America USD` / `1` (as configured in `/api/x402/config` → `assets.USAT`).
-* Preview host `http://34.68.151.4`: `/api/x402/config`, `/arena`, `/api/x402/activity` reachable; registration was cleanly skipped while the registrar held 0 CELO, then on 2026-09-13 the auto-pilot minted the platform Analyst (#9837) and all 6 live agents (#9838–#9843) within one 2-minute tick of the wallet being funded, 0 failures.
+* Preview host `https://celo.manekiai.io`: `/api/x402/config`, `/arena`, `/api/x402/activity` reachable; registration was cleanly skipped while the registrar held 0 CELO, then on 2026-09-13 the auto-pilot minted the platform Analyst (#9837) and all 6 live agents (#9838–#9843) within one 2-minute tick of the wallet being funded, 0 failures.
 * Facilitator `api.x402.celo.org` `/verify` answers a well-formed request with a structured `{"isValid":false,"invalidReason":…}` (an empty body gets a 502 — request-shape artefact, not an outage); facilitator signer `0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48`.
 
 ## Safety

@@ -729,7 +729,10 @@ def activity() -> Dict[str, Any]:
     s = summary(exclude_operator=True)
     return {
         "generated_at": time.time(),
-        "summary": {k: s[k] for k in ("settled", "payers", "returning_payers", "usd", "by_product")},
+        # by_day is the honest shape of adoption over time — it is what a reader
+        # should be able to check without asking us for a number.
+        "summary": {k: s[k] for k in ("settled", "payers", "returning_payers", "usd",
+                                      "by_product", "by_day")},
         "recent": recent_rows,
         "registrations": {
             "platform": ({"agentId": int(plat["agentId"]), "txhash": plat.get("txhash", ""),

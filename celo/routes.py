@@ -405,9 +405,15 @@ async def x402_activity() -> Dict[str, Any]:
     val = await asyncio.to_thread(x402.activity)
     try:
         val["tasks"] = await asyncio.to_thread(tasks.summary)
-        val["tasks"]["samples"] = await asyncio.to_thread(tasks.shared_recent, 5)
+        val["tasks"]["samples"] = await asyncio.to_thread(tasks.shared_recent, 10)
     except Exception as e:
         oplog.error("x402.activity_tasks", repr(e)[:200])
+    try:
+        # Paying in CELO is a second lane with its own totals, and the rate it
+        # charges at is worth publishing next to them.
+        val["celo_pay"] = await asyncio.to_thread(native_pay.summary)
+    except Exception as e:
+        oplog.error("x402.activity_celo_pay", repr(e)[:200])
     _activity_cache["val"], _activity_cache["at"] = val, now
     return val
 

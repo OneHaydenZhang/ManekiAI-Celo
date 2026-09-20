@@ -299,7 +299,7 @@ def test_repoint_uris_only_sends_where_different(monkeypatch):
     _agent("ag_r", cid=77)
     admin_store.set("celo_platform_agent", {"agentId": 4242, "txhash": "0xplat", "uri": "http://old/x"})
     code = agent_model.agent_code("ag_r")
-    onchain = {77: f"https://arena.manekiai.io/api/agent-card/{code}", 4242: "http://34.68.151.4/api/agent-card/maneki-analyst"}
+    onchain = {77: f"https://arena.manekiai.io/api/agent-card/{code}", 4242: "https://celo.manekiai.io/api/agent-card/maneki-analyst"}
     sent = []
 
     def rpc(method, params):

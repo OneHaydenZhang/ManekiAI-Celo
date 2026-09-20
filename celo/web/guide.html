@@ -85,8 +85,12 @@
 
   <h2><span class="n">2</span><span data-t="s4">实时数据</span></h2>
   <div class="tiny" id="liveMeta"></div>
-  <div class="wrap"><table id="recent"></table></div>
+  <p class="note" id="liveNow"></p>
+  <div class="wrap"><table id="samples"></table></div>
+  <div class="wrap" style="margin-top:14px"><table id="recent"></table></div>
+  <div class="wrap" style="margin-top:14px"><table id="byday"></table></div>
   <div class="wrap" style="margin-top:14px"><table id="regs"></table></div>
+  <p class="tiny" id="liveSrc" style="margin-top:12px"></p>
 
   <p class="note" data-t="foot" style="margin-top:22px"></p>
 </div>
@@ -105,8 +109,8 @@
     analystId: 9837, analystTx: '0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f',
     repo: 'https://github.com/OneHaydenZhang/ManekiAI-Celo',
     scan: 'https://celoscan.io',
-    submittedDemo: 'http://34.68.151.4/arena',          // literally what went into the registration form
-    submittedGuide: 'http://34.68.151.4/hackathon',
+    submittedDemo: 'https://celo.manekiai.io/arena',          // literally what went into the registration form
+    submittedGuide: 'https://celo.manekiai.io/hackathon',
   };
   const JUMPER = 'https://jumper.exchange/?toChain=42220&toToken=' + K.usdc;
   const JUMPER_CELO = 'https://jumper.exchange/?toChain=42220&toToken=0x0000000000000000000000000000000000000000';
@@ -173,7 +177,20 @@ group by 1 order by 1`;
       jCw: '观测：运行中的任务每 60 秒自动刷新进度；跑满次数后状态变「已完成」，所有报告留在卡片里（记录不删除）。找回用的签名文案带时间戳、10 分钟内有效，且只能列出这个钱包自己付过款的任务。',
       jCgo: '打开我的记录 →',
       // live
-      liveUpd: '更新于', liveFail: '活动数据暂时不可用', kSettled: '已结算购买', kPayers: '独立付款人', kReturning: '回头付款人', kUsd: 'USDC / USA₮ 成交额', kDeposits: 'Celo 充值', kSenders: '充值发送方', kRegs: '已注册 Agent',
+      liveUpd: '更新于',
+      nowSettled: (n, p) => `已结算 ${n} 笔 · ${p} 个独立付款钱包`,
+      nowUsd: (u) => `成交额 $${u}`,
+      nowReturning: (n) => `跨日回访 ${n} 个钱包`,
+      nowTasks: (n, r, run) => `付费运行 ${n} 个 Agent（已交付 ${r} 份报告，${run} 个在跑）`,
+      nowCelo: (n, u) => `其中用 CELO 直接付款 ${n} 笔（$${u}）`,
+      nowDeposits: (n, s) => `Celo 稳定币充值 ${n} 笔 / ${s} 个发送方`,
+      nowRate: (r) => `当前 CELO 报价 $${r}`,
+      samplesH: '交付样本（买家自愿公开，点开就能看到 Agent 实际写了什么）',
+      samplesNone: '还没有买家公开报告。任何人跑完一次任务后，在「我的 Agent」里点「公开这份报告」，这里就会出现一行，任何人都能打开核对。',
+      bydayH: '按天（近 14 天）', bydayNone: '还没有成交，所以没有按天数据。',
+      thMarket: '市场', thTask: '任务', thReports: '报告数', thOpen: '打开', thOpenBtn: '读报告',
+      thDay: '日期', thCount: '笔数', thWallets: '独立钱包',
+      liveSrc: '以上每个数字都来自本服务器的公开接口，不需要登录即可自行核对：', liveFail: '活动数据暂时不可用', kSettled: '已结算购买', kPayers: '独立付款人', kReturning: '回头付款人', kUsd: 'USDC / USA₮ 成交额', kDeposits: 'Celo 充值', kSenders: '充值发送方', kRegs: '已注册 Agent',
       thWhen: '时间', thProduct: '产品', thAmount: '金额', thPayer: '付款人', thAgent: 'Agent', thTx: '交易', recentH: '最近结算', recentNone: '暂无结算。做一次动线 B，这里就会出现第一行。',
       prod: { insight: 'Agent 洞察（已下线）', chat: '提问', brief: '个股简报', task_monitor: 'Agent 运行 · 持续监控', task_research: 'Agent 运行 · 跟踪研究' },
       regsH: '链上注册（ERC-8004）', thCode: 'Agent', thSymbol: '标的', thId: 'Agent ID', thRegTx: '注册交易',
@@ -239,7 +256,20 @@ group by 1 order by 1`;
       jCs: ['Arena → “My records” → “My agents”: each card shows progress, the latest report and the payment receipt', 'More than one report? Click “All reports” to expand the history (newest check first)', 'New device / cleared cache: click “Restore with my wallet” → the wallet shows a plain-text signature (not a transaction, no gas) → the runs come back', 'Want it to end now: click “Stop” → the dialog states that the part which has not run is not refunded → confirm and the state becomes “Stopped”'],
       jCw: 'Observe: a running task refreshes itself once a minute; when the paid checks are used up the state becomes “Completed” and every report stays on the card (records are never deleted). The restore message carries a timestamp, is valid for 10 minutes, and only ever lists runs this wallet paid for.',
       jCgo: 'Open my records →',
-      liveUpd: 'updated', liveFail: 'Activity feed unavailable right now', kSettled: 'Settled purchases', kPayers: 'Distinct payers', kReturning: 'Returning payers', kUsd: 'USDC / USA₮ volume', kDeposits: 'Celo top-ups', kSenders: 'Top-up senders', kRegs: 'Agents registered',
+      liveUpd: 'updated',
+      nowSettled: (n, p) => `${n} settled purchases · ${p} distinct paying wallets`,
+      nowUsd: (u) => `$${u} moved`,
+      nowReturning: (n) => `${n} wallets came back on another day`,
+      nowTasks: (n, r, run) => `${n} agent runs paid for (${r} reports delivered, ${run} running)`,
+      nowCelo: (n, u) => `${n} of them paid in CELO ($${u})`,
+      nowDeposits: (n, s) => `${n} stablecoin top-ups from ${s} senders`,
+      nowRate: (r) => `CELO quoted at $${r}`,
+      samplesH: 'Delivered work (published by its buyer — open one and read what the agent wrote)',
+      samplesNone: 'No buyer has published a report yet. After a run finishes, its buyer can press “Publish this report” in “My agents” and a row appears here for anyone to open.',
+      bydayH: 'By day (last 14)', bydayNone: 'Nothing settled yet, so there is no daily shape to show.',
+      thMarket: 'Market', thTask: 'Task', thReports: 'Reports', thOpen: 'Open', thOpenBtn: 'Read',
+      thDay: 'Day', thCount: 'Purchases', thWallets: 'Wallets',
+      liveSrc: 'Every number above is read from this server’s public endpoints — check them yourself, no login:', liveFail: 'Activity feed unavailable right now', kSettled: 'Settled purchases', kPayers: 'Distinct payers', kReturning: 'Returning payers', kUsd: 'USDC / USA₮ volume', kDeposits: 'Celo top-ups', kSenders: 'Top-up senders', kRegs: 'Agents registered',
       thWhen: 'When', thProduct: 'Product', thAmount: 'Amount', thPayer: 'Payer', thAgent: 'Agent', thTx: 'Tx', recentH: 'Most recent settlements', recentNone: 'No settlements yet. Run journey B once and the first row appears here.',
       prod: { insight: 'Agent insight (retired)', chat: 'Ask', brief: 'Symbol brief', task_monitor: 'Agent run · monitoring', task_research: 'Agent run · research' },
       regsH: 'On-chain registrations (ERC-8004)', thCode: 'Agent', thSymbol: 'Symbol', thId: 'Agent ID', thRegTx: 'Registration tx',
@@ -299,21 +329,63 @@ group by 1 order by 1`;
   }
 
   function renderLive() {
-    const meta = $('#liveMeta');
-    if (!ACT) { meta.textContent = LOADED ? t('liveFail') : t('stLoading'); $('#recent').innerHTML = ''; $('#regs').innerHTML = ''; return; }
+    const meta = $('#liveMeta'), now = $('#liveNow');
+    const blank = (id) => { const el = $(id); if (el) el.innerHTML = ''; };
+    if (!ACT) {
+      meta.textContent = LOADED ? t('liveFail') : t('stLoading');
+      now.textContent = ''; ['#samples', '#recent', '#byday', '#regs'].forEach(blank);
+      return;
+    }
     const sm = ACT.summary || {}, dep = ACT.deposits || {}, regs = ACT.registrations || {};
+    const tk = ACT.tasks || {}, cp = ACT.celo_pay || {};
     meta.textContent = `${t('liveUpd')} ${t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+ACT.generated_at || 0))))}`;
+
+    // One honest line instead of a wall of tiles: what has actually happened.
+    const bits = [
+      t('nowSettled')(+sm.settled || 0, +sm.payers || 0),
+      t('nowUsd')((+sm.usd || 0).toFixed(2)),
+      t('nowReturning')(+sm.returning_payers || 0),
+      t('nowTasks')(+tk.tasks || 0, +tk.reports || 0, +tk.running || 0),
+    ];
+    if (+cp.orders > 0) bits.push(t('nowCelo')(+cp.orders, (+cp.usd || 0).toFixed(2)));
+    if (+dep.count > 0) bits.push(t('nowDeposits')(+dep.count, +dep.senders || 0));
+    if (+cp.rate_usd > 0) bits.push(t('nowRate')((+cp.rate_usd).toFixed(6)));
+    now.textContent = bits.join(' · ');
+
+    // Delivered work someone chose to publish — the only thing on this page a
+    // reader can open and judge for themselves.
+    const sp = tk.samples || [];
+    $('#samples').innerHTML = `<tr><th colspan="5">${esc(t('samplesH'))}</th></tr>` + (sp.length
+      ? `<tr><th>${esc(t('thWhen'))}</th><th>${esc(t('thMarket'))}</th><th>${esc(t('thTask'))}</th><th>${esc(t('thReports'))}</th><th>${esc(t('thOpen'))}</th></tr>` +
+        sp.map((x) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+x.shared_at || 0)))))}</td>
+          <td>${esc(x.symbol || '')}</td><td>${esc((t('prod') || {})['task_' + x.task] || x.task || '')}</td>
+          <td class="mono">${+x.reports || 0}</td>
+          <td><a class="txlink" href="/r/${esc(x.share_id)}">${esc(t('thOpenBtn'))} ↗</a>${x.tx ? ` · <a class="txlink" target="_blank" rel="noopener" href="${esc(scanTx(x.tx))}">tx ↗</a>` : ''}</td></tr>`).join('')
+      : `<tr><td class="tiny">${esc(t('samplesNone'))}</td></tr>`);
+
     const rec = ACT.recent || [];
     const prodLabel = (p) => ((t('prod') || {})[p]) || p || '—';
     $('#recent').innerHTML = `<tr><th colspan="6">${esc(t('recentH'))}</th></tr>` + (rec.length
       ? `<tr><th>${esc(t('thWhen'))}</th><th>${esc(t('thProduct'))}</th><th>${esc(t('thAmount'))}</th><th>${esc(t('thPayer'))}</th><th>${esc(t('thAgent'))}</th><th>${esc(t('thTx'))}</th></tr>` +
         rec.map((r) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+r.ts || 0)))))}</td><td>${esc(prodLabel(r.product))}</td><td>$${(+r.amount_usd || 0).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td class="mono">${esc(r.payer_short || '—')}</td><td>${esc(r.agent_code || '—')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')
       : `<tr><td class="tiny">${esc(t('recentNone'))}</td></tr>`);
+
+    // Adoption over time, the shape nobody can massage: one row per day.
+    const days = (sm.by_day || []).slice(0, 14);
+    $('#byday').innerHTML = `<tr><th colspan="4">${esc(t('bydayH'))}</th></tr>` + (days.length
+      ? `<tr><th>${esc(t('thDay'))}</th><th>${esc(t('thCount'))}</th><th>${esc(t('thWallets'))}</th><th>${esc(t('thAmount'))}</th></tr>` +
+        days.map((d) => `<tr><td class="mono">${esc(d.d)}</td><td class="mono">${+d.n || 0}</td><td class="mono">${+d.payers || 0}</td><td class="mono">$${(+d.usd || 0).toFixed(2)}</td></tr>`).join('')
+      : `<tr><td class="tiny">${esc(t('bydayNone'))}</td></tr>`);
+
     const ra = regs.agents || [];
     $('#regs').innerHTML = `<tr><th colspan="4">${esc(t('regsH'))}${regs.platform ? ` · Analyst <a class="txlink" target="_blank" rel="noopener" href="${esc(regs.platform.explorer || scanTx(regs.platform.txhash))}">#${esc(regs.platform.agentId)} ↗</a>` : ''}</th></tr>` +
       (ra.length ? `<tr><th>${esc(t('thCode'))}</th><th>${esc(t('thSymbol'))}</th><th>${esc(t('thId'))}</th><th>${esc(t('thRegTx'))}</th></tr>` +
         ra.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.symbol || '')}</td><td>#${esc(r.celo_agent_id)}</td><td><a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a></td></tr>`).join('')
         : `<tr><td class="tiny" colspan="4">${esc(t('regsNone'))}</td></tr>`);
+
+    // Say where every number came from, so it can be checked without us.
+    const src = $('#liveSrc');
+    if (src) src.innerHTML = t('liveSrc') + ' <a class="txlink" href="/api/x402/activity" target="_blank" rel="noopener">/api/x402/activity</a> · <a class="txlink" href="/api/x402/celo/health" target="_blank" rel="noopener">/api/x402/celo/health</a>';
   }
 
   async function getJson(url) { try { const r = await fetch(url, { cache: 'no-store' }); return r.ok ? await r.json() : null; } catch (_) { return null; } }

@@ -18,10 +18,10 @@ plus the standard library. Never imports the host app.
 Usage (the key comes ONLY from the environment, never from argv):
 
     export X402_BUYER_KEY=0x...            # a wallet holding USDC/USA₮ on Celo
-    python auto_service/celo/tools/x402_buyer.py --base http://34.68.151.4 brief --symbol NVDA
-    python auto_service/celo/tools/x402_buyer.py --base http://34.68.151.4 chat --symbol TSLA --message "Is TSLA setting up for a breakout?"
-    python auto_service/celo/tools/x402_buyer.py --base http://34.68.151.4 insight --agent A-G1TFNJ
-    python auto_service/celo/tools/x402_buyer.py --base http://34.68.151.4 brief --symbol NVDA --dry-run   # only fetch the offer
+    python auto_service/celo/tools/x402_buyer.py --base https://celo.manekiai.io brief --symbol NVDA
+    python auto_service/celo/tools/x402_buyer.py --base https://celo.manekiai.io chat --symbol TSLA --message "Is TSLA setting up for a breakout?"
+    python auto_service/celo/tools/x402_buyer.py --base https://celo.manekiai.io insight --agent A-XXXXXX
+    python auto_service/celo/tools/x402_buyer.py --base https://celo.manekiai.io brief --symbol NVDA --dry-run   # only fetch the offer
 
 Exit codes: 0 paid & delivered · 2 offer only (--dry-run) · 3 payment
 rejected (402: insufficient funds, bad signature, cooldown…) · 4 still
@@ -163,7 +163,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # (`brief --symbol NVDA --dry-run` reads naturally); SUPPRESS keeps a
     # sub-parser from clobbering a value given before it.
     common = argparse.ArgumentParser(add_help=False, argument_default=argparse.SUPPRESS)
-    common.add_argument("--base", help="server origin (default: $X402_BASE or http://34.68.151.4)")
+    common.add_argument("--base", help="server origin (default: $X402_BASE or https://celo.manekiai.io)")
     common.add_argument("--asset", help="USDC (default) or USAT")
     common.add_argument("--check-balance", action="store_true", help="skip assets the wallet cannot cover (forno eth_call)")
     common.add_argument("--dry-run", action="store_true", help="fetch and print the 402 offer, sign nothing")
@@ -173,9 +173,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub = ap.add_subparsers(dest="product", required=True)
     p = sub.add_parser("chat", help="Ask ManekiAI ($0.02)", parents=[common]); p.add_argument("--symbol", required=True); p.add_argument("--message", required=True)
     p = sub.add_parser("brief", help="symbol brief ($0.01)", parents=[common]); p.add_argument("--symbol", required=True)
-    p = sub.add_parser("insight", help="an agent's latest decision ($0.05)", parents=[common]); p.add_argument("--agent", required=True, help="agent code, e.g. A-G1TFNJ")
+    p = sub.add_parser("insight", help="an agent's latest decision ($0.05)", parents=[common]); p.add_argument("--agent", required=True, help="agent code, e.g. A-XXXXXX")
     ns = ap.parse_args(argv)
-    a = argparse.Namespace(base=getattr(ns, "base", os.environ.get("X402_BASE", "http://34.68.151.4")),
+    a = argparse.Namespace(base=getattr(ns, "base", os.environ.get("X402_BASE", "https://celo.manekiai.io")),
                            asset=getattr(ns, "asset", "USDC"), check_balance=getattr(ns, "check_balance", False),
                            dry_run=getattr(ns, "dry_run", False), json=getattr(ns, "json", False),
                            valid_s=getattr(ns, "valid_s", 120), product=ns.product,

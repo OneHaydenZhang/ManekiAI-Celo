@@ -15,7 +15,7 @@
 | Primary track | Real World Adoption | ✓ |
 | Secondary（一句话） | Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm/USA₮ on Celo + every Arena purchase is an x402 settlement in USDC; Judges' Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners | ✓（报名表所填，与 /hackathon 第 5 节一致） |
 | Distribution channel | Existing audience (manekiai.io users, X) + the public login-free Arena for the Celo community | ✓ |
-| Demo | **指南/证明/动线：http://34.68.151.4/hackathon** · Arena（双入口）http://34.68.151.4/arena · http://34.68.151.4/api/agent-card/maneki-analyst · http://34.68.151.4/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
+| Demo | **指南/证明/动线：https://celo.manekiai.io/hackathon** · Arena（双入口）https://celo.manekiai.io/arena · https://celo.manekiai.io/api/agent-card/maneki-analyst · https://celo.manekiai.io/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
 
 ## 2026-09-19 产品调整（v2 · 双入口）
 
@@ -34,11 +34,14 @@ Arena 从「买平台已有 Agent 的洞察」改为**两个明确入口**，报
 ## 链上证据（部署后逐项填 · `scripts/fill_celo_submission.py --activity <url|file>` 可自动回填）
 
 - 平台 Analyst 注册 tx：[`0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f`](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f)（Agent ID #9837）
-- 用户 Agent 注册 tx（前 5 个）：A-NDDDMS·NVDA #9838 [`0x0e01dfaf4890de2912e9ee68f61cdab88a1b3720144b99238a965eaa19d5ff03`](https://celoscan.io/tx/0x0e01dfaf4890de2912e9ee68f61cdab88a1b3720144b99238a965eaa19d5ff03)；A-5MYM3T·NVDA #9839 [`0xc048ffc7187d557e4c3d89bffc40b91f7e7c60c5c8fbd2e8be92b3f370ac2b40`](https://celoscan.io/tx/0xc048ffc7187d557e4c3d89bffc40b91f7e7c60c5c8fbd2e8be92b3f370ac2b40)；A-5YG13T·SNDK #9840 [`0x98747168ad411c952ee9a8b1e224bdd965512f67eb0309396ff2088d33d6f287`](https://celoscan.io/tx/0x98747168ad411c952ee9a8b1e224bdd965512f67eb0309396ff2088d33d6f287)；A-8FWAZV·UNITREE #9841 [`0xe1137cd692de26a5567ecf888a90d907fba8e1124acd62dcf54d0e67ada81e81`](https://celoscan.io/tx/0xe1137cd692de26a5567ecf888a90d907fba8e1124acd62dcf54d0e67ada81e81)；A-5GHAFP·UNITREE #9842 [`0x7e10799775b3f49af15ea4132c8d6b66164ab383d7ac4ea369ffe9e6c76897a1`](https://celoscan.io/tx/0x7e10799775b3f49af15ea4132c8d6b66164ab383d7ac4ea369ffe9e6c76897a1)
+- 其余 Agent 的注册 tx：不逐个列出（那是我们自己 Agent 的身份，与本项目的评审无关）。所有 ERC-8004 注册都由注册钱包 `0xaf6fA147e8F85781196627765FcaFC1044F89308` 签名付 gas，在 [Celoscan 上该地址的交易列表](https://celoscan.io/address/0xaf6fA147e8F85781196627765FcaFC1044F89308)可以完整回查；实时数量见 `https://celo.manekiai.io/api/x402/activity` 的 `registrations.count`。
 - 首笔 Celo 稳定币充值 tx：`TBD`
-- 首笔 x402 结算 tx（facilitator 签名者 `0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48`）：`TBD`
-- 公开活动端点（免登录、60 s 缓存，结算笔数/付款人/注册/充值汇总 + 最近结算 tx）：http://34.68.151.4/api/x402/activity
-- Agent ID 铸造：所有 ERC-8004 注册都由注册钱包 `0xaf6fA147e8F85781196627765FcaFC1044F89308` 签名付 gas（可在 Celoscan 该地址的交易列表回查全部铸造）；agentURI 指向 `http://34.68.151.4/api/agent-card/{code}`。如后续更换公共域名，用 `setAgentURI` 重定向（admin「URI 重定向」），ID 不变、不重铸。
+- 首笔 x402 结算 tx（facilitator 签名者 `0x0d74D5Cefd2e7F24E623330ebE3d8D4cB45fFB48`）：**2026-09-19 已产生真实结算**
+  - 第一笔（问一次 $0.02）：[`0x2f441b99656cc2f82c9da771d4bdd5a20dbc817296200715679fd6a2f4097a3a`](https://celoscan.io/tx/0x2f441b99656cc2f82c9da771d4bdd5a20dbc817296200715679fd6a2f4097a3a)
+  - 一次 6 检查的 Agent 运行（$0.12，6 份报告全部交付成功）：[`0x56196a71ed0107fcbd1cf4302fdc8f1502490203820fed199b3af77cfde7a15a`](https://celoscan.io/tx/0x56196a71ed0107fcbd1cf4302fdc8f1502490203820fed199b3af77cfde7a15a)
+  - 合计 5 笔、2 个独立付款钱包、$0.20。实时数字与最近结算列表见 `https://celo.manekiai.io/api/x402/activity`，页面版在 `https://celo.manekiai.io/hackathon` 第 2 节。
+- 公开活动端点（免登录、60 s 缓存，结算笔数/付款人/注册/充值汇总 + 最近结算 tx）：https://celo.manekiai.io/api/x402/activity
+- Agent ID 铸造：所有 ERC-8004 注册都由注册钱包 `0xaf6fA147e8F85781196627765FcaFC1044F89308` 签名付 gas（可在 Celoscan 该地址的交易列表回查全部铸造）；agentURI 指向 `https://celo.manekiai.io/api/agent-card/{code}`。如后续更换公共域名，用 `setAgentURI` 重定向（admin「URI 重定向」），ID 不变、不重铸。
 - Dune 查询（distinct 钱包 / 日；USDC + USD₮ + USDm + USA₮，按各自精度换算；payTo 同时收 x402 结算，所以结果 = 充值 + Arena 购买）：
 
 ```sql
@@ -71,19 +74,19 @@ group by 1 order by 1
 > **中文**
 > 🐱 ManekiAI 上了 Celo：6 个真在 Hyperliquid 交易美股永续的 AI Agent，现在把它们的最新决策放到链上卖，一份 $0.05 USDC，问一次平台分析师 $0.02，个股简报 $0.01。
 > 不用注册、不用交易所 key、不用 CELO 付 gas：连上 Celo 钱包 → 点一下 → 签一个授权 → 内容和 Celoscan 结算链接一起回来（x402 微支付，官方 facilitator 结算）。
-> 30 秒体验：http://34.68.151.4/arena （桌面浏览器 + MetaMask / Rabby / OKX；钱包里要有 Celo 上的一点 USDC，没有就用 Jumper 换：https://jumper.exchange/?toChain=42220&toToken=0xcebA9300f2b948710d2653dD7B07f33A8B32118C ）
-> 这是 Celo「Agents at Work」黑客松参赛作品，指南和链上证明：http://34.68.151.4/hackathon
+> 30 秒体验：https://celo.manekiai.io/arena （桌面浏览器 + MetaMask / Rabby / OKX；钱包里要有 Celo 上的一点 USDC，没有就用 Jumper 换：https://jumper.exchange/?toChain=42220&toToken=0xcebA9300f2b948710d2653dD7B07f33A8B32118C ）
+> 这是 Celo「Agents at Work」黑客松参赛作品，指南和链上证明：https://celo.manekiai.io/hackathon
 >
 > **English**
 > 🐱 ManekiAI is on Celo: 6 AI agents that really trade US-stock perps on Hyperliquid now sell their latest decision on-chain — $0.05 USDC per insight, $0.02 to ask the platform analyst, $0.01 for a symbol brief.
 > No sign-up, no exchange keys, no CELO for gas: connect a Celo wallet → click → sign one authorization → the content comes back with its Celoscan settlement link (x402 micro-payment, settled by the official facilitator).
-> 30-second try: http://34.68.151.4/arena (desktop browser + MetaMask / Rabby / OKX; you need a little USDC on Celo — swap with Jumper: https://jumper.exchange/?toChain=42220&toToken=0xcebA9300f2b948710d2653dD7B07f33A8B32118C )
-> Built for the Celo “Agents at Work” hackathon — guide & on-chain proofs: http://34.68.151.4/hackathon
+> 30-second try: https://celo.manekiai.io/arena (desktop browser + MetaMask / Rabby / OKX; you need a little USDC on Celo — swap with Jumper: https://jumper.exchange/?toChain=42220&toToken=0xcebA9300f2b948710d2653dD7B07f33A8B32118C )
+> Built for the Celo “Agents at Work” hackathon — guide & on-chain proofs: https://celo.manekiai.io/hackathon
 
 ## 程序化买家（Agent 买 Agent 的研究）
 
 `auto_service/celo/tools/x402_buyer.py`：不用浏览器的 x402 客户端，拿 402 → 选资产 → 签 EIP-3009 → 重发 → 打印内容与结算 tx。私钥只从环境变量 `X402_BUYER_KEY` 读，永不进命令行。用途：团队冒烟测试（不计分）与"机器付费给机器"的演示。
-`python auto_service/celo/tools/x402_buyer.py --base http://34.68.151.4 brief --symbol NVDA --dry-run` 只看报价；去掉 `--dry-run` 即真实购买。
+`python auto_service/celo/tools/x402_buyer.py --base https://celo.manekiai.io brief --symbol NVDA --dry-run` 只看报价；去掉 `--dry-run` 即真实购买。
 
 ## 演示视频脚本（2–3 分钟，可选）
 
