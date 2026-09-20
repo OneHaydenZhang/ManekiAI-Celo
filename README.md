@@ -1,30 +1,39 @@
-# ManekiAI × Celo — Agents at Work
+# ManekiAI × Celo
 
 **ManekiAI** runs autonomous LLM trading agents on Hyperliquid (US-stock perpetuals, real fills,
-real P&L). This package is the Celo layer built for the **Celo "Agents at Work" hackathon**
-(Aug 27 – Sep 14, 2026):
+real P&L). **This package is the Celo side of it**, and it stands on its own: anyone with a wallet
+can buy research here — no account, no exchange keys, no relationship with the trading product.
+
+It started as our entry to the Celo "Agents at Work" hackathon (submitted 2026-09-14) and kept
+going; what follows describes what actually runs today, not the plan we registered with.
+
+**Live: https://celo.manekiai.io** — the Arena (`/arena`), the journeys and live data
+(`/hackathon`), published reports (`/r/<id>`), and the public endpoints under `/api/x402/`.
+Platform Analyst = ERC-8004 **#9837** on Celo
+([registration tx](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f)).
+That host serves the Celo product only; the trading app is not reachable from it.
+
+## What you can buy, and how it is paid
 
 | Piece | What it does on Celo mainnet (42220) |
 |---|---|
-| `chain.py` | **Stablecoin Gas top-ups** — users fuel their agents with USDC / USD₮ / USDm / USA₮ on Celo. Pure `eth_getLogs` scanner against the registered token contracts (forno, 5,000-block chunks; dRPC fallback), receipt-gated, idempotent per tx hash. |
-| `agentid.py` | **ERC-8004 identity for every live agent** — `register(agentURI)` on the Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, plus the platform **"ManekiAI Analyst"** agent. Public registration-v1 cards at `/api/agent-card/{code}` carry both 0G and Celo registrations, the x402 service endpoint, `supportedTrust: ["reputation"]`, `x402Support`, `active`. |
-| `x402.py` | **x402 v2 seller** — `PAYMENT-REQUIRED` challenge (USDC and USA₮ accepted), facilitator `POST /verify` → content → `POST /settle` (api.x402.celo.org, EIP-3009 `transferWithAuthorization`, gas paid by the facilitator), a permanent payment ledger (`x402_payments`, payer+nonce unique), and a **70 % revenue share to the agent's owner** as Gas. |
-| `routes.py` | Public, login-free endpoints: `POST /api/x402/chat` (Ask ManekiAI · $0.02), `GET /api/x402/brief?symbol=` (shared 10-minute brief · $0.01), `GET /api/x402/agents/{code}/insight` (a live agent's latest decision · $0.05), free `GET /api/x402/config`, `GET /api/x402/catalog` and `GET /api/x402/activity` (public settlement / registration / deposit summary, 60 s cache). |
-| `web/arena.html` | **Agent Arena** (`/arena`) — anyone with USDC or USA₮ on Celo connects a wallet, asks the analyst or unlocks an agent's insight; the wallet signs, the facilitator settles, the page shows the Celoscan link. |
-| `tools/x402_buyer.py` | **Programmatic buyer** — a standalone x402 client (402 → pick asset → sign EIP-3009 → resend → content + settlement tx). "An agent buys an agent's research" without a browser; key only via `X402_BUYER_KEY`. Team purchases are a smoke test / demo, not leaderboard volume. |
-| `web/guide.html` | **Hackathon guide** (`/hackathon`) — what the hackathon asks for, what we built, every on-chain proof with a link, the journeys by role (owner / buyer / depositor / operator) and live counters read from the public `/api/x402/*` endpoints. Linked from a strip on top of the Arena and the host app (`config.links.guide`; `CELO_GUIDE_ENABLED=0` hides both). |
-
-Live (preview host, plain HTTP — desktop browser wallets): https://celo.manekiai.io/arena ·
-**guide, journeys & proofs: https://celo.manekiai.io/hackathon** ·
-analyst card: https://celo.manekiai.io/api/agent-card/maneki-analyst · activity: https://celo.manekiai.io/api/x402/activity ·
-platform Analyst = ERC-8004 **#9837** on Celo ([registration tx](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f))
+| `routes.py` | The public, login-free surface. **Ask the analyst** (`POST /api/x402/chat`, $0.02) · **symbol brief** (`GET /api/x402/brief?symbol=`, $0.01, shared 10 min) · **configure and pay an agent to run for you** (`POST /api/x402/tasks`) · free reads: `/config`, `/activity`, `/catalog`, `/celo/health`. |
+| `tasks.py` | **Paid research runs.** You pick a market, what to watch, how long and how often; the price is `unit × checks` computed from the request body ($0.02 a check monitoring, $0.04 researching — one run is $0.02 to $3.84, paid once). A background runner delivers one written report per check. Orders, payments, executions and results are one chain; a buyer can publish a finished run at a read-only link. |
+| `x402.py` | **x402 v2 seller** — `PAYMENT-REQUIRED` challenge (USDC and USA₮), facilitator `/verify` → content → `/settle` (EIP-3009 `transferWithAuthorization`, gas paid by the facilitator), a permanent ledger (`x402_payments`, payer+nonce unique) and a 70 % revenue share to an agent's owner. Prices may be per request, which is how a run is quoted. |
+| `native_pay.py` | **Paying in CELO**, without x402 at all — CELO supports neither EIP-3009 nor EIP-2612, so nothing can be signed over to a facilitator; we are the recipient, so the buyer simply transfers CELO to us and we watch for it. The rate comes from the Uniswap v3 pools on Celo (best of four fee tiers), and a payment is one verified transaction: receipt, a Transfer log payer → payTo, amount within tolerance, one tx per order. |
+| `chain.py` | **Stablecoin Gas top-ups** for the trading product — `eth_getLogs` against the registered token contracts (forno, 5,000-block chunks; dRPC fallback), receipt-gated, idempotent per tx hash. |
+| `agentid.py` | **ERC-8004 identity** on the Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, for the platform "ManekiAI Analyst" and for live agents. Public registration-v1 cards at `/api/agent-card/{code}`. |
+| `web/arena.html` | **The Arena** (`/arena`) — two entries: ask a question, or configure an agent and pay for its run. Holding only CELO? The page swaps it for USDC in place (Uniswap on Celo, best of four pools, exact-amount approval, a fresh quote at signing). |
+| `web/guide.html` | **`/hackathon`** — the journeys, step by step, and the live data: what settled, by day, published reports anyone can open, and the ERC-8004 registrations. Every number is read from the public endpoints. |
+| `web/report.html` | **`/r/<id>`** — a run its buyer chose to publish: the assignment, every delivered report and the settlement tx. Never the payer's address. |
+| `tools/x402_buyer.py` | **Programmatic buyer** — a standalone x402 client (402 → pick asset → sign EIP-3009 → resend → content + settlement tx), so an agent can buy an agent's research without a browser. Key only via `X402_BUYER_KEY`. |
 
 ## Why this is "agents at work"
 
 1. **The agents genuinely work** — each one trades 24/7 on Hyperliquid; success rate, volume and P&L are tracked.
 2. **They have an identity** — an ERC-8004 Agent ID on Celo, resolvable to a public card.
 3. **They run on stablecoins** — Gas is bought with USDC / USD₮ / USDm / USA₮ on Celo ($1 = 1,000 Gas).
-4. **They earn** — every insight sold over x402 pays the owner a share, settled in USDC (or USA₮) on Celo.
+4. **They earn** — a sale over x402 pays the agent's owner a share, settled in USDC (or USA₮) on Celo.
 5. **They can be rated** — buyers may post feedback to the Reputation Registry (`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`); ERC-8004 forbids owner/operator self-feedback, and the platform is the owner, so only real clients rate.
 
 ## x402 flow (v2, HTTP transport)
@@ -91,6 +100,8 @@ calls `receiveWithAuthorization` (`0xef55bec6`) — the buyer authorizes a plain
 | `X402_SETTLER` | `facilitator` (default) · `self` (fallback, see *Settlement paths*) · `off`. |
 | `X402_PAY_TO`, `X402_PRICES_JSON`, `X402_OWNER_SHARE`, `X402_FACILITATOR_URL`, `X402_ENABLED` | Optional overrides (payTo defaults to the treasury; prices bounded to $0.001–$10; share 0.70). |
 | `MANEKI_PUBLIC_BASE` | Public origin used in agent URIs and `resource.url` (default `https://manekiai.io`). |
+| `X402_TASKS_ENABLED` | paid research runs (`tasks.py`): quoting, the order tables and the background runner. Off → the endpoints answer 503. |
+| `CELO_PAY_ENABLED` | paying in CELO (`native_pay.py`). Off → the CELO buttons never appear and `/api/x402/celo/*` answers 503. |
 
 ## Host integration points (one-liners)
 
@@ -132,9 +143,23 @@ commit and commits them here with the **original author date and subject**, suff
 Day-to-day commits arrive through a `post-commit` hook (`sync: <subject> (host <hash>)`). Commit
 timestamps here are therefore the real ones, not the time of the mirror run.
 
-## Verified live (2026-09-10 / 11)
+## Verified on-chain
+
+**It has settled for real.** The first purchases landed on 2026-09-19 and the lane has been used
+since: current totals, the day-by-day shape, published reports and the recent settlement hashes are
+all live at `https://celo.manekiai.io/api/x402/activity` (and rendered at `/hackathon`) — we do not
+restate them here, because a number typed into a README goes stale the next day.
+
+Facts checked directly against the chain while building:
 
 * Celo `chainId 0xa4ec`; forno `eth_getLogs` cap = 5,000 blocks; `celo.drpc.org` fallback.
+* Native CELO transfers emit **no logs at all** (receipts with zero entries), which is why paying in
+  CELO goes through the token contract's `transfer` — a wallet's plain send could never be detected.
+* The CELO token (`0x471EcE37…`, implementation `0xfea1b35f…`) implements plain ERC-20 only: no
+  EIP-3009 `transferWithAuthorization`, no EIP-2612 `permit`. It cannot be paid over x402.
+* Uniswap v3 on Celo: all four CELO/USDC fee tiers exist and their prices differ a lot (2 CELO quoted
+  0.1704 USDC on the 0.01% pool vs 0.1289 on the 1% pool), so both the swap and the CELO price feed
+  quote every tier and take the best.
 * Identity Registry `0x8004A169…a432` on Celo — same address as on 0G (deterministic deployment).
 * Facilitator `/supported`: `{x402Version:2, scheme:"exact", network:"eip155:42220"}`.
 * USDC `0xcebA9300f2b948710d2653dD7B07f33A8B32118C`: `name()="USDC"`, `version()="2"`.

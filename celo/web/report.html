@@ -2,7 +2,7 @@
 <html lang="zh" data-theme="dark">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maneki AI · 交付报告</title>
+<title>Maneki AI — delivered report</title>
 <meta name="description" content="A ManekiAI agent run its buyer chose to publish: the assignment, every delivered report, and the on-chain payment receipt.">
 <meta name="theme-color" content="#03090b">
 <meta property="og:type" content="article">
@@ -97,10 +97,12 @@ a{color:var(--accent2)}
     try { localStorage.setItem('arena_lang', LANG); } catch (_) {}
     $('#langToggle').textContent = LANG === 'zh' ? 'English' : '中文';
     document.documentElement.lang = LANG;
+    document.title = LANG === 'zh' ? 'Maneki AI · 交付报告' : 'Maneki AI — delivered report';
     if (DATA) render(); else $('#state').textContent = t('gone');
   };
   $('#langToggle').textContent = LANG === 'zh' ? 'English' : '中文';
   document.documentElement.lang = LANG;
+  document.title = LANG === 'zh' ? 'Maneki AI · 交付报告' : 'Maneki AI — delivered report';
   const id = (location.pathname.split('/').filter(Boolean)[1] || '').trim();
   fetch('/api/x402/tasks/shared/' + encodeURIComponent(id))
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error('gone'))))

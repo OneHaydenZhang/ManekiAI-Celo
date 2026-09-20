@@ -1,14 +1,18 @@
-# Celo「Agents at Work」提交材料（草稿 · 随进度更新）
+# Celo「Agents at Work」提交材料
 
-> 截止 2026-09-14 09:00 GMT（北京 17:00）。赛事页 https://www.risein.com/celo/celo-agents-at-work-hackathon
+> 赛事页 https://www.risein.com/celo/celo-agents-at-work-hackathon
+> **提交已完成（2026-09-14）**。本文档此后继续更新，记录的是这个产品实际跑起来之后的状态，不再是报名前的计划。
 > 方案：`docs/celo/CELO_AGENTS_AT_WORK_方案.md` · 代码：`auto_service/celo/`（公开仓库 ManekiAI-Celo 同步）
 
-## 报名表字段
+## 报名时提交的字段（历史记录，2026-09-14 已交）
 
-| 字段 | 值 | 状态 |
+> 这一节保留的是当时报名表里填的内容；「状态」列是当时的核对结果，不再更新。
+> 产品此后继续演进，最新形态见下一节与 `https://celo.manekiai.io/hackathon`。
+
+| 字段 | 当时填的值 | 当时状态 |
 |---|---|---|
-| Project | ManekiAI — ask an on-chain analyst, or pay an agent to watch your market for you (identified on Celo) | ✓（2026-09-19 按 v2 双入口更新）|
-| Public GitHub | https://github.com/OneHaydenZhang/ManekiAI-Celo | ✓ Public（2026-09-13 切回）。仓库只含黑客松新增代码（`celo/` 包 + Celo/x402 测试 + 本文档），不含宿主私有代码 |
+| Project | ManekiAI — ask an on-chain analyst, or pay an agent to watch your market for you (identified on Celo) | ✓ |
+| Public GitHub | https://github.com/OneHaydenZhang/ManekiAI-Celo | ✓ 公开。只含 Celo 层（`celo/` 包 + Celo/x402 测试 + 本文档），不含宿主私有代码；2026-09-20 起这也是本账号**唯一**公开的仓库 |
 | ERC-8004 Agent ID（平台 Analyst） | `#9837`（Celo Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`，注册 tx [`0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f`](https://celoscan.io/tx/0x47530979efdfe12fd676bce859704c7065131c2a0913c2b9c3a41a72e8f4895f)） | ✓ 已铸造 |
 | Agent 钱包地址 | 收款/x402 payTo：`0x26523f5cea5da5d9411749afefe741ba340f6566`（只收款）；注册钱包（付 gas）：`0xaf6fA147e8F85781196627765FcaFC1044F89308` | ✓ |
 | Telegram handle | 已由负责人在报名表填写（不在此记录） | ✓ |
@@ -16,6 +20,14 @@
 | Secondary（一句话） | Stablecoin Adoption — Gas top-ups in USDC/USD₮/USDm/USA₮ on Celo + every Arena purchase is an x402 settlement in USDC; Judges' Favorite — ERC-8004 identity × x402 revenue share = agents that earn for their owners | ✓（报名表所填，与 /hackathon 第 5 节一致） |
 | Distribution channel | Existing audience (manekiai.io users, X) + the public login-free Arena for the Celo community | ✓ |
 | Demo | **指南/证明/动线：https://celo.manekiai.io/hackathon** · Arena（双入口）https://celo.manekiai.io/arena · https://celo.manekiai.io/api/agent-card/maneki-analyst · https://celo.manekiai.io/api/x402/activity | ✓ 在线（桌面浏览器钱包可用；移动端 MiniPay 需 HTTPS，暂不可用） |
+
+## 现在实际在跑的（截至 2026-09-21）
+
+- **站点**：`https://celo.manekiai.io`（自有域名 + HTTPS，只服务 Celo 产品；主站与虚拟盘在这个域名下都不可达）。主站 manekiai.io 顶部有一个单向入口指过来。
+- **两个入口**：付费咨询（$0.02 一问 / $0.01 简报）与创建 Agent（按检查次数付费运行，$0.02–$3.84 一次付清）。
+- **两种付法**：USDC / USA₮ 走 x402（签一次、不花 gas），或**直接用 CELO 转账付**（`native_pay.py`，汇率取自 Celo 上的 Uniswap 池）。手里只有 CELO 也可以在页面内直接换成 USDC。
+- **交付可核验**：买家可以把跑完的运行公开成只读链接 `/r/<id>`，任何人都能打开读 Agent 实际写了什么。
+- **已经真实结算**：2026-09-19 起有真实付款产生，实时数字（笔数 / 独立钱包 / 金额 / 按天 / 已交付报告 / 公开样本）见 `https://celo.manekiai.io/api/x402/activity`，页面版在 `/hackathon` 第 2 节。本文档不抄录数字，抄下来第二天就过期了。
 
 ## 2026-09-19 产品调整（v2 · 双入口）
 
