@@ -30,6 +30,7 @@ def _clean(monkeypatch):
         db.execute(f"DELETE FROM {t}")
     x402.ensure_schema()
     db.execute("DELETE FROM x402_payments")
+    db.execute("DELETE FROM x402_receipts")
     monkeypatch.setattr(service_config, "_admin_setting", lambda k: "")
     monkeypatch.setenv("CELO_TREASURY_ADDRESS", TREASURY)
     monkeypatch.setenv("X402_API_KEY", "test-key")
