@@ -71,7 +71,6 @@
     <div class="brand"><span class="logo"></span>Maneki AI <span class="celo-tag">⚡ Celo · Agents at Work</span></div>
     <div class="nav">
       <span class="lang" id="langToggle">English</span>
-      <a class="btn ghost sm" href="/" id="navApp" data-t="navApp">主站</a>
       <a class="btn sm" href="/arena" data-t="navArena">打开 Arena</a>
       <a class="btn ghost sm" id="navRepo" href="https://github.com/OneHaydenZhang/ManekiAI-Celo" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
@@ -127,9 +126,9 @@ group by 1 order by 1`;
     zh: {
       navApp: '主站', navAppPreview: (h) => `主站（预览机 ${h}）`, navArena: '打开 Arena', h1: 'ManekiAI · 体验动线与实时数据',
       lede: '这一页只讲两件事：怎么一步一步体验，以及此刻真实发生了什么。所有数字都是从本服务器的公开接口实时读的。',
-      envNote: (h) => `⚠ 本页、Arena 以及下面所有「主站 / Agent 中心」按钮都指向当前预览机 ${h}，不是 manekiai.io 生产站：生产站暂无 Arena / Celo 功能，两边的钱包账号、Agent 与燃料账本互不相通。动线 A / C / D 请在本机重新钱包登录，并使用本机的 Agent；D 步充入的 USDC 记到本机账本。所有购买与充值都是 Celo 主网真实 USDC（购买 $0.01–0.05 / 次）。`,
+      envNote: (h) => `⚠ 这里的每一笔付款都是 Celo 主网上真实的 USDC / CELO（单笔 $0.01–$3.84），不是测试币。本站只提供 Celo 相关功能。`,
       s0: '现在的状态（实时）', s1: '黑客松要求速览', s2: '我们的产物与证明（点击即可打开）', s3: '体验动线（一步一步）',
-      s3lede: '推荐顺序：A 问一次（$0.02）→ B 配置并付费运行一个 Agent（核心）→ C 回来看结果 / 找回 / 停止 → D 充燃料。每一步下面都写了「观测什么」。', s4: '实时数据', s5: '报名 / 提交材料一览',
+      s3lede: '推荐顺序：A 问一次（$0.02）→ B 配置并付费运行一个 Agent（核心）→ C 回来看结果 / 找回 / 停止。每一步下面都写了「观测什么」。', s4: '实时数据', s5: '报名 / 提交材料一览',
       foot: '本页与 Arena 只读公开接口，不持有任何私钥。市场内容仅供参考，不构成投资建议。预览机为纯 HTTP：桌面浏览器插件钱包可用，MiniPay / 手机深链需 HTTPS。',
       // status
       stReg: 'ERC-8004 链上身份', stRegSub: (n) => `平台 Analyst + ${n} 个 Agent 已在 Celo 主网注册`, stRegNone: '尚未注册',
@@ -173,11 +172,6 @@ group by 1 order by 1`;
       jCs: ['Arena →「我的记录」→「我的 Agent」页签：每张卡显示进度、最新报告、支付凭证', '报告多于 1 份时点「全部报告」展开历史（按检查序号倒序）', '换设备 / 清缓存：点「用钱包找回」→ 钱包弹出一条纯文本签名（不是交易、不花 gas）→ 任务回到列表', '想提前结束：点「停止」→ 弹窗写明「剩余未执行的部分不退款」→ 确认后状态变「已停止」'],
       jCw: '观测：运行中的任务每 60 秒自动刷新进度；跑满次数后状态变「已完成」，所有报告留在卡片里（记录不删除）。找回用的签名文案带时间戳、10 分钟内有效，且只能列出这个钱包自己付过款的任务。',
       jCgo: '打开我的记录 →',
-      jD: 'D · 用 Celo 稳定币给 Agent 充燃料',
-      jDpre: '需要：主站钱包登录（本预览机独立账号，manekiai.io 上的 Agent 不会出现在这里）；同一个钱包在 Celo 上有 USDC（或 USD₮ / USDm / USA₮），并且有 ≥ 0.05 CELO 付 gas（一笔 ERC-20 转账约 0.01–0.02 CELO；主站充值界面目前不会提醒这点，缺 CELO 时钱包会直接报 insufficient funds）。获取 CELO：点右侧「用 Jumper 获取 CELO」，或从交易所按 Celo 网络提 CELO。D 是五条动线里唯一需要 CELO 的一步。必须用登录的那个钱包转，从交易所直接提币到金库不会入账。',
-      jDs: ['Agent 中心 → 「⚡ Agent 燃料」卡右侧充值区：链选「Celo」、币种选「USDC」', '点档位「+1,000」（或自定义）→ 弹窗「确认充值」', '钱包切到 Celo → 签一笔 ERC-20 转账（这一步付 CELO gas）', '等 12–60 秒自动到账；或点「已转账 · 刷新」'],
-      jDw: '观测：燃料余额变大、右上 toast「+999 燃料」（预设 1,000 实际入账 999，是已知的差 1）；「充值与奖励」页签出现一行「充值」带 Celoscan 链接；本页「Celo 稳定币充值」+1；金库地址的代币转账页多一笔。',
-      jDgo: '去 Agent 中心 →', jDcelo: '用 Jumper 获取 CELO ↗',
       // live
       liveUpd: '更新于', liveFail: '活动数据暂时不可用', kSettled: '已结算购买', kPayers: '独立付款人', kReturning: '回头付款人', kUsd: 'USDC / USA₮ 成交额', kDeposits: 'Celo 充值', kSenders: '充值发送方', kRegs: '已注册 Agent',
       thWhen: '时间', thProduct: '产品', thAmount: '金额', thPayer: '付款人', thAgent: 'Agent', thTx: '交易', recentH: '最近结算', recentNone: '暂无结算。做一次动线 B，这里就会出现第一行。',
@@ -203,9 +197,9 @@ group by 1 order by 1`;
     en: {
       navApp: 'App', navAppPreview: (h) => `App (preview host ${h})`, navArena: 'Open the Arena', h1: 'ManekiAI — journeys and live data',
       lede: 'Two things only: how to try it, step by step, and what is actually happening right now. Every number is read live from this server’s public endpoints.',
-      envNote: (h) => `⚠ This page, the Arena and every “App / Agents” button below point at the preview host ${h}, not manekiai.io: production has no Arena / Celo features yet, and wallet accounts, agents and Gas ledgers are not shared between the two. For journeys A / C / D sign in again here and use this host’s agents; a journey-D top-up credits this host’s ledger. All purchases and top-ups are real USDC on Celo mainnet ($0.01–0.05 per purchase).`,
+      envNote: (h) => `⚠ Every payment here is real USDC / CELO on Celo mainnet ($0.01–$3.84 per order), not test money. This site serves the Celo features only.`,
       s0: 'Status right now (live)', s1: 'Hackathon requirements at a glance', s2: 'What we built and the proofs (click to open)', s3: 'Journeys, step by step',
-      s3lede: 'Suggested order: A ask once ($0.02) → B configure and pay an agent to run (the core) → C come back for results / restore / stop → D top-up. Every step says what to look at.',
+      s3lede: 'Suggested order: A ask once ($0.02) → B configure and pay an agent to run (the core) → C come back for results / restore / stop. Every step says what to look at.',
       foot: 'This page and the Arena only read public endpoints and hold no keys. Market content is for information only, not financial advice. The preview host is plain HTTP: desktop browser wallets work, MiniPay / mobile deep links need HTTPS.',
       stReg: 'ERC-8004 identity', stRegSub: (n) => `Platform Analyst + ${n} agents registered on Celo mainnet`, stRegNone: 'not registered yet',
       stLoading: 'loading…', stApiDown: 'endpoints unavailable right now; static facts shown',
@@ -245,11 +239,6 @@ group by 1 order by 1`;
       jCs: ['Arena → “My records” → “My agents”: each card shows progress, the latest report and the payment receipt', 'More than one report? Click “All reports” to expand the history (newest check first)', 'New device / cleared cache: click “Restore with my wallet” → the wallet shows a plain-text signature (not a transaction, no gas) → the runs come back', 'Want it to end now: click “Stop” → the dialog states that the part which has not run is not refunded → confirm and the state becomes “Stopped”'],
       jCw: 'Observe: a running task refreshes itself once a minute; when the paid checks are used up the state becomes “Completed” and every report stays on the card (records are never deleted). The restore message carries a timestamp, is valid for 10 minutes, and only ever lists runs this wallet paid for.',
       jCgo: 'Open my records →',
-      jD: 'D · Top up agent Gas with Celo stablecoins',
-      jDpre: 'Needs: app wallet login (this preview host has its own accounts — agents from manekiai.io do not appear here); the same wallet holds USDC (or USD₮ / USDm / USA₮) on Celo plus ≥ 0.05 CELO for gas (one ERC-20 transfer costs ≈ 0.01–0.02 CELO; the app’s top-up card does not warn about this — without CELO the wallet fails with “insufficient funds”). Get CELO: “Get CELO with Jumper” on the right, or withdraw CELO from an exchange on the Celo network. D is the only journey that needs CELO. Send from the signed-in wallet — an exchange withdrawal straight to the treasury is not credited.',
-      jDs: ['Agents → the “⚡ Agent Gas” card, top-up area: chain “Celo”, token “USDC”', 'Click the “+1,000” preset (or a custom amount) → “Confirm top-up” dialog', 'The wallet switches to Celo → sign one ERC-20 transfer (this step pays CELO gas)', 'Wait 12–60 s for automatic credit, or click “I sent it · refresh”'],
-      jDw: 'Observe: the Gas balance grows and a toast shows “+999 Gas” (the 1,000 preset credits 999 — a known off-by-one); the “Top-ups & rewards” tab gains a “Top-up” row with a Celoscan link; “Celo stablecoin top-ups” on this page +1; the treasury’s token-transfer page gains one transfer.',
-      jDgo: 'Go to Agents →', jDcelo: 'Get CELO with Jumper ↗',
       liveUpd: 'updated', liveFail: 'Activity feed unavailable right now', kSettled: 'Settled purchases', kPayers: 'Distinct payers', kReturning: 'Returning payers', kUsd: 'USDC / USA₮ volume', kDeposits: 'Celo top-ups', kSenders: 'Top-up senders', kRegs: 'Agents registered',
       thWhen: 'When', thProduct: 'Product', thAmount: 'Amount', thPayer: 'Payer', thAgent: 'Agent', thTx: 'Tx', recentH: 'Most recent settlements', recentNone: 'No settlements yet. Run journey B once and the first row appears here.',
       prod: { insight: 'Agent insight (retired)', chat: 'Ask', brief: 'Symbol brief', task_monitor: 'Agent run · monitoring', task_research: 'Agent run · research' },
@@ -306,8 +295,7 @@ group by 1 order by 1`;
     $('#journeys').innerHTML =
       role('jA', btnSame('/arena', t('jAgo')) + btnSame('/arena', t('jAswap')) + btn(JUMPER, t('jAusdc'), true)) +
       role('jB', btnSame('/arena', t('jBgo')) + btnSame('/arena', t('jBswap')) + btn(JUMPER, t('jBusdc'), true)) +
-      role('jC', btnSame('/arena#records', t('jCgo'))) +
-      role('jD', btnSame('/#agent', t('jDgo')) + btn(JUMPER_CELO, t('jDcelo'), true));
+      role('jC', btnSame('/arena#records', t('jCgo')));
   }
 
   function renderLive() {

@@ -8,12 +8,12 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Maneki AI — ask, or put an agent to work">
 <meta property="og:description" content="Ask ManekiAI a market question for cents, or configure an agent that watches your market for you and reports back. Paid in USDC on Celo over x402 — no login, no exchange keys.">
-<meta property="og:image" content="https://manekiai.io/maneki-mascot.png">
-<meta property="og:url" content="https://manekiai.io/arena">
+<meta property="og:image" content="https://celo.manekiai.io/maneki-mascot.png">
+<meta property="og:url" content="https://celo.manekiai.io/arena">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Maneki AI — ask, or put an agent to work">
 <meta name="twitter:description" content="Ask a market question for cents, or pay an agent to watch your market and report back. USDC on Celo, x402, no login.">
-<meta name="twitter:image" content="https://manekiai.io/maneki-mascot.png">
+<meta name="twitter:image" content="https://celo.manekiai.io/maneki-mascot.png">
 <link rel="icon" href="/maneki-icon.png">
 <link rel="stylesheet" href="/app.css">
 <style>/* Match the existing Maneki product dark theme. */
@@ -167,7 +167,6 @@
     "getUsdc1": "Bridge or swap from any chain with Jumper (LI.FI) — prefilled to USDC on Celo →",
     "getUsdc2": "Withdraw USDC or USDT to the Celo network from an exchange (Binance, OKX, Bybit, Coinbase…).",
     "getUsdc3": "Check your wallet’s Celo balance; opening MiniPay does not add funds.",
-    "getUsdc4": "Or use the app’s own bridge: manekiai.io → Settings → “Get USDC on Celo” →",
     "close": "close",
     "purchases": "Saved consultations & purchases",
     "reread": "read again",
@@ -393,7 +392,6 @@
     "getUsdc1": "用 Jumper（LI.FI）从任意链跨链/兑换——已预填为 Celo USDC →",
     "getUsdc2": "从交易所（Binance、OKX、Bybit、Coinbase…）把 USDC 或 USDT 提现到 Celo 网络。",
     "getUsdc3": "先检查钱包中的 Celo 代币余额，打开 MiniPay 不会自动获得资金。",
-    "getUsdc4": "或使用应用内置的桥：manekiai.io → 设置 → 「获取 Celo USDC」→",
     "close": "关闭",
     "purchases": "已保存的咨询与购买",
     "reread": "再看一次",
@@ -618,7 +616,6 @@
   const SWAP_CELO = 'https://app.uniswap.org/swap?chain=celo&inputCurrency=ETH&outputCurrency=' + USDC_ADDR;
   // Relative to wherever THIS page is actually served (preview box, prod,
   // local run) — a hardcoded production domain would 404 on every other host.
-  const APP_BRIDGE = location.origin + '/#settings';
   const ACTIONS = { user_close: ['Closed by owner', '用户已平仓'], open_long: ['open long', '开多'], open_short: ['open short', '开空'], close: ['close', '平仓'], close_long: ['close long', '平多'], close_short: ['close short', '平空'],
                     hold: ['hold', '观望'], add: ['add', '加仓'], reduce: ['reduce', '减仓'], wait: ['wait', '等待'] };
   const actionLabel = (a) => { const k = String(a || '').toLowerCase(); const m = ACTIONS[k]; return m ? (LANG === 'zh' ? m[1] : m[0]) : k.replace(/_/g, ' '); };
@@ -954,7 +951,7 @@
       <div>· <a href="${JUMPER}" target="_blank" rel="noopener">${t('getUsdc1')}</a></div>
       <div>· ${t('getUsdc2')}</div>
       <div>· ${t('getUsdc3')}</div>
-      <div>· <a href="${APP_BRIDGE}" target="_blank" rel="noopener">${t('getUsdc4')}</a></div>`;
+`;
     $('#getUsdcClose').onclick = () => { box.hidden = true; };
     $('#swapIn').oninput = () => { clearTimeout(renderSwapQuote._t); renderSwapQuote._t = setTimeout(renderSwapQuote, 350); };
     $('#swapMax').onclick = () => { $('#swapIn').value = $('#swapMax').dataset.amt || ''; renderSwapQuote(); };
