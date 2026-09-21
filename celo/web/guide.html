@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ManekiAI — journeys and live data</title>
-<meta name="description" content="What the Celo “Agents at Work” hackathon asks for, what ManekiAI built, where every on-chain proof lives, and the step-by-step journeys to try it — with live counters." />
+<title>ManekiAI — journeys and on-chain payment records</title>
+<meta name="description" content="How to try ManekiAI on Celo, step by step, and every payment it has settled on-chain: when, which wallet, how much, what it bought." />
 <meta name="robots" content="noindex" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
@@ -22,7 +22,7 @@
   h2{font-size:19px;margin:34px 0 10px;display:flex;align-items:center;gap:10px}
   h2 .n{display:inline-flex;width:26px;height:26px;border-radius:8px;background:#fcff52;color:#171a12;font-size:13px;font-weight:900;align-items:center;justify-content:center}
   .lede{color:var(--muted);line-height:1.65;margin:0 0 6px;max-width:900px}
-  .envnote{margin:10px 0 0;padding:10px 14px;border-radius:12px;border:1px solid #e2b33c;background:rgba(226,179,60,.08);font-size:13px;line-height:1.6;max-width:1000px}
+  .chain{margin:8px 0 0;font-size:13px;color:var(--muted)}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(215px,100%),1fr));gap:10px}
   .card{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--card,#15181d)}
   .card h4{margin:0 0 6px;font-size:13.5px;color:var(--muted);font-weight:600}
@@ -81,9 +81,8 @@
     </div>
   </div>
 
-  <h1 data-t="h1">ManekiAI · 体验动线与实时数据</h1>
-  <p class="lede" data-t="lede">这一页给产品 / 运营 / 评审看：黑客松要什么、我们做了什么、每一项链上证明在哪里点开、以及一步一步怎么体验。所有数字都是从本服务器的公开接口实时读的。</p>
-  <div class="envnote" id="envNote" hidden></div>
+  <h1 data-t="h1">ManekiAI · 体验动线与链上支付记录</h1>
+  <div class="chain" data-t="chain"></div>
   <h2><span class="n">1</span><span data-t="s3">体验动线（一步一步）</span></h2>
   <p class="lede" data-t="s3lede"></p>
   <div class="steps" id="journeys"></div>
@@ -114,8 +113,7 @@
   const I18N = {
     zh: {
       navArena: '打开 Arena', h1: 'ManekiAI · 体验动线与链上支付记录',
-      lede: '这一页只讲两件事：怎么一步一步体验，以及此刻真实发生了什么。所有数字都是从本服务器的公开接口实时读的。',
-      envNote: (h) => `⚠ 这里的每一笔付款都是 Celo 主网上真实的 USDC / CELO（单笔 $0.01–$3.84），不是测试币。本站只提供 Celo 相关功能。`, s3: '体验动线（一步一步）',
+      chain: 'Celo 主网 · 链 42220', s3: '体验动线（一步一步）',
       s3lede: '推荐顺序：A 问一次（$0.02）→ B 配置并付费运行一个 Agent（核心）→ C 回来看结果 / 找回 / 停止。每一步下面都写了「观测什么」。', s4: '链上支付记录',
       foot: '本页与 Arena 只读公开接口，不持有任何私钥。市场内容仅供参考，不构成投资建议。预览机为纯 HTTP：桌面浏览器插件钱包可用，MiniPay / 手机深链需 HTTPS。',
       // status
@@ -188,8 +186,7 @@
     },
     en: {
       navArena: 'Open the Arena', h1: 'ManekiAI — journeys and on-chain payment records',
-      lede: 'Two things only: how to try it, step by step, and what is actually happening right now. Every number is read live from this server’s public endpoints.',
-      envNote: (h) => `⚠ Every payment here is real USDC / CELO on Celo mainnet ($0.01–$3.84 per order), not test money. This site serves the Celo features only.`, s3: 'Journeys, step by step', s4: 'On-chain payment records',
+      chain: 'Celo mainnet · chain 42220', s3: 'Journeys, step by step', s4: 'On-chain payment records',
       s3lede: 'Suggested order: A ask once ($0.02) → B configure and pay an agent to run (the core) → C come back for results / restore / stop. Every step says what to look at.',
       foot: 'This page and the Arena only read public endpoints and hold no keys. Market content is for information only, not financial advice. The preview host is plain HTTP: desktop browser wallets work, MiniPay / mobile deep links need HTTPS.',
       stLoading: 'loading…',
@@ -257,30 +254,18 @@
   // "Go to Agents"; never override a choice the reader already made there.
   try { if (!localStorage.getItem('vectora-lang')) localStorage.setItem('vectora-lang', LANG); } catch (_) {}
   const t = (k) => (I18N[LANG] && I18N[LANG][k] != null ? I18N[LANG][k] : I18N.zh[k]);
-  let CFG = null, ACT = null, ENV = null, LOADED = false;
+  let CFG = null, ACT = null, LOADED = false;
   const scanTx = (h) => `${K.scan}/tx/${h}`;
   const short = (a) => (a && a.length > 12 ? a.slice(0, 6) + '…' + a.slice(-4) : a || '');
   const btn = (href, label, ghost) => `<a class="btn sm${ghost ? ' ghost' : ''}" href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
   const btnSame = (href, label, ghost) => `<a class="btn sm${ghost ? ' ghost' : ''}" href="${esc(href)}">${esc(label)}</a>`;
-  const isPreview = () => !!(ENV && ENV.env === 'paper');
 
   function renderStatic() {
     document.documentElement.lang = LANG;
     document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
     $('#langToggle').textContent = LANG === 'zh' ? 'English' : '中文';
     document.title = t('h1');
-    renderEnv();
     renderJourneys(); renderLive();
-  }
-
-  function renderEnv() {
-    // Same signal the host app uses for its "preview box" strip (/api/version env=paper).
-    // The nav stopped linking into the trading app (this site stands alone), so
-    // the only thing left to label is the strip itself.
-    const note = $('#envNote');
-    if (!note) return;
-    note.hidden = !isPreview();
-    if (isPreview()) note.textContent = t('envNote')(location.host);
   }
 
   function renderJourneys() {
@@ -371,13 +356,12 @@
 
   async function getJson(url) { try { const r = await fetch(url, { cache: 'no-store' }); return r.ok ? await r.json() : null; } catch (_) { return null; } }
   async function load(first) {
-    const [cfg, act, ver] = await Promise.all([
-      first ? getJson('/api/x402/config') : Promise.resolve(CFG), getJson('/api/x402/activity'),
-      first ? getJson('/api/version') : Promise.resolve(ENV)]);
-    if (cfg) CFG = cfg; if (act) ACT = act; if (ver) ENV = ver;
+    const [cfg, act] = await Promise.all([
+      first ? getJson('/api/x402/config') : Promise.resolve(CFG), getJson('/api/x402/activity')]);
+    if (cfg) CFG = cfg; if (act) ACT = act;
     LOADED = true;
     if (first && CFG && CFG.links && CFG.links.repo) $('#navRepo').href = CFG.links.repo;
-    renderEnv(); renderLive();
+    renderLive();
   }
   $('#langToggle').onclick = () => { LANG = LANG === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('arena_lang', LANG); localStorage.setItem('vectora-lang', LANG); } catch (_) {} renderStatic(); };
   renderStatic();
