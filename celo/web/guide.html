@@ -135,7 +135,7 @@ group by 1 order by 1`;
 
   const I18N = {
     zh: {
-      navApp: '主站', navAppPreview: (h) => `主站（预览机 ${h}）`, navArena: '打开 Arena', h1: 'ManekiAI · 体验动线与实时数据',
+      navArena: '打开 Arena', h1: 'ManekiAI · 体验动线与实时数据',
       lede: '这一页只讲两件事：怎么一步一步体验，以及此刻真实发生了什么。所有数字都是从本服务器的公开接口实时读的。',
       envNote: (h) => `⚠ 这里的每一笔付款都是 Celo 主网上真实的 USDC / CELO（单笔 $0.01–$3.84），不是测试币。本站只提供 Celo 相关功能。`,
       s0: '现在的状态（实时）', s1: '黑客松要求速览', s2: '我们的产物与证明（点击即可打开）', s3: '体验动线（一步一步）',
@@ -248,7 +248,7 @@ group by 1 order by 1`;
       left: (h, m) => `${h} 小时 ${m} 分`,
     },
     en: {
-      navApp: 'App', navAppPreview: (h) => `App (preview host ${h})`, navArena: 'Open the Arena', h1: 'ManekiAI — journeys and live data',
+      navArena: 'Open the Arena', h1: 'ManekiAI — journeys and live data',
       lede: 'Two things only: how to try it, step by step, and what is actually happening right now. Every number is read live from this server’s public endpoints.',
       envNote: (h) => `⚠ Every payment here is real USDC / CELO on Celo mainnet ($0.01–$3.84 per order), not test money. This site serves the Celo features only.`,
       s0: 'Status right now (live)', s1: 'Hackathon requirements at a glance', s2: 'What we built and the proofs (click to open)', s3: 'Journeys, step by step', s4: 'Live data',
@@ -380,9 +380,12 @@ group by 1 order by 1`;
 
   function renderEnv() {
     // Same signal the host app uses for its "preview box" strip (/api/version env=paper).
-    const note = $('#envNote'), nav = $('#navApp');
-    if (isPreview()) { note.hidden = false; note.textContent = t('envNote')(location.host); nav.textContent = t('navAppPreview')(location.host); }
-    else { note.hidden = true; nav.textContent = t('navApp'); }
+    // The nav stopped linking into the trading app (this site stands alone), so
+    // the only thing left to label is the strip itself.
+    const note = $('#envNote');
+    if (!note) return;
+    note.hidden = !isPreview();
+    if (isPreview()) note.textContent = t('envNote')(location.host);
   }
 
   function renderJourneys() {
