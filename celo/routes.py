@@ -420,6 +420,21 @@ async def x402_activity() -> Dict[str, Any]:
     except Exception as e:
         oplog.error("x402.activity_celo_pay", repr(e)[:200])
     try:
+        # Two payment lanes, one public log: x402 settlements and paid-in-CELO
+        # orders are the same purchases and belong in the same list, each row
+        # carrying which asset the money actually moved in.
+        mine = await asyncio.to_thread(x402.operator_wallets)
+        cel = await asyncio.to_thread(native_pay.recent, 30)
+        rows = list(val.get("recent") or []) + [
+            {"ts": r["ts"], "product": r["product"], "amount_usd": r["amount_usd"],
+             "asset": "CELO", "tx": r["tx"], "explorer": x402.CHAIN["explorer_tx"] + r["tx"],
+             "payer_short": x402._short_addr(r["payer"]), "team": r["payer"] in mine,
+             "agent_code": ""} for r in cel]
+        rows.sort(key=lambda r: -float(r.get("ts") or 0))
+        val["recent"] = rows[:30]
+    except Exception as e:
+        oplog.error("x402.activity_celo_recent", repr(e)[:200])
+    try:
         # The same purchases, grouped the way this lane is judged: wallets that
         # are not ours counted apart from our own testing, plus which asset the
         # money moved in. Paying in CELO is its own lane, so it is appended here.

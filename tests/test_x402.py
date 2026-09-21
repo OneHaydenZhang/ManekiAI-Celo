@@ -16,7 +16,7 @@ from tests.test_points_v1 import _TMP  # noqa: F401 — temp-DB bootstrap
 from auto_service import db, service_config
 from auto_service.models import agent_model, points_model, trade_model
 from auto_service.services import chat_service
-from auto_service.celo import x402, routes as celo_routes
+from auto_service.celo import native_pay, x402, routes as celo_routes
 
 TREASURY = "0x26523f5cea5da5d9411749afefe741ba340f6566"
 PAYER = "0x857b06519e91e3a54538791bdbb0e22373e36b66"
@@ -29,8 +29,12 @@ def _clean(monkeypatch):
               "notifications", "admin_settings"):
         db.execute(f"DELETE FROM {t}")
     x402.ensure_schema()
+    native_pay.ensure_schema()
     db.execute("DELETE FROM x402_payments")
     db.execute("DELETE FROM x402_receipts")
+    # /activity now merges the paid-in-CELO lane, so its table has to be clean
+    # here too or another module's orders show up in this module's log.
+    db.execute("DELETE FROM celo_orders")
     monkeypatch.setattr(service_config, "_admin_setting", lambda k: "")
     monkeypatch.setenv("CELO_TREASURY_ADDRESS", TREASURY)
     monkeypatch.setenv("X402_API_KEY", "test-key")
@@ -525,8 +529,15 @@ def test_activity_is_public_safe_and_excludes_operator(client, monkeypatch):
     blob = json.dumps(d)
     assert "9.9.9.9" not in blob and PAYER not in blob and OWNER not in blob and "meta_json" not in blob
     assert d["summary"]["settled"] == 1 and d["summary"]["payers"] == 1
-    assert [x["tx"] for x in d["recent"]] == ["0xreal1"] and d["recent"][0]["payer_short"] == "0x857b…6b66"
-    assert d["recent"][0]["agent_code"] == agent_model.agent_code("ag_act")
+    # 2026-09-21: the totals still leave our own wallets out, but the list shows
+    # every settlement — hiding ours made the log disagree with the chain. Our
+    # rows are flagged instead, so nobody can read them as usage.
+    # (The test name kept "excludes_operator" because that is still true of the
+    # counted numbers; only the list changed.)
+    assert [x["tx"] for x in d["recent"]] == ["0xoperator", "0xreal1"]
+    assert [x["team"] for x in d["recent"]] == [True, False]
+    assert d["recent"][1]["payer_short"] == "0x857b…6b66"
+    assert d["recent"][1]["agent_code"] == agent_model.agent_code("ag_act")
     assert d["registrations"]["platform"]["agentId"] == 4242 and d["registrations"]["count"] == 1
     assert d["registrations"]["agents"][0]["celo_agent_id"] == 5150
     assert d["wallets"]["pay_to"] == TREASURY and d["links"]["repo"].startswith("https://github.com/")

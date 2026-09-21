@@ -215,6 +215,7 @@ group by 1 order by 1`;
       nowCelo: (n, u) => `其中用 CELO 直接付款 ${n} 笔（$${u}）`,
       nowDeposits: (n, s) => `Celo 稳定币充值 ${n} 笔 / ${s} 个发送方`,
       nowRate: (r) => `当前 CELO 报价 $${r}`,
+      teamTag: '团队', nowTeam: (n) => `另有 ${n} 笔是我们自己的测试（不计分，下表标「团队」）`,
       scoreH: '按赛事口径计分（外部钱包才算数，团队自测单列）',
       scoreNone: '还没有成交，所以没有可计分的记录。',
       byProductH: '买了什么', byAssetH: '用什么付的',
@@ -323,6 +324,7 @@ group by 1 order by 1`;
       nowCelo: (n, u) => `${n} of them paid in CELO ($${u})`,
       nowDeposits: (n, s) => `${n} stablecoin top-ups from ${s} senders`,
       nowRate: (r) => `CELO quoted at $${r}`,
+      teamTag: 'ours', nowTeam: (n) => `plus ${n} of our own test payments (not counted; marked “ours” below)`,
       scoreH: 'Scored the way the rules count it (only wallets that are not ours)',
       scoreNone: 'Nothing has settled, so there is nothing to score yet.',
       byProductH: 'What was bought', byAssetH: 'What it was paid in',
@@ -432,6 +434,8 @@ group by 1 order by 1`;
     if (+cp.orders > 0) bits.push(t('nowCelo')(+cp.orders, (+cp.usd || 0).toFixed(2)));
     if (+dep.count > 0) bits.push(t('nowDeposits')(+dep.count, +dep.senders || 0));
     if (+cp.rate_usd > 0) bits.push(t('nowRate')((+cp.rate_usd).toFixed(6)));
+    const teamN = +((ACT.scoreboard || {}).team || {}).settled || 0;
+    if (teamN) bits.push(t('nowTeam')(teamN));
     now.innerHTML = esc((+sm.settled || 0) ? bits.join(' · ') : t('liveEmpty'));
 
     // The rules count wallets that are not ours, so the two are never blended:
@@ -470,7 +474,7 @@ group by 1 order by 1`;
     const prodLabel = (p) => ((t('prod') || {})[p]) || p || '—';
     $('#recent').innerHTML = `<tr><th colspan="6">${esc(t('recentH'))}</th></tr>` + (rec.length
       ? `<tr><th>${esc(t('thWhen'))}</th><th>${esc(t('thProduct'))}</th><th>${esc(t('thAmount'))}</th><th>${esc(t('thPayer'))}</th><th>${esc(t('thAgent'))}</th><th>${esc(t('thTx'))}</th></tr>` +
-        rec.map((r) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+r.ts || 0)))))}</td><td>${esc(prodLabel(r.product))}</td><td>$${(+r.amount_usd || 0).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td class="mono">${r.payer_short ? (r.payer_url ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.payer_url)}">${esc(r.payer_short)} ↗</a>` : esc(r.payer_short)) : '—'}</td><td>${esc(r.agent_code || '—')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')
+        rec.map((r) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+r.ts || 0)))))}</td><td>${esc(prodLabel(r.product))}</td><td>$${(+r.amount_usd || 0).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td class="mono">${esc(r.payer_short || '—')}${r.team ? ` <span class="tiny mut">${esc(t('teamTag'))}</span>` : ''}</td><td>${esc(r.agent_code || '—')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')
       : `<tr><td class="tiny">${esc(t('recentNone'))}</td></tr>`);
 
     // Adoption over time, the shape nobody can massage: one row per day.

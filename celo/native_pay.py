@@ -456,6 +456,19 @@ def summary() -> Dict[str, Any]:
             "rate_usd": round(float(_price_cache.get("usd") or 0), 6)}
 
 
+def recent(limit: int = 30) -> List[Dict[str, Any]]:
+    """Paid-in-CELO settlements, in the same shape x402.activity() uses for its
+    list. Two lanes pay for the same products, so the public log has to show
+    both — otherwise a CELO payment happens on-chain and appears nowhere."""
+    ensure_schema()
+    rows = db.query_all(
+        "SELECT paid_at, created_at, product, amount_usd, tx, payer FROM celo_orders "
+        "WHERE status IN ('paid','delivered') AND tx<>'' ORDER BY id DESC LIMIT ?", (int(limit),))
+    return [{"ts": float(r["paid_at"] or r["created_at"] or 0), "product": r["product"],
+             "amount_usd": round(float(r["amount_usd"] or 0), 4), "asset": "CELO",
+             "tx": r["tx"], "payer": (r["payer"] or "").lower()} for r in rows]
+
+
 def public_config() -> Dict[str, Any]:
     cfg: Dict[str, Any] = {
         "enabled": enabled(), "pay_to": pay_to(), "token_contract": CELO_TOKEN,

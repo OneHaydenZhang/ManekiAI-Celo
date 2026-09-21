@@ -792,23 +792,26 @@ def _short_addr(a: str) -> str:
 def activity() -> Dict[str, Any]:
     """PUBLIC proof of on-chain activity — totals, recent settlements, the
     registrations and the deposit lane's distinct senders. Never an IP, a
-    full payer address, meta_json or an owner address. Operator wallets are
-    excluded (builder activity does not count and must not look like usage)."""
+    full payer address, meta_json or an owner address. The TOTALS exclude our
+    own wallets (builder activity does not count and must not look like usage);
+    the settlement LIST still shows them, flagged `team`, because hiding our own
+    payments would make the log disagree with the chain."""
     from ..models import agent_model
     from . import agentid
     ensure_schema()
-    cl, params = _op_clause(True)
     rows = db.query_all(
-        "SELECT ts, product, amount_usd, asset, tx, agent_id FROM x402_payments "
-        f"WHERE status='settled' AND tx<>''{cl} ORDER BY id DESC LIMIT 20", params)
+        "SELECT ts, product, amount_usd, asset, tx, agent_id, payer FROM x402_payments "
+        "WHERE status='settled' AND tx<>'' ORDER BY id DESC LIMIT 30")
+    mine = operator_wallets()
     recent_rows = []
     for r in rows:
-        payer = db.query_one("SELECT payer FROM x402_payments WHERE tx=? LIMIT 1", (r["tx"],)) or {}
+        payer = (r.get("payer") or "").lower()
         recent_rows.append({
             "ts": r["ts"], "product": r["product"], "amount_usd": round(float(r["amount_usd"] or 0), 4),
             "asset": asset_symbol(r.get("asset") or "") or "USDC",
             "tx": r["tx"], "explorer": CHAIN["explorer_tx"] + r["tx"],
-            "payer_short": _short_addr(payer.get("payer") or ""),
+            "payer_short": _short_addr(payer),
+            "team": payer in mine,
             "agent_code": agent_model.agent_code(r["agent_id"]) if r.get("agent_id") else "",
         })
     ops = sorted(operator_wallets())
