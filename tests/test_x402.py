@@ -513,7 +513,7 @@ def test_owner_share_rolls_back_marker_when_credit_fails(monkeypatch):
     assert x402.credit_owner(agent, 0.05, "0xT1", "insight", PAYER) == 35.0      # retry succeeds
 
 
-def test_activity_is_public_safe_and_excludes_operator(client, monkeypatch):
+def test_activity_is_public_safe_and_hides_no_payment(client, monkeypatch):
     monkeypatch.setenv("X402_OPERATOR_WALLETS", "0x" + "ee" * 20)
     agent = _sell_agent("ag_act")
     req = x402.requirements("insight", "u")
@@ -528,12 +528,13 @@ def test_activity_is_public_safe_and_excludes_operator(client, monkeypatch):
     d = r.json()
     blob = json.dumps(d)
     assert "9.9.9.9" not in blob and PAYER not in blob and OWNER not in blob and "meta_json" not in blob
-    assert d["summary"]["settled"] == 1 and d["summary"]["payers"] == 1
-    # 2026-09-21: the totals still leave our own wallets out, but the list shows
-    # every settlement — hiding ours made the log disagree with the chain. Our
-    # rows are flagged instead, so nobody can read them as usage.
-    # (The test name kept "excludes_operator" because that is still true of the
-    # counted numbers; only the list changed.)
+    # 2026-09-21: /activity filters nothing any more. Every wallet is recorded,
+    # ours are flagged, and the split the rules care about lives in `scoreboard`
+    # — a log that quietly drops payments the chain can show is worse than a
+    # small number.
+    assert d["summary"]["settled"] == 2 and d["summary"]["payers"] == 2
+    assert d["scoreboard"]["external"]["settled"] == 1      # what actually counts
+    assert d["scoreboard"]["team"]["settled"] == 1
     assert [x["tx"] for x in d["recent"]] == ["0xoperator", "0xreal1"]
     assert [x["team"] for x in d["recent"]] == [True, False]
     assert d["recent"][1]["payer_short"] == "0x857b…6b66"

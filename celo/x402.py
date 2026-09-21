@@ -792,10 +792,11 @@ def _short_addr(a: str) -> str:
 def activity() -> Dict[str, Any]:
     """PUBLIC proof of on-chain activity — totals, recent settlements, the
     registrations and the deposit lane's distinct senders. Never an IP, a
-    full payer address, meta_json or an owner address. The TOTALS exclude our
-    own wallets (builder activity does not count and must not look like usage);
-    the settlement LIST still shows them, flagged `team`, because hiding our own
-    payments would make the log disagree with the chain."""
+    full payer address, meta_json or an owner address. Nothing is filtered:
+    every wallet is recorded, ours are flagged `team`, and scoreboard() is where
+    the split the rules care about (external vs. our own testing) lives — a log
+    that quietly drops payments the chain can show is worse than a small
+    number."""
     from ..models import agent_model
     from . import agentid
     ensure_schema()
@@ -814,19 +815,21 @@ def activity() -> Dict[str, Any]:
             "team": payer in mine,
             "agent_code": agent_model.agent_code(r["agent_id"]) if r.get("agent_id") else "",
         })
-    ops = sorted(operator_wallets())
-    dep_cl = (" AND address NOT IN (%s)" % ",".join("?" for _ in ops)) if ops else ""
+    # 2026-09-21: nothing is filtered out of the public log any more — every
+    # wallet is recorded and ours are flagged. Which part of it the rules
+    # actually count lives in scoreboard(), next to the part that does not.
+    dep_cl = ""
     dep = db.query_one(
         "SELECT COUNT(DISTINCT address) senders, COUNT(*) n, COALESCE(SUM(usd_value),0) usd "
-        f"FROM points_tx WHERE kind='deposit' AND chain='CELO'{dep_cl}", tuple(ops)) or {}
+        f"FROM points_tx WHERE kind='deposit' AND chain='CELO'{dep_cl}") or {}
     dep_ret = db.query_one(
         "SELECT COUNT(*) c FROM (SELECT address, COUNT(DISTINCT date(ts,'unixepoch')) d FROM points_tx "
-        f"WHERE kind='deposit' AND chain='CELO'{dep_cl} GROUP BY address HAVING d>=2)", tuple(ops)) or {}
+        f"WHERE kind='deposit' AND chain='CELO'{dep_cl} GROUP BY address HAVING d>=2)") or {}
     regs = db.query_all(
         "SELECT agent_id, label, symbol, celo_agent_id, celo_agent_tx FROM agents "
         "WHERE deleted_at=0 AND celo_agent_id>0 ORDER BY celo_registered_at ASC LIMIT 50")
     plat = agentid.platform_agent()
-    s = summary(exclude_operator=True)
+    s = summary(exclude_operator=False)
     return {
         "generated_at": time.time(),
         # by_day is the honest shape of adoption over time — it is what a reader
