@@ -421,7 +421,7 @@ group by 1 order by 1`;
     if (+cp.orders > 0) bits.push(t('nowCelo')(+cp.orders, (+cp.usd || 0).toFixed(2)));
     if (+dep.count > 0) bits.push(t('nowDeposits')(+dep.count, +dep.senders || 0));
     if (+cp.rate_usd > 0) bits.push(t('nowRate')((+cp.rate_usd).toFixed(6)));
-    now.textContent = (+sm.settled || 0) ? bits.join(' · ') : t('liveEmpty');
+    now.innerHTML = esc((+sm.settled || 0) ? bits.join(' · ') : t('liveEmpty'));
 
     // Delivered work someone chose to publish — the only thing on this page a
     // reader can open and judge for themselves.
