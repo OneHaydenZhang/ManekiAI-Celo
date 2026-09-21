@@ -112,6 +112,13 @@
       </aside>
     </section>
   </section>
+  <section id="demoRun" class="records" aria-labelledby="demoTitle" hidden>
+    <div class="record-heading"><div><p class="overline" data-t="demoOverline">一次跑完一组</p><h2 id="demoTitle" data-t="demoTitle">真实交互</h2></div><span class="tiny" id="demoCost"></span></div>
+    <p class="tiny" id="demoWhat"></p>
+    <div class="composer-actions"><button type="button" class="btn primary" id="btnDemoRun"></button><button type="button" class="text-btn" id="btnDemoStop" hidden data-t="demoStop">跑完这一笔就停</button></div>
+    <p class="msg" id="demoMsg" role="status"></p>
+    <div id="demoSteps"></div>
+  </section>
   <section id="records" class="records" aria-labelledby="recordsTitle"><div class="record-heading"><div><p class="overline" data-t="yourWorkspace">属于你的工作空间</p><h2 id="recordsTitle" data-t="mySpace">我的记录</h2></div><span class="tiny" data-t="localRecords">记录保存在当前浏览器</span></div><div class="record-tabs" role="tablist" aria-label="Personal records"><button type="button" role="tab" id="tab-history" aria-selected="true" aria-controls="consultHistory" tabindex="0" data-t="myConsultations">我的咨询</button><button type="button" role="tab" id="tab-agents" aria-selected="false" aria-controls="agentHistory" tabindex="-1" data-t="myAgents">我的 Agent</button></div>
     <div id="consultHistory" role="tabpanel" aria-labelledby="tab-history" tabindex="0"><div id="purchasesWrap"><div class="history-label"><span data-t="purchases">已保存的咨询与购买</span><span id="purchasesCount"></span></div><div id="purchasesList"></div></div></div>
     <div id="agentHistory" role="tabpanel" aria-labelledby="tab-agents" tabindex="0" hidden><div id="draftList"></div><p class="msg" id="recordsMsg" role="status"></p></div>
@@ -130,6 +137,26 @@
     "connect": "Connect wallet",
     "askTitle": "What’s on your mind?",
     "askBtn": "Pay for an answer",
+    "demoOverline": "One click, a set of",
+    "demoTitle": "real interactions",
+    "demoWhat": "Buys four things in order with your connected wallet: one answer, one brief, one monitor agent and one research agent. Every one is a real on-chain payment, so the wallet asks four times in a row. Nothing here is fabricated.",
+    "demoBtn": "Run all four",
+    "demoBusy": "Running…",
+    "demoStop": "Stop after this one",
+    "demoStopping": "Stopping once this one finishes.",
+    "demoTotalCelo": "Total ≈{n} CELO (about ${u})",
+    "demoTotalUsd": "Total ${u} USDC",
+    "demoConfirm": "This starts {n} real payments in a row, {c} in total. Your wallet asks for each one separately and you can decline at any point. Start now?",
+    "demoStep": "Payment {i} of {n}: {w}",
+    "demoDone": "All {d}/{n} went through — the records are in.",
+    "demoPartial": "{d} of {n} went through; the rest were skipped (usually a declined signature or an empty wallet).",
+    "demoChat": "One answer",
+    "demoBrief": "One brief",
+    "demoMonitor": "One monitor agent (1 hour / every 60 min)",
+    "demoResearch": "One research agent (1 hour / every 60 min)",
+    "demoAsk": "What risks are worth watching on {s} right now?",
+    "demoGoalM": "Watch {s} for price and risk, and explain any real change",
+    "demoGoalR": "Research what is driving {s} right now, and where the risk is",
     "briefBtn": "Quick brief",
     "disabled": "Consultation payments are unavailable. You can write a question or review what is included.",
     "noWallet": "No EVM wallet found — install MetaMask / Rabby / OKX Wallet, or open this page inside MiniPay.",
@@ -357,6 +384,26 @@
     "connect": "连接钱包",
     "askTitle": "今天，想了解什么？",
     "askBtn": "付费获取分析",
+    "demoOverline": "一次跑完一组",
+    "demoTitle": "真实交互",
+    "demoWhat": "用你连接的钱包按顺序真实买四次：一次问答、一份简报、一个盯盘 Agent、一个研究 Agent。全部是真实链上付款，会连续弹四次钱包确认；不伪造任何记录。",
+    "demoBtn": "一次跑完这四笔",
+    "demoBusy": "正在跑…",
+    "demoStop": "跑完这一笔就停",
+    "demoStopping": "这一笔跑完就停下。",
+    "demoTotalCelo": "合计 ≈{n} CELO（约 ${u}）",
+    "demoTotalUsd": "合计 ${u} USDC",
+    "demoConfirm": "将连续发起 {n} 笔真实付款，合计 {c}。每一笔钱包都会单独让你确认，随时可以拒绝。现在开始吗？",
+    "demoStep": "第 {i}/{n} 笔：{w}",
+    "demoDone": "{d}/{n} 笔全部完成，记录已生成。",
+    "demoPartial": "完成 {d}/{n} 笔，其余已跳过（多半是取消签名或余额不足）。",
+    "demoChat": "一次问答",
+    "demoBrief": "一份简报",
+    "demoMonitor": "一个盯盘 Agent（1 小时 / 每 60 分钟）",
+    "demoResearch": "一个研究 Agent（1 小时 / 每 60 分钟）",
+    "demoAsk": "{s} 现在有哪些值得注意的风险？",
+    "demoGoalM": "盯住 {s} 的价格与风险，有明显变化就说清楚原因",
+    "demoGoalR": "研究 {s} 当前的驱动因素与主要风险，给出结论",
     "briefBtn": "只看快速简报",
     "disabled": "咨询付款暂未开放。你可以先填写问题或查看交付说明。",
     "noWallet": "未检测到 EVM 钱包——请安装 MetaMask / Rabby / OKX Wallet，或在 MiniPay 内打开本页。",
@@ -1152,6 +1199,7 @@
     if (!CFG || !CFG.enabled) { setMsg(m, t('disabled'), 'warn'); return; }
     if (CFG.analyst_ready === false) { setMsg(m, t('analystOff'), 'warn'); return; }
     $('#btnAsk').disabled = $('#btnBrief').disabled = true;
+    let ok = false;
     try {
       setMsg(m, '…');
       let d;
@@ -1183,9 +1231,11 @@
         $('#agentGoal').focus({preventScroll: true});
       };
       setMsg(m, '✓', 'ok'); refreshBalance();
+      ok = true;
       savePurchase({ ts: Math.floor(Date.now() / 1000), product: kind, symbol, round: 0, tx: (d.payment || {}).tx || '', explorer: (d.payment || {}).explorer || '', content: d });
     } catch (e) { setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), (e && (e.noFunds || e.pending)) ? 'warn' : 'err'); }
     finally { renderGates(); }
+    return ok;
   }
   $('#btnAsk').onclick = () => ask('chat');
   $('#btnBrief').onclick = () => ask('brief');
@@ -1346,6 +1396,7 @@
     if (!(CFG && CFG.tasks && CFG.tasks.enabled)) { setMsg($('#agentError'), t('tasksOff'), 'err'); return; }
     const btn = $('#btnAgentLaunch'), m = $('#draftMsg');
     btn.disabled = true; setMsg(m, t('launching'));
+    let ok = false;
     try {
       let d;
       if (viaCelo) {
@@ -1369,7 +1420,7 @@
       saveTaskRef({task_id: d.task.task_id, token: d.token || '', ts: Date.now()});
       TASK_STATE[d.task.task_id] = Object.assign({runs: []}, d.task);
       quoteSnapshot = null; $('#quoteReview').hidden = true; $('#quoteIdle').hidden = false;
-      setMsg(m, t('taskStarted'), 'ok');
+      setMsg(m, t('taskStarted'), 'ok'); ok = true;
       setHistory('agents'); renderAgentsPanel();
       $('#records').scrollIntoView({block: 'start', behavior: 'auto'});
       refreshTasks();
@@ -1377,9 +1428,113 @@
       setMsg(m, (e && e.friendly) ? e.message : t('errGeneric'), 'err');
       if (e && e.noFunds) renderGetUsdc();
     } finally { btn.disabled = false; $('#btnLaunchCelo').disabled = false; }
+    return ok;
   }
   $('#btnAgentLaunch').onclick = () => launchTask(false);
   $('#btnLaunchCelo').onclick = () => launchTask(true);
+
+  // ---------------------------------------------- one click, four real buys --
+  // The scoreboard only counts payments that actually settled, so this button
+  // cannot invent any: it drives the same two forms and the same payment paths
+  // a visitor uses, four purchases in a row. One click here, but the wallet
+  // still asks for every single one — that is what keeps the record real.
+  let DEMO_RUNNING = false, DEMO_STOP = false, DEMO_STATE = [];
+  const firstSymbol = (sel, fallback) => {
+    const opts = Array.from(($(sel) || {}).options || []).map((o) => o.value);
+    return opts.includes(fallback) ? fallback : (opts[0] || fallback);
+  };
+  function demoSteps() {
+    const price = (CFG && CFG.prices) || {}, unit = ((CFG && CFG.tasks) || {}).unit_usd || {};
+    const sym = firstSymbol('#askSymbol', 'BTC'), sym2 = firstSymbol('#agentSymbol', 'NVDA');
+    return [
+      {key: 'chat', label: t('demoChat'), usd: +((price.chat || {}).usd) || 0.02,
+       run: (celo) => askDemo('chat', sym, t('demoAsk').replace('{s}', sym), celo)},
+      {key: 'brief', label: t('demoBrief'), usd: +((price.brief || {}).usd) || 0.01,
+       run: (celo) => askDemo('brief', sym, '', celo)},
+      {key: 'monitor', label: t('demoMonitor'), usd: +unit.monitor || 0.02,
+       run: (celo) => taskDemo({task: 'monitor', symbol: sym, hours: 1, frequency: 60,
+                                name: sym + ' ' + t('monitorAgent'), goal: t('demoGoalM').replace('{s}', sym)}, celo)},
+      {key: 'research', label: t('demoResearch'), usd: +unit.research || 0.04,
+       run: (celo) => taskDemo({task: 'research', symbol: sym2, hours: 1, frequency: 60,
+                                name: sym2 + ' ' + t('researchAgent'), goal: t('demoGoalR').replace('{s}', sym2)}, celo)},
+    ];
+  }
+  async function askDemo(kind, symbol, message, celo) {
+    setService('consult');
+    if (Array.from($('#askSymbol').options || []).some((o) => o.value === symbol)) $('#askSymbol').value = symbol;
+    $('#askMsg').value = message;
+    return ask(kind, celo);
+  }
+  async function taskDemo(v, celo) {
+    setService('create');
+    if (!Array.from($('#agentSymbol').options).some((o) => o.value === v.symbol)) {
+      const option = document.createElement('option');
+      option.value = v.symbol; option.textContent = v.symbol; $('#agentSymbol').append(option);
+    }
+    $('#agentForm').querySelectorAll('input[name="task"]').forEach((el) => { el.checked = el.value === v.task; });
+    $('#agentSymbol').value = v.symbol;
+    $('#agentDuration').querySelectorAll('input').forEach((el) => { el.checked = Number(el.value) === v.hours; });
+    $('#agentFrequency').querySelectorAll('input').forEach((el) => { el.checked = Number(el.value) === v.frequency; });
+    $('#agentName').value = v.name; $('#agentGoal').value = v.goal;
+    editingId = null; updateSummary();
+    quoteSnapshot = taskValues();
+    await renderQuote();
+    return launchTask(celo);
+  }
+  function renderDemo() {
+    const box = $('#demoRun');
+    if (!box) return;
+    const on = !!(CFG && CFG.enabled && CFG.tasks && CFG.tasks.enabled);
+    box.hidden = !on;
+    if (!on) return;
+    const steps = DEMO_STATE.length ? DEMO_STATE : demoSteps().map((x) => ({key: x.key, label: x.label, usd: x.usd, state: 'todo'}));
+    const usd = steps.reduce((a, b) => a + (+b.usd || 0), 0);
+    $('#demoCost').textContent = celoPayOn()
+      ? t('demoTotalCelo').replace('{n}', celoFor(usd).toFixed(2)).replace('{u}', usd.toFixed(2))
+      : t('demoTotalUsd').replace('{u}', usd.toFixed(2));
+    $('#demoWhat').textContent = t('demoWhat');
+    const mark = {todo: '·', run: '…', ok: '✓', fail: '✗', skip: '—'};
+    $('#demoSteps').innerHTML = steps.map((x, i) => `<div class="tiny"><span class="mono">${mark[x.state] || '·'}</span> ${i + 1}. ${esc(x.label)} · $${(+x.usd || 0).toFixed(2)}${x.note ? ` <span class="mut">${esc(x.note)}</span>` : ''}</div>`).join('');
+    $('#btnDemoRun').textContent = DEMO_RUNNING ? t('demoBusy') : t('demoBtn');
+    $('#btnDemoRun').disabled = DEMO_RUNNING;
+    $('#btnDemoStop').hidden = !DEMO_RUNNING;
+  }
+  async function runDemo() {
+    if (DEMO_RUNNING) return;
+    const steps = demoSteps();
+    const usd = steps.reduce((a, b) => a + b.usd, 0);
+    const cost = celoPayOn() ? `≈${celoFor(usd).toFixed(2)} CELO ($${usd.toFixed(2)})` : `$${usd.toFixed(2)} USDC`;
+    if (!window.confirm(t('demoConfirm').replace('{n}', String(steps.length)).replace('{c}', cost))) return;
+    if (!ACCOUNT) { try { await connect(); } catch (_) {} }
+    if (!ACCOUNT) { setMsg($('#demoMsg'), t('connectFail'), 'warn'); return; }
+    DEMO_RUNNING = true; DEMO_STOP = false;
+    DEMO_STATE = steps.map((x) => ({key: x.key, label: x.label, usd: x.usd, state: 'todo'}));
+    const celo = celoPayOn();
+    let done = 0;
+    renderDemo();
+    for (let i = 0; i < steps.length; i++) {
+      if (DEMO_STOP) { DEMO_STATE.slice(i).forEach((x) => { x.state = 'skip'; }); break; }
+      DEMO_STATE[i].state = 'run'; renderDemo();
+      setMsg($('#demoMsg'), t('demoStep').replace('{i}', String(i + 1)).replace('{n}', String(steps.length)).replace('{w}', steps[i].label));
+      let ok = false;
+      try { ok = await steps[i].run(celo); } catch (_) { ok = false; }
+      DEMO_STATE[i].state = ok ? 'ok' : 'fail';
+      if (ok) done++;
+      renderDemo();
+      // A failure is almost always a declined signature or an empty wallet, and
+      // both make the rest pointless — stop rather than pile up rejections.
+      if (!ok) { DEMO_STATE.slice(i + 1).forEach((x) => { x.state = 'skip'; }); break; }
+    }
+    DEMO_RUNNING = false;
+    setMsg($('#demoMsg'),
+           t(done === steps.length ? 'demoDone' : 'demoPartial').replace('{d}', String(done)).replace('{n}', String(steps.length)),
+           done ? 'ok' : 'warn');
+    renderDemo();
+    refreshBalance();
+    if (done) { $('#records').scrollIntoView({block: 'start', behavior: 'auto'}); refreshTasks(); }
+  }
+  $('#btnDemoRun').onclick = runDemo;
+  $('#btnDemoStop').onclick = () => { DEMO_STOP = true; setMsg($('#demoMsg'), t('demoStopping'), 'warn'); };
 
   function editDraft(row) {
     editingId = row.id;

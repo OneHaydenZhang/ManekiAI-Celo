@@ -739,6 +739,51 @@ def summary(exclude_operator: bool = False) -> Dict[str, Any]:
             "by_day": by_day, "by_product": by_product}
 
 
+def _asset_split(exclude_operator: bool = False) -> List[Dict[str, Any]]:
+    """Which stablecoin the money actually moved in — the Stablecoin-Adoption
+    view. Paying in CELO is a different lane (celo_orders), added by the caller."""
+    cl, params = _op_clause(exclude_operator)
+    rows = db.query_all("SELECT asset, COUNT(*) n, COALESCE(SUM(amount_usd),0) usd "
+                        f"FROM x402_payments WHERE status='settled'{cl} GROUP BY asset", params)
+    out = []
+    for r in rows:
+        out.append({"asset": asset_symbol(r.get("asset") or "") or "USDC",
+                    "n": int(r["n"] or 0), "usd": round(float(r["usd"] or 0), 4)})
+    return sorted(out, key=lambda x: -x["n"])
+
+
+def scoreboard() -> Dict[str, Any]:
+    """The numbers this lane is judged on, split the way the rules split them.
+
+    The hackathon counts wallets that are NOT ours, so the two groups are
+    reported separately rather than blended: `external` is what counts,
+    `team` is our own testing, and both are shown so the page is honest about
+    which is which. Wallets are ours only if an operator registered them
+    (X402_OPERATOR_WALLETS / the admin setting)."""
+    ensure_schema()
+    ours = sorted(operator_wallets())
+    everything = summary(exclude_operator=False)
+    external = summary(exclude_operator=True)
+    team_row = db.query_one(
+        "SELECT COUNT(*) n, COUNT(DISTINCT payer) payers, COALESCE(SUM(amount_usd),0) usd "
+        "FROM x402_payments WHERE status='settled' AND payer IN (%s)"
+        % (",".join("?" for _ in ours) or "''"), tuple(ours)) if ours else {}
+    team = {"settled": int((team_row or {}).get("n") or 0),
+            "payers": int((team_row or {}).get("payers") or 0),
+            "usd": round(float((team_row or {}).get("usd") or 0), 4)}
+    return {
+        "totals": {k: everything[k] for k in ("settled", "payers", "usd", "returning_payers")},
+        # what the rules actually count: wallets that are not ours
+        "external": {k: external[k] for k in ("settled", "payers", "usd", "returning_payers")},
+        "team": team,
+        "by_product": everything["by_product"],
+        "by_asset": _asset_split(False),
+        # Short form only: /activity is public, and the rule there is that no
+        # full address ever appears in it — our own included.
+        "team_wallets": [_short_addr(w) for w in ours],
+    }
+
+
 def _short_addr(a: str) -> str:
     a = a or ""
     return (a[:6] + "…" + a[-4:]) if len(a) > 12 else a

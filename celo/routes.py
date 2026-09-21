@@ -419,6 +419,18 @@ async def x402_activity() -> Dict[str, Any]:
         val["celo_pay"] = await asyncio.to_thread(native_pay.summary)
     except Exception as e:
         oplog.error("x402.activity_celo_pay", repr(e)[:200])
+    try:
+        # The same purchases, grouped the way this lane is judged: wallets that
+        # are not ours counted apart from our own testing, plus which asset the
+        # money moved in. Paying in CELO is its own lane, so it is appended here.
+        sb = await asyncio.to_thread(x402.scoreboard)
+        cp = val.get("celo_pay") or {}
+        if int(cp.get("orders") or 0):
+            sb["by_asset"] = list(sb.get("by_asset") or []) + [
+                {"asset": "CELO", "n": int(cp["orders"]), "usd": round(float(cp.get("usd") or 0), 4)}]
+        val["scoreboard"] = sb
+    except Exception as e:
+        oplog.error("x402.activity_scoreboard", repr(e)[:200])
     _activity_cache["val"], _activity_cache["at"] = val, now
     return val
 

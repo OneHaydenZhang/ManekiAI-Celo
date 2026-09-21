@@ -92,7 +92,8 @@
   <div class="tiny" id="liveMeta"></div>
   <div class="livebox"><p class="note" id="liveNow"></p>
     <div class="btns" style="margin-top:8px"><button class="btn sm ghost" type="button" id="liveRefresh"></button></div></div>
-  <div class="wrap"><table id="samples"></table></div>
+  <div class="wrap"><table id="score"></table></div>
+  <div class="wrap" style="margin-top:14px"><table id="samples"></table></div>
   <div class="wrap" style="margin-top:14px"><table id="recent"></table></div>
   <div class="wrap" style="margin-top:14px"><table id="byday"></table></div>
   <div class="wrap" style="margin-top:14px"><table id="regs"></table></div>
@@ -214,6 +215,11 @@ group by 1 order by 1`;
       nowCelo: (n, u) => `其中用 CELO 直接付款 ${n} 笔（$${u}）`,
       nowDeposits: (n, s) => `Celo 稳定币充值 ${n} 笔 / ${s} 个发送方`,
       nowRate: (r) => `当前 CELO 报价 $${r}`,
+      scoreH: '按赛事口径计分（外部钱包才算数，团队自测单列）',
+      scoreNone: '还没有成交，所以没有可计分的记录。',
+      byProductH: '买了什么', byAssetH: '用什么付的',
+      thWho: '来源', thReturning: '跨日回访', thAsset: '资产',
+      whoExternal: '外部钱包（计分）', whoTeam: '团队自测（不计分）', whoTotal: '合计',
       samplesH: '交付样本（买家自愿公开，点开就能看到 Agent 实际写了什么）',
       samplesNone: '还没有买家公开报告。任何人跑完一次任务后，在「我的 Agent」里点「公开这份报告」，这里就会出现一行，任何人都能打开核对。',
       bydayH: '按天（近 14 天）', bydayNone: '还没有成交，所以没有按天数据。',
@@ -317,6 +323,11 @@ group by 1 order by 1`;
       nowCelo: (n, u) => `${n} of them paid in CELO ($${u})`,
       nowDeposits: (n, s) => `${n} stablecoin top-ups from ${s} senders`,
       nowRate: (r) => `CELO quoted at $${r}`,
+      scoreH: 'Scored the way the rules count it (only wallets that are not ours)',
+      scoreNone: 'Nothing has settled, so there is nothing to score yet.',
+      byProductH: 'What was bought', byAssetH: 'What it was paid in',
+      thWho: 'Source', thReturning: 'Returning', thAsset: 'Asset',
+      whoExternal: 'External wallets (counted)', whoTeam: 'Our own testing (not counted)', whoTotal: 'Total',
       samplesH: 'Delivered work (published by its buyer — open one and read what the agent wrote)',
       samplesNone: 'No buyer has published a report yet. After a run finishes, its buyer can press “Publish this report” in “My agents” and a row appears here for anyone to open.',
       bydayH: 'By day (last 14)', bydayNone: 'Nothing settled yet, so there is no daily shape to show.',
@@ -423,6 +434,27 @@ group by 1 order by 1`;
     if (+cp.rate_usd > 0) bits.push(t('nowRate')((+cp.rate_usd).toFixed(6)));
     now.innerHTML = esc((+sm.settled || 0) ? bits.join(' · ') : t('liveEmpty'));
 
+    // The rules count wallets that are not ours, so the two are never blended:
+    // external is what counts, team is our own testing, both are shown.
+    const sb = ACT.scoreboard || {};
+    const ext = sb.external || {}, team = sb.team || {}, tot = sb.totals || {};
+    const num = (v) => `<td class="mono">${v}</td>`;
+    const money = (v) => `<td class="mono">$${(+v || 0).toFixed(2)}</td>`;
+    $('#score').innerHTML = `<tr><th colspan="5">${esc(t('scoreH'))}</th></tr>` + (tot.settled
+      ? `<tr><th>${esc(t('thWho'))}</th><th>${esc(t('thCount'))}</th><th>${esc(t('thWallets'))}</th><th>${esc(t('thAmount'))}</th><th>${esc(t('thReturning'))}</th></tr>
+         <tr><td><b>${esc(t('whoExternal'))}</b></td>${num(+ext.settled || 0)}${num(+ext.payers || 0)}${money(ext.usd)}${num(+ext.returning_payers || 0)}</tr>
+         <tr><td>${esc(t('whoTeam'))}${(sb.team_wallets || []).length ? ` <span class="tiny mono">${(sb.team_wallets || []).map(esc).join(' ')}</span>` : ''}</td>${num(+team.settled || 0)}${num(+team.payers || 0)}${money(team.usd)}<td class="mut">—</td></tr>
+         <tr><td class="mut">${esc(t('whoTotal'))}</td>${num(+tot.settled || 0)}${num(+tot.payers || 0)}${money(tot.usd)}${num(+tot.returning_payers || 0)}</tr>`
+      : `<tr><td class="tiny">${esc(t('scoreNone'))}</td></tr>`)
+      + ((sb.by_product || []).length
+        ? `<tr><th colspan="5">${esc(t('byProductH'))}</th></tr><tr><th>${esc(t('thProduct'))}</th><th colspan="2">${esc(t('thCount'))}</th><th colspan="2">${esc(t('thAmount'))}</th></tr>`
+          + (sb.by_product || []).map((x) => `<tr><td>${esc(((t('prod') || {})[x.product]) || x.product)}</td><td class="mono" colspan="2">${+x.n || 0}</td><td class="mono" colspan="2">$${(+x.usd || 0).toFixed(2)}</td></tr>`).join('')
+        : '')
+      + ((sb.by_asset || []).length
+        ? `<tr><th colspan="5">${esc(t('byAssetH'))}</th></tr><tr><th>${esc(t('thAsset'))}</th><th colspan="2">${esc(t('thCount'))}</th><th colspan="2">${esc(t('thAmount'))}</th></tr>`
+          + (sb.by_asset || []).map((x) => `<tr><td>${esc(x.asset === 'USAT' ? 'USA₮' : x.asset)}</td><td class="mono" colspan="2">${+x.n || 0}</td><td class="mono" colspan="2">$${(+x.usd || 0).toFixed(2)}</td></tr>`).join('')
+        : '');
+
     // Delivered work someone chose to publish — the only thing on this page a
     // reader can open and judge for themselves.
     const sp = tk.samples || [];
@@ -438,7 +470,7 @@ group by 1 order by 1`;
     const prodLabel = (p) => ((t('prod') || {})[p]) || p || '—';
     $('#recent').innerHTML = `<tr><th colspan="6">${esc(t('recentH'))}</th></tr>` + (rec.length
       ? `<tr><th>${esc(t('thWhen'))}</th><th>${esc(t('thProduct'))}</th><th>${esc(t('thAmount'))}</th><th>${esc(t('thPayer'))}</th><th>${esc(t('thAgent'))}</th><th>${esc(t('thTx'))}</th></tr>` +
-        rec.map((r) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+r.ts || 0)))))}</td><td>${esc(prodLabel(r.product))}</td><td>$${(+r.amount_usd || 0).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td class="mono">${esc(r.payer_short || '—')}</td><td>${esc(r.agent_code || '—')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')
+        rec.map((r) => `<tr><td>${esc(t('ago')(Math.max(0, Math.floor(Date.now() / 1000 - (+r.ts || 0)))))}</td><td>${esc(prodLabel(r.product))}</td><td>$${(+r.amount_usd || 0).toFixed(2)} ${esc(r.asset || 'USDC')}</td><td class="mono">${r.payer_short ? (r.payer_url ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.payer_url)}">${esc(r.payer_short)} ↗</a>` : esc(r.payer_short)) : '—'}</td><td>${esc(r.agent_code || '—')}</td><td>${r.tx ? `<a class="txlink" target="_blank" rel="noopener" href="${esc(r.explorer || scanTx(r.tx))}">${esc(short(r.tx))} ↗</a>` : '—'}</td></tr>`).join('')
       : `<tr><td class="tiny">${esc(t('recentNone'))}</td></tr>`);
 
     // Adoption over time, the shape nobody can massage: one row per day.
