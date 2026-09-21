@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import threading
 import time
@@ -1034,6 +1035,51 @@ async def celo_order_trace(order_id: str, request: Request, token: str = ""):
     row = await asyncio.to_thread(_celo_order_or_403, order_id,
                                   (token or request.headers.get("x-order-token") or ""))
     return await asyncio.to_thread(native_pay.order_trail, row)
+
+
+# --- TEMPORARY: what the BUYER'S PAGE saw (Celo lane only, 2026-09-21) -----
+# Two orders died inside the browser with a false "not enough CELO" and the
+# server had no way to know: the order simply sat at 'awaiting' with nothing
+# after "created". The page now reports each step into that order's own trail.
+# Token-gated (only whoever created the order can write to it), a fixed
+# vocabulary of steps, numbers re-formatted here, and the one free-text field
+# sanitised and cut short — a browser cannot write arbitrary text into our log.
+# Off with CELO_CLIENT_TRACE=0; remove once the lane has run clean for a while.
+_CLIENT_STEPS = ("client_balance", "client_sent", "client_error")
+_CLIENT_DETAIL_MAX = 160
+
+
+def _client_trace_on() -> bool:
+    return os.environ.get("CELO_CLIENT_TRACE", "1").strip().lower() not in ("0", "false", "off", "no")
+
+
+def _safe_note(text: Any) -> str:
+    """Browser text made safe to store and to show: printable, one line, short."""
+    return "".join(c for c in str(text or "") if c.isprintable())[:_CLIENT_DETAIL_MAX]
+
+
+@router.post("/celo/orders/{order_id}/client")
+async def celo_order_client_note(order_id: str, request: Request, token: str = ""):
+    """Token-gated: one line from the buyer's page into this order's trail.
+    Never affects the payment — the page sends it fire-and-forget."""
+    if not _client_trace_on():
+        return {"ok": False}
+    body = await _json(request)
+    step = str(body.get("step") or "")
+    if step not in _CLIENT_STEPS:
+        raise HTTPException(400, "unknown step")
+    row = await asyncio.to_thread(_celo_order_or_403, order_id,
+                                  (token or request.headers.get("x-order-token") or ""))
+    extra: Dict[str, Any] = {}
+    for k in ("need_celo", "balance_celo"):
+        v = body.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            extra[k] = round(float(v), 6)
+    if isinstance(body.get("rpc_ok"), bool):
+        extra["rpc_ok"] = bool(body["rpc_ok"])
+    await asyncio.to_thread(native_pay.note, row["order_id"], step,
+                            _safe_note(body.get("detail")), **extra)
+    return {"ok": True}
 
 
 @router.post("/celo/orders/{order_id}/tx")

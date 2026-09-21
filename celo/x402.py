@@ -74,7 +74,12 @@ ASSETS: Dict[str, Dict[str, Any]] = {
 MAX_TIMEOUT_S = 120
 CHAIN = {
     "chain_id": CHAIN_ID, "chain_id_hex": "0xa4ec", "name": "Celo",
-    "rpc": "https://forno.celo.org", "explorer": "https://celoscan.io",
+    "rpc": "https://forno.celo.org",
+    # Spares the BUYER'S PAGE falls back to when the first gateway does not
+    # answer. It used to read through one endpoint only and turn any failure
+    # into a zero balance — a funded wallet was told it was empty (2026-09-21).
+    "rpc_fallback": ["https://celo.drpc.org"],
+    "explorer": "https://celoscan.io",
     "explorer_tx": "https://celoscan.io/tx/", "explorer_address": "https://celoscan.io/address/",
     "symbol": "CELO", "decimals": 18,
 }

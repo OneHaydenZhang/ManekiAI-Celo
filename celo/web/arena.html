@@ -190,6 +190,7 @@
     "walletChanged": "Wallet account changed",
     "connectFail": "Could not connect the wallet — please try again.",
     "needFunds": "Not enough USDC on Celo for this purchase — nothing was signed or charged.",
+    "needFundsRead": "Could not read your balance on Celo just now — try again in a moment. Nothing was signed or charged.",
     "getUsdcHd": "Get USDC on Celo",
     "getUsdc1": "Bridge or swap from any chain with Jumper (LI.FI) — prefilled to USDC on Celo →",
     "getUsdc2": "Withdraw USDC or USDT to the Celo network from an exchange (Binance, OKX, Bybit, Coinbase…).",
@@ -344,7 +345,9 @@
     "celoSign": "Confirm the transfer of {n} CELO in your wallet…",
     "celoWait": "Waiting for the transfer on Celo…",
     "celoDelivering": "Paid — preparing your result…",
-    "celoShort": "That wallet does not hold {n} CELO.",
+    "celoShort": "Not enough CELO: this costs {n} and the wallet holds {b}.",
+    "celoShortGas": "Just short once gas is counted: this costs {n} CELO plus a little gas, and the wallet holds {b}. Leave a little more in.",
+    "celoBalUnknown": "Could not read your Celo balance — going ahead anyway; if the wallet really is short it refuses the transfer by itself.",
     "celoPending": "The transfer went out ({tx}…) but the result has not come back yet. Reopen this page in a minute — you will not be charged twice.",
     "celoNote": "Pays by sending CELO to us; you cover the gas. USDC is one signature and no gas.",
     "swapHd": "Swap CELO → USDC, right here",
@@ -357,6 +360,7 @@
     "swapTooSmall": "Too small to be worth the gas — try 0.5 CELO or more.",
     "swapTwoTx": "Two wallet prompts: approve, then swap.",
     "swapKeepGas": "Leave at least 0.2 CELO in the wallet for gas.",
+    "swapBalRead": "Could not read your CELO balance just now — try again in a moment.",
     "swapApprove": "Approve the exact amount in your wallet…",
     "swapApproving": "Approval confirming on Celo…",
     "swapApproveFail": "The approval did not go through — nothing was swapped.",
@@ -434,6 +438,7 @@
     "walletChanged": "钱包账户已切换",
     "connectFail": "钱包连接失败——请重试。",
     "needFunds": "你在 Celo 上的 USDC 不足以完成本次购买——未签名、未扣费。",
+    "needFundsRead": "刚才读不到你在 Celo 上的余额，请稍后重试。未签名、未扣费。",
     "getUsdcHd": "获取 Celo 上的 USDC",
     "getUsdc1": "用 Jumper（LI.FI）从任意链跨链/兑换——已预填为 Celo USDC →",
     "getUsdc2": "从交易所（Binance、OKX、Bybit、Coinbase…）把 USDC 或 USDT 提现到 Celo 网络。",
@@ -588,7 +593,9 @@
     "celoSign": "请在钱包里确认转出 {n} CELO…",
     "celoWait": "等待 Celo 上确认…",
     "celoDelivering": "已付款——正在生成你的结果…",
-    "celoShort": "这个钱包里没有 {n} CELO。",
+    "celoShort": "CELO 不够：这笔要 {n}，钱包里只有 {b}。",
+    "celoShortGas": "算上 gas 就差一点：这笔要 {n} CELO 再加一点 gas，钱包里只有 {b}。请多留一点。",
+    "celoBalUnknown": "读不到你的 Celo 余额——先照常发起转账；真不够的话钱包会自己拒绝。",
     "celoPending": "转账已发出（{tx}…），但结果还没回来。过一分钟重开这个页面即可，不会重复扣费。",
     "celoNote": "用 CELO 支付 = 直接转给我们，gas 由你付；USDC 则是签一次名、不花 gas。",
     "swapHd": "在这里把 CELO 换成 USDC",
@@ -601,6 +608,7 @@
     "swapTooSmall": "太少了，不够抵 gas——建议 0.5 CELO 起。",
     "swapTwoTx": "会弹两次钱包：先授权，再兑换。",
     "swapKeepGas": "钱包里至少留 0.2 CELO 付 gas。",
+    "swapBalRead": "刚才读不到你的 CELO 余额，请稍后重试。",
     "swapApprove": "请在钱包里授权（金额与本次兑换相同）…",
     "swapApproving": "授权确认中…",
     "swapApproveFail": "授权没成功，没有发生兑换。",
@@ -817,6 +825,24 @@
   }
   const celoLabel = (usd) => t('payCelo') + ' · ≈' + celoFor(usd).toFixed(2) + ' CELO';
 
+  // TEMPORARY, Celo lane only (2026-09-21). The browser is where this lane
+  // kept dying and the server could not say why: an order just stayed
+  // 'awaiting' forever, with no record of what the page saw. Each step now
+  // writes one line into that order's own trail (token-gated, the same trail
+  // /trace serves). Fire-and-forget: a failed note never affects a payment.
+  // Remove once the lane has run clean — docs/iterations/2026-09-21.md.
+  function clientNote(order, step, fields) {
+    if (!order || !order.order_id) return;
+    try {
+      fetch('/api/x402/celo/orders/' + encodeURIComponent(order.order_id) + '/client'
+            + '?token=' + encodeURIComponent(order.token || ''),
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+              body: JSON.stringify(Object.assign({ step }, fields || {})) }).catch(() => {});
+    } catch (_) {}
+  }
+
+  const CELO_GAS_KEEP = 10000000000000000n;    // 0.01 CELO — the transfer's own gas
+
   async function payInCelo(product, payload, onStatus) {
     if (!ACCOUNT) await connect();
     if (!ACCOUNT) throw Object.assign(new Error(t('connectFail')), {friendly: true});
@@ -827,12 +853,42 @@
       body: JSON.stringify(Object.assign({ product, payer: ACCOUNT }, payload)) });
     const order = await readJson(r);
     if (!r.ok) throw Object.assign(new Error(order.detail || order.error || t('errGeneric')), {friendly: true});
+    try {
+      return await payOrderInCelo(order, onStatus);
+    } catch (e) {
+      clientNote(order, 'client_error', { detail: String((e && e.message) || e) });
+      throw e;
+    }
+  }
+
+  async function payOrderInCelo(order, onStatus) {
     const wei = BigInt(order.celo_wei || '0');
+    const show = (v) => (Number(v) / 1e18).toFixed(3);
     const bal = await nativeBalance(ACCOUNT);
-    if (bal < wei) throw Object.assign(new Error(t('celoShort').replace('{n}', (Number(wei) / 1e18).toFixed(3))),
-                                       {friendly: true, noFunds: true});
-    onStatus && onStatus(t('celoSign').replace('{n}', (Number(wei) / 1e18).toFixed(3)));
+    clientNote(order, 'client_balance', {
+      rpc_ok: bal !== null, need_celo: Number(wei) / 1e18,
+      balance_celo: bal === null ? null : Number(bal) / 1e18,
+      detail: bal === null ? RPC_LAST_ERR : '' });
+    // An unreadable balance is NOT an empty wallet. Blocking on one is what
+    // told a wallet holding 8 CELO it did not have 0.22 (2026-09-21): the read
+    // failed, the failure became 0, and 0 became "you have none". When we
+    // cannot read it we go ahead — a wallet that really is short refuses the
+    // transfer by itself, and that costs nobody anything. Same rule the server
+    // already follows for its own wallet (celo/wallet.py funded()).
+    if (bal === null) {
+      onStatus && onStatus(t('celoBalUnknown'));
+    } else if (bal < wei) {
+      throw Object.assign(new Error(t('celoShort').replace('{n}', show(wei)).replace('{b}', show(bal))),
+                          {friendly: true, noFunds: true});
+    } else if (bal < wei + CELO_GAS_KEEP) {
+      // The transfer goes through the token contract, so its gas comes out of
+      // this same balance — paying the exact amount leaves nothing to send it.
+      throw Object.assign(new Error(t('celoShortGas').replace('{n}', show(wei)).replace('{b}', show(bal))),
+                          {friendly: true, noFunds: true});
+    }
+    onStatus && onStatus(t('celoSign').replace('{n}', show(wei)));
     const hash = await sendTx(order.token_contract, '0xa9059cbb' + b32a(order.pay_to) + b32(wei));
+    clientNote(order, 'client_sent', { detail: String(hash || '') });
     onStatus && onStatus(t('celoWait'));
     await waitReceipt(hash);
     const base = '/api/x402/celo/orders/' + encodeURIComponent(order.order_id);
@@ -887,15 +943,49 @@
   const fmt = (v, dec, digits) => (Number(v) / Math.pow(10, dec)).toFixed(digits);
   let SWAPPING = false, swapQuote = null, quoteSeqSwap = 0;
 
-  async function rpc(method, params) {
-    const r = await fetch(CFG.chain.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  // Every gateway this page may read from: the one the server names first,
+  // then its spares. Reading through a single endpoint with the failure
+  // swallowed is exactly how "we could not reach Celo" used to arrive at the
+  // buyer as "you have no money" (2026-09-21).
+  function rpcUrls() {
+    const c = (CFG && CFG.chain) || {};
+    const list = [c.rpc].concat(Array.isArray(c.rpc_fallback) ? c.rpc_fallback : []);
+    return list.filter(Boolean);
+  }
+  async function rpcOnce(url, method, params) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    // Body first: a gateway may wrap a real JSON-RPC error in an HTTP 400, and
+    // a challenge page or a 5xx body throws right here instead of reading 0.
     const d = await r.json();
     if (d && d.error) throw new Error(d.error.message || 'rpc error');
+    if (!r.ok) throw new Error('http ' + r.status);
     return d && d.result;
   }
+  // Two passes over the gateways — one flaky answer must not decide anything.
+  async function rpc(method, params) {
+    const urls = rpcUrls();
+    let last = null;
+    for (let pass = 0; pass < 2; pass++) {
+      for (const url of urls) {
+        try { return await rpcOnce(url, method, params); } catch (e) { last = e; }
+      }
+      if (pass === 0) await new Promise((res) => setTimeout(res, 400));
+    }
+    throw last || new Error('rpc unreachable');
+  }
+  let RPC_LAST_ERR = '';
+  // null = we could NOT read it. Not zero: that difference is the whole reason
+  // a wallet holding 8 CELO was told it did not have 0.22 — see payOrderInCelo.
   async function nativeBalance(acct) {
-    try { return BigInt(await rpc('eth_getBalance', [acct, 'latest']) || '0x0'); } catch (_) { return 0n; }
+    try {
+      const v = await rpc('eth_getBalance', [acct, 'latest']);
+      RPC_LAST_ERR = '';
+      return BigInt(v || '0x0');
+    } catch (e) {
+      RPC_LAST_ERR = String((e && e.message) || e).slice(0, 120);
+      return null;
+    }
   }
   async function quoteSwap(amountIn) {
     // QuoterV2.quoteExactInputSingle((tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96))
@@ -955,6 +1045,7 @@
       SWAPPING = true; btn.disabled = true;
       const inWei = swapQuote.inWei;
       const bal = await nativeBalance(ACCOUNT);
+      if (bal === null) { setMsg(msg, t('swapBalRead'), 'warn'); return; }
       if (bal < inWei + SWAP.gasKeep) { setMsg(msg, t('swapKeepGas'), 'warn'); return; }
       // 1) allowance — approve exactly what is being sold, never unlimited
       const allowData = '0xdd62ed3e' + b32a(ACCOUNT) + b32a(SWAP.router);
@@ -990,9 +1081,12 @@
   async function renderSwapBalance() {
     const el = $('#swapBal'); if (!el || !ACCOUNT) return;
     const bal = await nativeBalance(ACCOUNT);
+    const max = $('#swapMax');
+    // Unreadable reads as "—", never as 0.0000: a zero here is what made the
+    // whole page look like an empty wallet.
+    if (bal === null) { el.textContent = '— CELO'; if (max) max.hidden = true; return; }
     el.textContent = fmt(bal, 18, 4) + ' CELO';
     const usable = bal > SWAP.gasKeep ? bal - SWAP.gasKeep : 0n;
-    const max = $('#swapMax');
     if (max) {
       max.hidden = usable < SWAP.minIn;
       max.dataset.amt = (Number(usable) / 1e18).toFixed(4);
@@ -1065,10 +1159,11 @@
       } else { const err = new Error(t('errChain')); err.friendly = true; throw err; }
     }
   }
+  // Throws when the read fails — it used to return 0 for an unreachable
+  // gateway, which every caller then read as "this wallet is empty".
   async function balanceOf(asset, account) {
     const data = '0x70a08231' + String(account).slice(2).padStart(64, '0');
-    const r = await fetch(CFG.chain.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: asset, data }, 'latest'] }) });
-    const d = await r.json(); return BigInt((d && d.result) || '0x0');
+    return BigInt((await rpc('eth_call', [{ to: asset, data }, 'latest'])) || '0x0');
   }
   async function refreshBalance() {
     if (!ACCOUNT || !CFG) return;
@@ -1091,14 +1186,22 @@
     const err = new Error(code === 4001 || /rejected|denied|cancel/i.test(msg) ? t('errRejected') : t('errGeneric'));
     err.friendly = true; return err;
   }
+  // {acc, readOk}: readOk says whether ANY balance was actually read. Without
+  // it, a wallet we simply could not reach is indistinguishable from an empty
+  // one — and the buyer gets told they have no money (2026-09-21).
   async function pickAccept(accepts) {
     // USDC first, then USA₮ — the first asset the wallet holds ≥ amount of wins.
     const order = (a) => (String(a.asset || '').toLowerCase() === USDC_ADDR.toLowerCase() ? 0 : 1);
     const list = accepts.slice().sort((a, b) => order(a) - order(b));
+    let readOk = false;
     for (const acc of list) {
-      try { if ((await balanceOf(acc.asset, ACCOUNT)) >= BigInt(String(acc.amount || '0'))) return acc; } catch (_) {}
+      try {
+        const bal = await balanceOf(acc.asset, ACCOUNT);
+        readOk = true;
+        if (bal >= BigInt(String(acc.amount || '0'))) return { acc, readOk };
+      } catch (_) {}
     }
-    return null;
+    return { acc: null, readOk };
   }
   async function payFetch(url, opts, onStatus) {
     opts = opts || {};
@@ -1110,8 +1213,15 @@
     if (!accepts.length) { const err = new Error(t('errGeneric')); err.friendly = true; throw err; }
     if (!ACCOUNT) await connect();
     await ensureChain();
-    const acc = await pickAccept(accepts);
-    if (!acc) { renderGetUsdc(); const err = new Error(t('needFunds')); err.friendly = true; err.noFunds = true; throw err; }
+    const pick = await pickAccept(accepts);
+    if (!pick.acc) {
+      // Genuinely short → show them how to get USDC. Never read → say so and
+      // let them retry; do not accuse an untouched wallet of being empty.
+      if (pick.readOk) renderGetUsdc();
+      const err = new Error(t(pick.readOk ? 'needFunds' : 'needFundsRead'));
+      err.friendly = true; err.noFunds = true; throw err;
+    }
+    const acc = pick.acc;
     const auth = { from: ACCOUNT, to: acc.payTo, value: String(acc.amount), validAfter: '0',
                    validBefore: String(Math.floor(Date.now() / 1000) + Math.min(600, +acc.maxTimeoutSeconds || 600)), nonce: randomHex32() };
     const typed = {
