@@ -777,3 +777,34 @@ def test_client_ip_trusts_cloudflare_header_only_when_fronted(monkeypatch):
     monkeypatch.setenv("MANEKI_BEHIND_CLOUDFLARE", "1")
     assert admin_auth.client_ip(req({"cf-connecting-ip": "1.2.3.4", "x-real-ip": "5.6.7.8"})) == "1.2.3.4"
     assert admin_auth.client_ip(req({"x-real-ip": "5.6.7.8"})) == "5.6.7.8"
+
+
+def test_scoreboard_keeps_our_own_testing_out_of_the_counted_number(client, monkeypatch):
+    """The rules count wallets that are not ours, so the scoreboard must never
+    let builder traffic inflate the number a judge reads."""
+    ours = "0x" + "ee" * 20
+    monkeypatch.setenv("X402_OPERATOR_WALLETS", ours)
+    req = x402.requirements("chat", "u")
+    x402.finish(x402.begin(PAYER, "0xb1", "chat", req, "u"), "settled", tx="0xout1")
+    x402.finish(x402.begin(PAYER, "0xb2", "insight", req, "u"), "settled", tx="0xout2")
+    x402.finish(x402.begin(ours, "0xb3", "chat", req, "u"), "settled", tx="0xmine")
+
+    sb = x402.scoreboard()
+    assert sb["external"]["settled"] == 2 and sb["external"]["payers"] == 1
+    assert sb["team"]["settled"] == 1 and sb["team"]["payers"] == 1
+    assert sb["totals"]["settled"] == 3 and sb["totals"]["payers"] == 2
+    assert sb["team_wallets"] == ["0xeeee…eeee"]
+    assert {x["product"] for x in sb["by_product"]} == {"chat", "insight"}
+    assert sb["by_asset"] and sb["by_asset"][0]["asset"] == "USDC"
+    # Public payload: named as ours, but never the whole address.
+    blob = json.dumps(client.get("/api/x402/activity").json())
+    assert ours not in blob and PAYER not in blob
+    assert json.loads(blob)["scoreboard"]["external"]["settled"] == 2
+
+
+def test_scoreboard_without_registered_wallets_counts_everything_as_external():
+    req = x402.requirements("chat", "u")
+    x402.finish(x402.begin(PAYER, "0xc1", "chat", req, "u"), "settled", tx="0xany")
+    sb = x402.scoreboard()
+    assert sb["team"] == {"settled": 0, "payers": 0, "usd": 0} and sb["team_wallets"] == []
+    assert sb["external"]["settled"] == sb["totals"]["settled"] == 1
