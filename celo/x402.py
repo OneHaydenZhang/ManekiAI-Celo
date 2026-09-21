@@ -790,7 +790,7 @@ def _short_addr(a: str) -> str:
 
 
 def activity() -> Dict[str, Any]:
-    """PUBLIC proof of on-chain activity — totals, recent settlements, the
+    """PUBLIC proof of on-chain activity — totals, the payment ledger, the
     registrations and the deposit lane's distinct senders. Never an IP, a
     full payer address, meta_json or an owner address. Nothing is filtered:
     every wallet is recorded, ours are flagged `team`, and scoreboard() is where
@@ -802,7 +802,7 @@ def activity() -> Dict[str, Any]:
     ensure_schema()
     rows = db.query_all(
         "SELECT ts, product, amount_usd, asset, tx, agent_id, payer FROM x402_payments "
-        "WHERE status='settled' AND tx<>'' ORDER BY id DESC LIMIT 30")
+        "WHERE status='settled' AND tx<>'' ORDER BY id DESC LIMIT 200")
     mine = operator_wallets()
     recent_rows = []
     for r in rows:

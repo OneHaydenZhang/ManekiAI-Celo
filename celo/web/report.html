@@ -48,7 +48,7 @@ a{color:var(--accent2)}
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let LANG = (() => { try { return localStorage.getItem('arena_lang') || ((navigator.language || '').startsWith('zh') ? 'zh' : 'en'); } catch (_) { return 'en'; } })();
   const I18N = {
-    en: {title: 'What this agent delivered', assignment: 'THE ASSIGNMENT', reports: 'Reports delivered',
+    en: {assignment: 'THE ASSIGNMENT', reports: 'Reports delivered',
          nothing: 'No report was delivered on this run.', failed: 'This check produced nothing — the buyer was not charged extra.',
          paid: 'Paid', receipt: 'settlement on Celoscan ↗', published: 'Published by the buyer',
          cadence: (h, f, n) => `${h} h · every ${f} min · ${n} checks paid for`,
@@ -56,7 +56,7 @@ a{color:var(--accent2)}
          gone: 'This report is not published (or its buyer took it down).',
          cta: 'Put an agent to work for you →',
          note: 'A ManekiAI agent that a buyer configured and paid for on Celo. It only reads the market and writes reports — it places no orders. Nothing here is investment advice.'},
-    zh: {title: '这个 Agent 交付了什么', assignment: '买家给的任务', reports: '已交付报告',
+    zh: {assignment: '买家给的任务', reports: '已交付报告',
          nothing: '本次运行没有交付报告。', failed: '这次检查没有产出——买家不会被额外扣费。',
          paid: '已支付', receipt: '在 Celoscan 上查看结算 ↗', published: '由买家自愿公开',
          cadence: (h, f, n) => `${h} 小时 · 每 ${f} 分钟 · 共付费 ${n} 次检查`,

@@ -547,6 +547,20 @@ def test_activity_is_public_safe_and_hides_no_payment(client, monkeypatch):
     assert cfg["settler"] == "facilitator" and set(cfg["assets"]) == {"USDC", "USAT"} and "analyst_ready" in cfg
 
 
+def test_the_ledger_is_not_truncated_at_thirty(client):
+    """The guide page shows `recent` as the payment ledger — every settlement,
+    one row each. It used to be capped at 30, which was fine while it was a
+    "most recent" teaser and wrong the moment a judge reads it as the record."""
+    req = x402.requirements("chat", "u")
+    for i in range(35):
+        pid = x402.begin(PAYER, "0xa%d" % i, "chat", req, "u")
+        x402.finish(pid, "settled", tx="0xledger%02d" % i)
+    d = client.get("/api/x402/activity").json()
+    assert d["summary"]["settled"] == 35
+    assert len(d["recent"]) == 35
+    assert d["recent"][0]["tx"] == "0xledger34"        # newest first
+
+
 def test_self_settler_mode_is_explicit_only(monkeypatch):
     assert x402.settler_mode() == "facilitator"
     monkeypatch.delenv("X402_API_KEY")

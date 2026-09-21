@@ -424,14 +424,14 @@ async def x402_activity() -> Dict[str, Any]:
         # orders are the same purchases and belong in the same list, each row
         # carrying which asset the money actually moved in.
         mine = await asyncio.to_thread(x402.operator_wallets)
-        cel = await asyncio.to_thread(native_pay.recent, 30)
+        cel = await asyncio.to_thread(native_pay.recent, 200)
         rows = list(val.get("recent") or []) + [
             {"ts": r["ts"], "product": r["product"], "amount_usd": r["amount_usd"],
              "asset": "CELO", "tx": r["tx"], "explorer": x402.CHAIN["explorer_tx"] + r["tx"],
              "payer_short": x402._short_addr(r["payer"]), "team": r["payer"] in mine,
              "agent_code": ""} for r in cel]
         rows.sort(key=lambda r: -float(r.get("ts") or 0))
-        val["recent"] = rows[:30]
+        val["recent"] = rows[:200]
     except Exception as e:
         oplog.error("x402.activity_celo_recent", repr(e)[:200])
     try:
